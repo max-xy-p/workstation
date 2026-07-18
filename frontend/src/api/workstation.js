@@ -27,6 +27,7 @@ export const noteApi = {
   get: (id) => api.get(`/notes/${id}`),
   create: (payload) => api.post('/notes', payload),
   update: (id, payload) => api.put(`/notes/${id}`, payload),
+  importMarkdown: (payload) => api.post('/notes/import', payload),
   delete: (id) => api.delete(`/notes/${id}`)
 };
 

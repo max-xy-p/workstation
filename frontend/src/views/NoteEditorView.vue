@@ -31,8 +31,8 @@
       </section>
 
       <section class="panel">
-        <h2>保存内容</h2>
-        <pre class="markdown-body">{{ savedContent }}</pre>
+        <h2>Markdown 预览</h2>
+        <article class="markdown-body markdown-rendered" v-html="renderedContent"></article>
       </section>
     </div>
   </section>
@@ -42,6 +42,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
+import { renderMarkdown } from '../utils/markdown';
 
 const route = useRoute();
 const router = useRouter();
@@ -53,6 +54,7 @@ const saved = ref(null);
 const form = reactive({ title: '', content: '', categoryId: '', projectId: route.query.projectId || '', tagIds: [] });
 const isEdit = computed(() => Boolean(route.params.id));
 const savedContent = computed(() => saved.value?.content || form.content || '');
+const renderedContent = computed(() => renderMarkdown(savedContent.value));
 
 function payload() {
   return {

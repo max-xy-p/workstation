@@ -17,6 +17,57 @@
       </div>
     </div>
 
+    <section class="panel import-panel">
+      <h2>导入 Markdown 笔记</h2>
+      <form class="form-grid" @submit.prevent="importNotes">
+        <label class="wide">导入路径
+          <input v-model="importForm.sourcePath" placeholder="例如 D:\notes\ExportBlock-..." required />
+        </label>
+        <label>分类
+          <select v-model="importForm.categoryId">
+            <option value="">未分类</option>
+            <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+          </select>
+        </label>
+        <label>关联项目
+          <select v-model="importForm.projectId">
+            <option value="">未关联</option>
+            <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
+          </select>
+        </label>
+        <label>重复标题
+          <select v-model="importForm.duplicateStrategy" required>
+            <option value="" disabled>请选择</option>
+            <option value="SKIP_TITLE">跳过同标题</option>
+            <option value="CREATE_NEW">创建新笔记</option>
+          </select>
+        </label>
+        <label>标签
+          <select v-model="importForm.tagIds" multiple>
+            <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+          </select>
+        </label>
+        <div class="actions wide">
+          <button type="submit">开始导入</button>
+        </div>
+      </form>
+
+      <div v-if="importResult" class="import-result">
+        <p class="meta">
+          导入 {{ importResult.importedCount }} 条，跳过 {{ importResult.skippedCount }} 条，失败 {{ importResult.failedCount }} 条
+        </p>
+        <div class="list">
+          <div v-for="item in importResult.items" :key="item.filePath" class="card">
+            <div class="card-title">
+              <h3>{{ item.title || item.filePath }}</h3>
+              <span class="badge">{{ item.status }}</span>
+            </div>
+            <p class="meta">{{ item.message }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div v-if="notes.length" class="list">
       <div v-for="note in notes" :key="note.id" class="card">
         <div class="card-title">
@@ -40,22 +91,37 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { categoryApi, noteApi, tagApi } from '../api/workstation';
+import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
 
 const route = useRoute();
 const error = ref('');
 const notes = ref([]);
 const categories = ref([]);
+const projects = ref([]);
 const tags = ref([]);
 const filters = reactive({ keyword: route.query.keyword || '', categoryId: '', tagId: '' });
+const importResult = ref(null);
+const importForm = reactive({
+  sourcePath: '',
+  categoryId: '',
+  projectId: '',
+  tagIds: [],
+  duplicateStrategy: ''
+});
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
 async function loadOptions() {
-  categories.value = await categoryApi.list();
-  tags.value = await tagApi.list();
+  const [categoryList, projectList, tagList] = await Promise.all([
+    categoryApi.list(),
+    projectApi.list({}),
+    tagApi.list()
+  ]);
+  categories.value = categoryList;
+  projects.value = projectList;
+  tags.value = tagList;
 }
 
 async function load() {
@@ -72,6 +138,22 @@ async function remove(id) {
   try {
     error.value = '';
     await noteApi.delete(id);
+    await load();
+  } catch (err) {
+    error.value = err.message;
+  }
+}
+
+async function importNotes() {
+  try {
+    error.value = '';
+    importResult.value = await noteApi.importMarkdown({
+      sourcePath: importForm.sourcePath,
+      categoryId: importForm.categoryId ? Number(importForm.categoryId) : null,
+      projectId: importForm.projectId ? Number(importForm.projectId) : null,
+      tagIds: importForm.tagIds.map(Number),
+      duplicateStrategy: importForm.duplicateStrategy
+    });
     await load();
   } catch (err) {
     error.value = err.message;

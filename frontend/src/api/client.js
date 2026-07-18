@@ -39,7 +39,8 @@ async function request(path, options = {}) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message || '请求失败');
+    const reason = data.message || data.error || response.statusText || '请求失败';
+    throw new Error(`${reason} (${response.status})`);
   }
   return data;
 }

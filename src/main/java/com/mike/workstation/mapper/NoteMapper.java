@@ -83,6 +83,9 @@ public interface NoteMapper {
     @Select("SELECT COUNT(*) FROM notes WHERE category_id = #{categoryId}")
     long countByCategoryId(Long categoryId);
 
+    @Select("SELECT COUNT(*) FROM notes WHERE title = #{title}")
+    long countByTitle(String title);
+
     @Select("""
             SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at

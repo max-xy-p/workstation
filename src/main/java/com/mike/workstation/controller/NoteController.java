@@ -1,7 +1,10 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.domain.Note;
+import com.mike.workstation.dto.NoteImportRequest;
+import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.service.NoteImportService;
 import com.mike.workstation.service.NoteService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -20,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/notes")
 public class NoteController {
     private final NoteService noteService;
+    private final NoteImportService noteImportService;
 
-    public NoteController(NoteService noteService) {
+    public NoteController(NoteService noteService, NoteImportService noteImportService) {
         this.noteService = noteService;
+        this.noteImportService = noteImportService;
     }
 
     @GetMapping
@@ -44,6 +49,11 @@ public class NoteController {
     @ResponseStatus(HttpStatus.CREATED)
     public Note create(@RequestBody NoteRequest request) {
         return noteService.create(request);
+    }
+
+    @PostMapping("/import")
+    public NoteImportResponse importMarkdown(@RequestBody NoteImportRequest request) {
+        return noteImportService.importMarkdown(request);
     }
 
     @PutMapping("/{id}")
