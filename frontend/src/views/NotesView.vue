@@ -113,6 +113,7 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
+// 加载筛选项：分类、项目和标签会同时用于列表筛选与导入表单。
 async function loadOptions() {
   const [categoryList, projectList, tagList] = await Promise.all([
     categoryApi.list(),
@@ -124,6 +125,7 @@ async function loadOptions() {
   tags.value = tagList;
 }
 
+// 根据当前筛选条件加载笔记列表。
 async function load() {
   try {
     error.value = '';
@@ -133,6 +135,7 @@ async function load() {
   }
 }
 
+// 删除笔记；后端会同步清理笔记和标签的关联关系。
 async function remove(id) {
   if (!window.confirm('确认删除笔记？')) return;
   try {
@@ -144,6 +147,7 @@ async function remove(id) {
   }
 }
 
+// 导入本机 Markdown 文件或目录，导入路径必须在后端白名单配置内。
 async function importNotes() {
   try {
     error.value = '';

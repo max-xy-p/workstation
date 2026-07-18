@@ -12,7 +12,15 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 @Mapper
+/**
+ * 项目表数据访问接口。
+ *
+ * <p>只负责 projects 表的 SQL 操作，不承载业务删除规则。</p>
+ */
 public interface ProjectMapper {
+    /**
+     * 按名称关键字和状态查询项目列表。
+     */
     @Select("""
             <script>
             SELECT id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
@@ -30,6 +38,9 @@ public interface ProjectMapper {
             """)
     List<Project> list(@Param("keyword") String keyword, @Param("status") ProjectStatus status);
 
+    /**
+     * 根据主键查询项目。
+     */
     @Select("""
             SELECT id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
             FROM projects
@@ -37,6 +48,9 @@ public interface ProjectMapper {
             """)
     Project findById(Long id);
 
+    /**
+     * 插入项目，并回填自增主键到 project.id。
+     */
     @Insert("""
             INSERT INTO projects (name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at)
             VALUES (#{name}, #{description}, #{status}, #{repositoryUrl}, #{techStack}, #{runGuide}, #{createdAt}, #{updatedAt})
@@ -44,6 +58,9 @@ public interface ProjectMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Project project);
 
+    /**
+     * 更新项目完整信息。
+     */
     @Update("""
             UPDATE projects
             SET name = #{name},
@@ -57,6 +74,9 @@ public interface ProjectMapper {
             """)
     int update(Project project);
 
+    /**
+     * 更新项目状态和更新时间。
+     */
     @Update("""
             UPDATE projects
             SET status = #{status}, updated_at = #{updatedAt}
@@ -68,12 +88,21 @@ public interface ProjectMapper {
             @Param("updatedAt") java.time.LocalDateTime updatedAt
     );
 
+    /**
+     * 根据主键删除项目。
+     */
     @Delete("DELETE FROM projects WHERE id = #{id}")
     int delete(Long id);
 
+    /**
+     * 按项目状态统计数量。
+     */
     @Select("SELECT COUNT(*) FROM projects WHERE status = #{status}")
     long countByStatus(ProjectStatus status);
 
+    /**
+     * 查询最近更新的项目，用于首页概览。
+     */
     @Select("""
             SELECT id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
             FROM projects

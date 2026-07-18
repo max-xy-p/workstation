@@ -11,7 +11,15 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 @Mapper
+/**
+ * 笔记表数据访问接口。
+ *
+ * <p>负责 notes 表查询和写入；标签关联由 {@link TagMapper} 维护。</p>
+ */
 public interface NoteMapper {
+    /**
+     * 按标题、分类、标签和项目组合筛选笔记。
+     */
     @Select("""
             <script>
             SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
@@ -46,6 +54,9 @@ public interface NoteMapper {
             @Param("projectId") Long projectId
     );
 
+    /**
+     * 根据主键查询笔记详情。
+     */
     @Select("""
             SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
@@ -56,6 +67,9 @@ public interface NoteMapper {
             """)
     Note findById(Long id);
 
+    /**
+     * 插入笔记，并回填自增主键到 note.id。
+     */
     @Insert("""
             INSERT INTO notes (title, content, category_id, project_id, created_at, updated_at)
             VALUES (#{title}, #{content}, #{categoryId}, #{projectId}, #{createdAt}, #{updatedAt})
@@ -63,6 +77,9 @@ public interface NoteMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Note note);
 
+    /**
+     * 更新笔记基础字段，不直接处理标签关联。
+     */
     @Update("""
             UPDATE notes
             SET title = #{title},
@@ -74,18 +91,35 @@ public interface NoteMapper {
             """)
     int update(Note note);
 
+    /**
+     * 根据主键删除笔记。
+     */
     @Delete("DELETE FROM notes WHERE id = #{id}")
     int delete(Long id);
 
+    /**
+     * 清空某个项目下所有笔记的项目关联。
+     *
+     * <p>用于删除没有任务的项目时保留笔记。</p>
+     */
     @Update("UPDATE notes SET project_id = NULL, updated_at = #{updatedAt} WHERE project_id = #{projectId}")
     int clearProject(@Param("projectId") Long projectId, @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
+    /**
+     * 统计某分类下的笔记数量，用于分类删除前校验。
+     */
     @Select("SELECT COUNT(*) FROM notes WHERE category_id = #{categoryId}")
     long countByCategoryId(Long categoryId);
 
+    /**
+     * 按标题统计笔记数量，用于导入时跳过同标题笔记。
+     */
     @Select("SELECT COUNT(*) FROM notes WHERE title = #{title}")
     long countByTitle(String title);
 
+    /**
+     * 查询最近更新的笔记，用于首页概览。
+     */
     @Select("""
             SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at

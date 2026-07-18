@@ -63,14 +63,17 @@ const tags = ref([]);
 const categoryForm = reactive({ id: null, name: '', description: '' });
 const tagForm = reactive({ id: null, name: '' });
 
+// 清空分类表单，退出分类编辑状态。
 function resetCategory() {
   Object.assign(categoryForm, { id: null, name: '', description: '' });
 }
 
+// 清空标签表单，退出标签编辑状态。
 function resetTag() {
   Object.assign(tagForm, { id: null, name: '' });
 }
 
+// 把分类数据填入表单，进入编辑状态。
 function editCategory(category) {
   Object.assign(categoryForm, {
     id: category.id,
@@ -79,16 +82,19 @@ function editCategory(category) {
   });
 }
 
+// 把标签数据填入表单，进入编辑状态。
 function editTag(tag) {
   Object.assign(tagForm, { id: tag.id, name: tag.name });
 }
 
+// 同时加载分类和标签列表。
 async function load() {
   const [categoryList, tagList] = await Promise.all([categoryApi.list(), tagApi.list()]);
   categories.value = categoryList;
   tags.value = tagList;
 }
 
+// 创建或更新分类。
 async function saveCategory() {
   try {
     error.value = '';
@@ -105,6 +111,7 @@ async function saveCategory() {
   }
 }
 
+// 创建或更新标签。
 async function saveTag() {
   try {
     error.value = '';
@@ -121,6 +128,7 @@ async function saveTag() {
   }
 }
 
+// 删除分类；如果分类下存在笔记，后端会拒绝。
 async function removeCategory(id) {
   if (!window.confirm('确认删除分类？')) return;
   try {
@@ -132,6 +140,7 @@ async function removeCategory(id) {
   }
 }
 
+// 删除标签；后端会先解除标签和笔记的关联。
 async function removeTag(id) {
   if (!window.confirm('确认删除标签？')) return;
   try {

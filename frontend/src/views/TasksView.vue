@@ -108,14 +108,17 @@ function priorityLabel(value) {
   return optionLabel(TASK_PRIORITIES, value);
 }
 
+// 根据看板列状态筛选任务，模板中每一列都会调用它。
 function tasksByStatus(status) {
   return tasks.value.filter((task) => task.status === status);
 }
 
+// 重置任务表单，避免上一次编辑状态影响下一次新建。
 function resetForm() {
   Object.assign(form, emptyForm());
 }
 
+// 把任务卡片数据填入表单，进入编辑状态。
 function edit(task) {
   Object.assign(form, {
     id: task.id,
@@ -128,6 +131,7 @@ function edit(task) {
   });
 }
 
+// 把表单状态转换为后端 TaskRequest。
 function payload() {
   return {
     title: form.title,
@@ -139,10 +143,12 @@ function payload() {
   };
 }
 
+// 加载项目选项，任务必须关联到一个项目。
 async function loadProjects() {
   projects.value = await projectApi.list({});
 }
 
+// 根据筛选条件重新加载看板任务。
 async function load() {
   try {
     error.value = '';
@@ -152,6 +158,7 @@ async function load() {
   }
 }
 
+// 创建或更新任务。
 async function save() {
   try {
     error.value = '';
@@ -167,6 +174,7 @@ async function save() {
   }
 }
 
+// 快捷切换任务看板状态。
 async function move(task, status) {
   try {
     error.value = '';
@@ -177,6 +185,7 @@ async function move(task, status) {
   }
 }
 
+// 删除任务；项目本身不会受影响。
 async function remove(id) {
   if (!window.confirm('确认删除任务？')) return;
   try {

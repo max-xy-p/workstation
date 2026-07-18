@@ -5,6 +5,9 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
+/**
+ * 项目任务实体，对应 tasks 表。
+ */
 public class Task {
     private Long id;
     private String title;

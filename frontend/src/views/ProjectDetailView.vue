@@ -96,6 +96,7 @@ const projectStatusLabel = (value) => optionLabel(PROJECT_STATUSES, value);
 const taskStatusLabel = (value) => optionLabel(TASK_STATUSES, value);
 const priorityLabel = (value) => optionLabel(TASK_PRIORITIES, value);
 
+// 把项目详情数据同步到右侧编辑表单。
 function syncProjectForm(project) {
   Object.assign(projectForm, {
     name: project.name,
@@ -107,6 +108,7 @@ function syncProjectForm(project) {
   });
 }
 
+// 把项目表单转换为后端 ProjectRequest。
 function projectPayload() {
   return {
     name: projectForm.name,
@@ -118,6 +120,7 @@ function projectPayload() {
   };
 }
 
+// 加载项目详情，包括项目本身、关联任务和关联笔记。
 async function load() {
   try {
     error.value = '';
@@ -128,6 +131,7 @@ async function load() {
   }
 }
 
+// 保存项目基础信息。
 async function saveProject() {
   try {
     error.value = '';
@@ -138,6 +142,7 @@ async function saveProject() {
   }
 }
 
+// 在当前项目下创建任务。
 async function createTask() {
   try {
     error.value = '';
@@ -156,6 +161,7 @@ async function createTask() {
   }
 }
 
+// 删除当前项目；删除规则由后端统一处理。
 async function removeProject() {
   if (!window.confirm('确认删除项目？')) return;
   try {

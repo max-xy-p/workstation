@@ -5,6 +5,7 @@ if (!API_BASE_URL) {
 }
 
 function buildUrl(path, params = {}) {
+  // nginx 模式下 API 地址是 /api；直接联调时也兼容完整的 http://host/api。
   const baseUrl = API_BASE_URL.startsWith('http')
     ? API_BASE_URL
     : `${window.location.origin}${API_BASE_URL}`;
@@ -34,6 +35,7 @@ async function request(path, options = {}) {
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
+    // 最常见情况是 /api 没走到后端，而是被前端 dev server 返回了 index.html。
     throw new Error('API 未返回 JSON，请确认当前页面通过 nginx 访问，且 /api/ 已代理到后端');
   }
 

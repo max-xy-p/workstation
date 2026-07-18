@@ -21,6 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/notes")
+/**
+ * 笔记接口控制器。
+ *
+ * <p>提供 Markdown 笔记的列表筛选、详情、创建、编辑、删除和本地 Markdown 导入接口。</p>
+ */
 public class NoteController {
     private final NoteService noteService;
     private final NoteImportService noteImportService;
@@ -30,6 +35,15 @@ public class NoteController {
         this.noteImportService = noteImportService;
     }
 
+    /**
+     * 查询笔记列表。
+     *
+     * @param keyword 笔记标题关键字，可为空
+     * @param categoryId 分类筛选，可为空
+     * @param tagId 标签筛选，可为空
+     * @param projectId 关联项目筛选，可为空
+     * @return 满足筛选条件的笔记列表，每条笔记会携带标签信息
+     */
     @GetMapping
     public List<Note> list(
             @RequestParam(required = false) String keyword,
@@ -40,27 +54,61 @@ public class NoteController {
         return noteService.list(keyword, categoryId, tagId, projectId);
     }
 
+    /**
+     * 查询单篇笔记详情。
+     *
+     * @param id 笔记 ID
+     * @return 笔记详情，包含分类、项目和标签信息
+     */
     @GetMapping("/{id}")
     public Note get(@PathVariable Long id) {
         return noteService.get(id);
     }
 
+    /**
+     * 创建 Markdown 笔记。
+     *
+     * @param request 笔记创建请求，标题和正文必填
+     * @return 创建后的笔记数据
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Note create(@RequestBody NoteRequest request) {
         return noteService.create(request);
     }
 
+    /**
+     * 从本机路径导入 Markdown 笔记。
+     *
+     * <p>导入路径必须位于配置允许的根目录下，避免接口读取任意系统文件。</p>
+     *
+     * @param request 导入请求，包含源路径、分类、项目、标签和重复标题处理策略
+     * @return 导入结果汇总和每个文件的处理明细
+     */
     @PostMapping("/import")
     public NoteImportResponse importMarkdown(@RequestBody NoteImportRequest request) {
         return noteImportService.importMarkdown(request);
     }
 
+    /**
+     * 更新笔记完整信息。
+     *
+     * @param id 笔记 ID
+     * @param request 笔记更新请求
+     * @return 更新后的笔记数据
+     */
     @PutMapping("/{id}")
     public Note update(@PathVariable Long id, @RequestBody NoteRequest request) {
         return noteService.update(id, request);
     }
 
+    /**
+     * 删除笔记。
+     *
+     * <p>删除笔记会先移除笔记与标签的关联，不影响项目、分类、标签本身。</p>
+     *
+     * @param id 笔记 ID
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

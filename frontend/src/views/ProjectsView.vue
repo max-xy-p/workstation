@@ -74,20 +74,24 @@ function statusLabel(value) {
   return optionLabel(PROJECT_STATUSES, value);
 }
 
+// 格式化后端返回的 ISO 日期时间，给列表展示使用。
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
+// 清空项目表单，退出编辑状态。
 function resetForm() {
   Object.assign(form, emptyForm());
 }
 
+// 重置筛选条件并重新查询项目列表。
 function resetFilters() {
   filters.keyword = '';
   filters.status = '';
   load();
 }
 
+// 把项目卡片数据填入表单，进入编辑状态。
 function edit(project) {
   Object.assign(form, {
     id: project.id,
@@ -100,6 +104,7 @@ function edit(project) {
   });
 }
 
+// 把表单状态转换为后端 ProjectRequest。
 function payload() {
   return {
     name: form.name,
@@ -111,6 +116,7 @@ function payload() {
   };
 }
 
+// 根据筛选条件加载项目列表。
 async function load() {
   try {
     error.value = '';
@@ -120,6 +126,7 @@ async function load() {
   }
 }
 
+// 创建或更新项目。
 async function save() {
   try {
     error.value = '';
@@ -135,6 +142,7 @@ async function save() {
   }
 }
 
+// 删除项目；如果项目下存在任务，后端会拒绝并返回明确提示。
 async function remove(id) {
   if (!window.confirm('确认删除项目？')) return;
   try {

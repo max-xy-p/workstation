@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
+/**
+ * 软件项目实体，对应 projects 表。
+ */
 public class Project {
     private Long id;
     private String name;

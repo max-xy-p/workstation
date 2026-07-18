@@ -12,6 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+/**
+ * 任务业务服务。
+ *
+ * <p>负责任务的必填校验、所属项目校验，以及看板状态流转。</p>
+ */
 public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
@@ -21,16 +26,37 @@ public class TaskService {
         this.projectMapper = projectMapper;
     }
 
+    /**
+     * 查询任务列表。
+     *
+     * @param keyword 标题关键字，可为空
+     * @param projectId 项目筛选，可为空
+     * @param status 状态筛选，可为空
+     * @param priority 优先级筛选，可为空
+     * @return 任务列表
+     */
     public List<Task> list(String keyword, Long projectId, TaskStatus status, TaskPriority priority) {
         return taskMapper.list(keyword, projectId, status, priority);
     }
 
+    /**
+     * 查询任务详情。
+     *
+     * @param id 任务 ID
+     * @return 任务实体
+     */
     public Task get(Long id) {
         Task task = taskMapper.findById(id);
         RequestChecks.requiredExisting(task, "任务不存在");
         return task;
     }
 
+    /**
+     * 创建任务。
+     *
+     * @param request 任务创建请求
+     * @return 创建后的任务
+     */
     @Transactional
     public Task create(TaskRequest request) {
         validate(request);
@@ -43,6 +69,13 @@ public class TaskService {
         return get(task.getId());
     }
 
+    /**
+     * 更新任务完整信息。
+     *
+     * @param id 任务 ID
+     * @param request 任务更新请求
+     * @return 更新后的任务
+     */
     @Transactional
     public Task update(Long id, TaskRequest request) {
         validate(request);
@@ -55,6 +88,13 @@ public class TaskService {
         return get(id);
     }
 
+    /**
+     * 更新任务看板状态。
+     *
+     * @param id 任务 ID
+     * @param status 新状态
+     * @return 更新后的任务
+     */
     @Transactional
     public Task updateStatus(Long id, TaskStatus status) {
         RequestChecks.requiredObject(status, "任务状态");
@@ -63,12 +103,22 @@ public class TaskService {
         return get(id);
     }
 
+    /**
+     * 删除任务。
+     *
+     * @param id 任务 ID
+     */
     @Transactional
     public void delete(Long id) {
         get(id);
         taskMapper.delete(id);
     }
 
+    /**
+     * 校验任务请求。
+     *
+     * <p>所属项目必须存在；状态和优先级由前端显式选择，不在后端填默认值。</p>
+     */
     private void validate(TaskRequest request) {
         RequestChecks.requiredObject(request, "任务请求");
         RequestChecks.requiredText(request.title(), "任务标题");
@@ -78,6 +128,9 @@ public class TaskService {
         RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "所属项目不存在");
     }
 
+    /**
+     * 把请求对象复制到任务实体。
+     */
     private void applyRequest(Task task, TaskRequest request) {
         task.setTitle(request.title());
         task.setDescription(request.description());

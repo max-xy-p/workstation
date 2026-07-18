@@ -12,6 +12,11 @@ import com.mike.workstation.mapper.TaskMapper;
 import org.springframework.stereotype.Service;
 
 @Service
+/**
+ * 首页概览业务服务。
+ *
+ * <p>负责聚合项目、任务和笔记数据，给首页一次性返回可展示的工作台概览。</p>
+ */
 public class DashboardService {
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
@@ -33,6 +38,11 @@ public class DashboardService {
         this.dashboardProperties = dashboardProperties;
     }
 
+    /**
+     * 查询首页概览。
+     *
+     * @return 活跃项目、待办任务、进行中任务数量，以及最近项目和最近笔记
+     */
     public DashboardResponse summary() {
         if (dashboardProperties.recentLimit() == null || dashboardProperties.recentLimit() < 1) {
             throw new BusinessException("首页最近记录数量未正确配置");

@@ -77,14 +77,17 @@ function projectStatusLabel(value) {
   return optionLabel(PROJECT_STATUSES, value);
 }
 
+// 格式化首页最近更新列表中的时间。
 function formatDate(value) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
+// 根据入口按钮跳转到对应模块，并把关键字带到目标列表页。
 function search(target) {
   router.push({ name: target, query: { keyword: keyword.value } });
 }
 
+// 加载首页统计数字和最近更新列表。
 async function load() {
   try {
     error.value = '';

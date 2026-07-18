@@ -6,6 +6,9 @@ import java.util.List;
 import lombok.Data;
 
 @Data
+/**
+ * Markdown 技术笔记实体，对应 notes 表。
+ */
 public class Note {
     private Long id;
     private String title;

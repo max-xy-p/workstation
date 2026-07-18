@@ -9,6 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+/**
+ * 标签业务服务。
+ *
+ * <p>标签和笔记是多对多关系；删除标签时只解除关联，不删除笔记。</p>
+ */
 public class TagService {
     private final TagMapper tagMapper;
 
@@ -16,16 +21,33 @@ public class TagService {
         this.tagMapper = tagMapper;
     }
 
+    /**
+     * 查询所有标签。
+     *
+     * @return 标签列表
+     */
     public List<Tag> list() {
         return tagMapper.list();
     }
 
+    /**
+     * 查询标签详情。
+     *
+     * @param id 标签 ID
+     * @return 标签实体
+     */
     public Tag get(Long id) {
         Tag tag = tagMapper.findById(id);
         RequestChecks.requiredExisting(tag, "标签不存在");
         return tag;
     }
 
+    /**
+     * 创建标签。
+     *
+     * @param request 标签创建请求
+     * @return 创建后的标签
+     */
     @Transactional
     public Tag create(TagRequest request) {
         validate(request);
@@ -38,6 +60,13 @@ public class TagService {
         return get(tag.getId());
     }
 
+    /**
+     * 更新标签名称。
+     *
+     * @param id 标签 ID
+     * @param request 标签更新请求
+     * @return 更新后的标签
+     */
     @Transactional
     public Tag update(Long id, TagRequest request) {
         validate(request);
@@ -50,6 +79,11 @@ public class TagService {
         return get(id);
     }
 
+    /**
+     * 删除标签并解除笔记关联。
+     *
+     * @param id 标签 ID
+     */
     @Transactional
     public void delete(Long id) {
         get(id);
@@ -57,6 +91,9 @@ public class TagService {
         tagMapper.delete(id);
     }
 
+    /**
+     * 校验标签请求。
+     */
     private void validate(TagRequest request) {
         RequestChecks.requiredObject(request, "标签请求");
         RequestChecks.requiredText(request.name(), "标签名称");

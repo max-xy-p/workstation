@@ -56,6 +56,7 @@ const isEdit = computed(() => Boolean(route.params.id));
 const savedContent = computed(() => saved.value?.content || form.content || '');
 const renderedContent = computed(() => renderMarkdown(savedContent.value));
 
+// 把表单状态转换成后端 NoteRequest 需要的 JSON 结构。
 function payload() {
   return {
     title: form.title,
@@ -66,6 +67,7 @@ function payload() {
   };
 }
 
+// 加载分类、项目、标签选项，供笔记元数据选择使用。
 async function loadOptions() {
   const [categoryList, projectList, tagList] = await Promise.all([
     categoryApi.list(),
@@ -77,6 +79,7 @@ async function loadOptions() {
   tags.value = tagList;
 }
 
+// 编辑模式下加载已有笔记，并把后端数据回填到表单。
 async function loadNote() {
   if (!isEdit.value) return;
   const note = await noteApi.get(route.params.id);
@@ -90,6 +93,7 @@ async function loadNote() {
   });
 }
 
+// 保存笔记：新建成功后切换到编辑路由，后续保存走更新接口。
 async function save() {
   try {
     error.value = '';
