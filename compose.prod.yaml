@@ -1,0 +1,53 @@
+name: workstation
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-workstation}
+      MYSQL_USER: ${MYSQL_USER:-workstation}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE in .env.docker}/workstation-backend:${IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-workstation}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${MYSQL_USER:-workstation}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
+      DB_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      DASHBOARD_RECENT_LIMIT: ${DASHBOARD_RECENT_LIMIT:-5}
+      NOTE_IMPORT_ALLOWED_ROOTS: /data/notes
+      NOTE_IMPORT_MAX_FILE_BYTES: ${NOTE_IMPORT_MAX_FILE_BYTES:-1048576}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./notes:/data/notes
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/${GHCR_NAMESPACE:?Set GHCR_NAMESPACE in .env.docker}/workstation-web:${IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8088}:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

@@ -8,6 +8,8 @@ target/
 .env
 .env.*
 !.env.example
+!.env.docker.example
+notes/
 node_modules/
 frontend/node_modules/
 frontend/dist/
