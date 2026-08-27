@@ -1,56 +1,84 @@
 <template>
   <section class="page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="stats">
-      <div class="stat">
-        <span>进行中的项目</span>
-        <strong>{{ summary.activeProjectCount }}</strong>
+    <section class="dashboard-lead">
+      <div class="lead-copy">
+        <span class="eyebrow">今日焦点</span>
+        <h2>把零散的信息，<br />整理成可继续的工作。</h2>
+        <p>从最近更新的内容继续，或者快速查找一个标题。</p>
       </div>
-      <div class="stat">
-        <span>待办任务</span>
-        <strong>{{ summary.todoTaskCount }}</strong>
+      <div class="stats" aria-label="工作概览">
+        <div class="stat">
+          <span>活跃项目</span>
+          <strong>{{ summary.activeProjectCount }}</strong>
+          <small>正在进行</small>
+        </div>
+        <div class="stat">
+          <span>待办任务</span>
+          <strong>{{ summary.todoTaskCount }}</strong>
+          <small>等待处理</small>
+        </div>
+        <div class="stat">
+          <span>进行中</span>
+          <strong>{{ summary.inProgressTaskCount }}</strong>
+          <small>保持推进</small>
+        </div>
       </div>
-      <div class="stat">
-        <span>进行中任务</span>
-        <strong>{{ summary.inProgressTaskCount }}</strong>
-      </div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <div class="toolbar">
-        <input v-model="keyword" class="wide" placeholder="搜索标题" @keyup.enter="search('projects')" />
-        <button @click="search('projects')">搜项目</button>
-        <button class="secondary" @click="search('tasks')">搜任务</button>
-        <button class="secondary" @click="search('notes')">搜笔记</button>
+    <section class="quick-search">
+      <div class="search-field">
+        <span class="search-glyph">⌕</span>
+        <input v-model="keyword" aria-label="搜索标题" placeholder="搜索项目、任务或笔记标题…" @keyup.enter="search('notes')" />
       </div>
-    </div>
+      <div class="search-scopes">
+        <button class="secondary" @click="search('projects')">项目</button>
+        <button class="secondary" @click="search('tasks')">任务</button>
+        <button @click="search('notes')">笔记</button>
+      </div>
+    </section>
 
-    <div class="split">
-      <section class="panel">
-        <h2>最近更新的项目</h2>
-        <div v-if="summary.recentProjects.length" class="list">
-          <RouterLink v-for="project in summary.recentProjects" :key="project.id" class="card" :to="`/projects/${project.id}`">
-            <div class="card-title">
+    <div class="dashboard-grid">
+      <section class="panel collection-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Projects</span>
+            <h2>最近项目</h2>
+          </div>
+          <RouterLink class="text-link" :to="{ name: 'projects' }">查看全部 →</RouterLink>
+        </div>
+        <div v-if="summary.recentProjects.length" class="record-list">
+          <RouterLink v-for="(project, index) in summary.recentProjects" :key="project.id" class="record-row" :to="`/projects/${project.id}`">
+            <span class="record-index">{{ String(index + 1).padStart(2, '0') }}</span>
+            <div class="record-main">
               <h3>{{ project.name }}</h3>
-              <span class="badge">{{ projectStatusLabel(project.status) }}</span>
+              <p>{{ project.techStack || '技术栈待补充' }} · {{ formatDate(project.updatedAt) }}</p>
             </div>
-            <p class="meta">{{ project.techStack || '未填写技术栈' }} · {{ formatDate(project.updatedAt) }}</p>
+            <span class="badge">{{ projectStatusLabel(project.status) }}</span>
           </RouterLink>
         </div>
-        <p v-else class="empty">暂无项目</p>
+        <p v-else class="empty">还没有项目，从记录一个正在做的事情开始。</p>
       </section>
 
-      <section class="panel">
-        <h2>最近更新的笔记</h2>
-        <div v-if="summary.recentNotes.length" class="list">
-          <RouterLink v-for="note in summary.recentNotes" :key="note.id" class="card" :to="`/notes/${note.id}/edit`">
-            <div class="card-title">
+      <section class="panel collection-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Notes</span>
+            <h2>最近笔记</h2>
+          </div>
+          <RouterLink class="text-link" :to="{ name: 'notes' }">进入知识库 →</RouterLink>
+        </div>
+        <div v-if="summary.recentNotes.length" class="record-list">
+          <RouterLink v-for="(note, index) in summary.recentNotes" :key="note.id" class="record-row" :to="`/notes/${note.id}/edit`">
+            <span class="record-index">{{ String(index + 1).padStart(2, '0') }}</span>
+            <div class="record-main">
               <h3>{{ note.title }}</h3>
+              <p>{{ note.categoryName || '未分类' }} · {{ formatDate(note.updatedAt) }}</p>
             </div>
-            <p class="meta">{{ note.categoryName || '未分类' }} · {{ formatDate(note.updatedAt) }}</p>
+            <span class="row-arrow">→</span>
           </RouterLink>
         </div>
-        <p v-else class="empty">暂无笔记</p>
+        <p v-else class="empty">知识库还是空的，先写下第一条笔记。</p>
       </section>
     </div>
   </section>
