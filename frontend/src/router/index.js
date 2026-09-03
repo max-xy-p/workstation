@@ -6,8 +6,11 @@ import TasksView from '../views/TasksView.vue';
 import NotesView from '../views/NotesView.vue';
 import NoteEditorView from '../views/NoteEditorView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
+import LoginView from '../views/LoginView.vue';
+import { auth } from '../auth';
 
 export const routes = [
+  { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },
   { path: '/', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
   { path: '/projects', name: 'projects', component: ProjectsView, meta: { title: '项目' } },
   { path: '/projects/:id', name: 'project-detail', component: ProjectDetailView, meta: { title: '项目详情' } },
@@ -18,7 +21,24 @@ export const routes = [
   { path: '/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '分类标签' } }
 ];
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes
 });
+
+router.beforeEach(async (to) => {
+  const user = await auth.ensureSession();
+  if (!user && !to.meta.public) {
+    return { name: 'login', query: { redirect: to.fullPath } };
+  }
+  if (user && to.name === 'login') {
+    return { name: 'notes' };
+  }
+  return true;
+});
+
+router.afterEach((to) => {
+  document.title = `${to.meta.title || '工作台'} · 个人工作台`;
+});
+
+export default router;

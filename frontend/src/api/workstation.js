@@ -1,4 +1,17 @@
-import { api } from './client';
+import { api, resetCsrfToken } from './client';
+
+export const authApi = {
+  currentUser: () => api.get('/auth/me', undefined, { suppressUnauthorized: true }),
+  async login(username, password) {
+    resetCsrfToken();
+    await api.form('/auth/login', { username, password }, { suppressUnauthorized: true });
+    resetCsrfToken();
+  },
+  async logout() {
+    await api.post('/auth/logout');
+    resetCsrfToken();
+  }
+};
 
 // 首页概览 API：用于首页一次性获取统计数字和最近更新数据。
 export const dashboardApi = {

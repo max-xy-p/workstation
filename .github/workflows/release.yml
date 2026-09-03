@@ -74,3 +74,120 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: publish
+
+    permissions:
+      contents: read
+
+    concurrency:
+      group: workstation-production
+      cancel-in-progress: false
+
+    env:
+      DEPLOY_PATH: /opt/workstation
+      IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.ref_name }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate deployment settings
+        shell: bash
+        run: |
+          if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid container image tag"
+            exit 1
+          fi
+          if [[ -z "$VPS_HOST" || -z "$VPS_USER" ]]; then
+            echo "VPS_HOST and VPS_USER secrets are required"
+            exit 1
+          fi
+          if [[ ! "$VPS_PORT" =~ ^[0-9]+$ ]] || (( VPS_PORT < 1 || VPS_PORT > 65535 )); then
+            echo "VPS_PORT must be a valid TCP port"
+            exit 1
+          fi
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          if [[ -z "$SSH_PRIVATE_KEY" || -z "$SSH_KNOWN_HOSTS" ]]; then
+            echo "VPS_SSH_PRIVATE_KEY and VPS_SSH_KNOWN_HOSTS secrets are required"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload deployment files
+        shell: bash
+        run: |
+          ssh -p "$VPS_PORT" -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
+            "mkdir -p '$DEPLOY_PATH/src/main/resources/db' '$DEPLOY_PATH/notes'"
+          scp -P "$VPS_PORT" compose.prod.yaml \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/compose.prod.yaml"
+          scp -P "$VPS_PORT" src/main/resources/db/schema.sql \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/src/main/resources/db/schema.sql"
+
+      - name: Pull and restart services
+        shell: bash
+        run: |
+          ssh -p "$VPS_PORT" -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
+            "bash -s -- '$IMAGE_TAG'" <<'REMOTE'
+          set -Eeuo pipefail
+          image_tag="$1"
+          cd /opt/workstation
+
+          if [[ ! -f .env.docker ]]; then
+            echo "/opt/workstation/.env.docker does not exist"
+            exit 1
+          fi
+
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            pull
+
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            up -d --remove-orphans
+
+          for attempt in {1..20}; do
+            if IMAGE_TAG="$image_tag" docker compose \
+              --env-file .env.docker \
+              -f compose.prod.yaml \
+              exec -T web wget -q -O /dev/null http://127.0.0.1/api/auth/csrf; then
+              IMAGE_TAG="$image_tag" docker compose \
+                --env-file .env.docker \
+                -f compose.prod.yaml \
+                ps
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "Deployment health check failed"
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            logs --tail=100 backend web
+          exit 1
+          REMOTE
+
+      - name: Remove temporary SSH credentials
+        if: always()
+        shell: bash
+        run: |
+          rm -f ~/.ssh/id_ed25519 ~/.ssh/known_hosts

@@ -41,6 +41,9 @@
     <template v-else-if="name === 'import'">
       <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" /><path d="M4 18.5h16" />
     </template>
+    <template v-else-if="name === 'logout'">
+      <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+    </template>
   </svg>
 </template>
 

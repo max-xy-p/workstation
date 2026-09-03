@@ -1,5 +1,12 @@
 server:
   port: ${SERVER_PORT}
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
 
 spring:
   application:
@@ -16,6 +23,9 @@ mybatis:
     map-underscore-to-camel-case: true
 
 workstation:
+  security:
+    admin-username: ${APP_ADMIN_USERNAME}
+    admin-password-hash: ${APP_ADMIN_PASSWORD_HASH}
   dashboard:
     recent-limit: ${DASHBOARD_RECENT_LIMIT}
   note-import:
