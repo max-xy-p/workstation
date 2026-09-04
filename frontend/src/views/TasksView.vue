@@ -1,11 +1,11 @@
 <template>
-  <section class="page">
+  <section class="page tasks-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split">
-      <section>
-        <div class="panel">
+    <div class="split workspace-split tasks-layout">
+      <section class="task-board">
+        <div class="panel compact-panel">
           <div class="toolbar">
-            <input v-model="filters.keyword" placeholder="任务标题" @keyup.enter="load" />
+            <input v-model="filters.keyword" aria-label="搜索任务" placeholder="搜索任务标题…" @keyup.enter="load" />
             <select v-model="filters.projectId">
               <option value="">全部项目</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
@@ -14,15 +14,18 @@
               <option value="">全部优先级</option>
               <option v-for="priority in TASK_PRIORITIES" :key="priority.value" :value="priority.value">{{ priority.label }}</option>
             </select>
-            <button @click="load">查询</button>
+            <button @click="load">筛选</button>
           </div>
         </div>
 
         <div class="kanban">
           <section v-for="column in KANBAN_COLUMNS" :key="column.value" class="column">
-            <h2>{{ column.label }}</h2>
+            <div class="column-heading">
+              <h2>{{ column.label }}</h2>
+              <span>{{ tasksByStatus(column.value).length }}</span>
+            </div>
             <div v-if="tasksByStatus(column.value).length" class="list">
-              <div v-for="task in tasksByStatus(column.value)" :key="task.id" class="card">
+              <article v-for="task in tasksByStatus(column.value)" :key="task.id" class="card task-card">
                 <div class="card-title">
                   <h3>{{ task.title }}</h3>
                   <span class="badge">{{ priorityLabel(task.priority) }}</span>
@@ -42,15 +45,20 @@
                   <button class="secondary" @click="edit(task)">编辑</button>
                   <button class="danger" @click="remove(task.id)">删除</button>
                 </div>
-              </div>
+              </article>
             </div>
             <p v-else class="empty">暂无{{ column.label }}任务</p>
           </section>
         </div>
       </section>
 
-      <section class="panel">
-        <h2>{{ form.id ? '编辑任务' : '新建任务' }}</h2>
+      <section class="panel form-panel sticky-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">{{ form.id ? '编辑模式' : '快速创建' }}</span>
+            <h2>{{ form.id ? '编辑任务' : '新建任务' }}</h2>
+          </div>
+        </div>
         <form class="form-grid" @submit.prevent="save">
           <label class="wide">标题<input v-model="form.title" required /></label>
           <label class="wide">项目

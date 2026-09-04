@@ -1,11 +1,11 @@
 <template>
-  <section class="page">
+  <section class="page dashboard-page">
     <p v-if="error" class="error">{{ error }}</p>
     <section class="dashboard-lead">
       <div class="lead-copy">
-        <span class="eyebrow">今日焦点</span>
-        <h2>把零散的信息，<br />整理成可继续的工作。</h2>
-        <p>从最近更新的内容继续，或者快速查找一个标题。</p>
+        <span class="eyebrow">工作概览</span>
+        <h2>继续上次的进度</h2>
+        <p>从最近更新的项目和笔记继续，也可以直接检索标题。</p>
       </div>
       <div class="stats" aria-label="工作概览">
         <div class="stat">
@@ -28,7 +28,7 @@
 
     <section class="quick-search">
       <div class="search-field">
-        <span class="search-glyph">⌕</span>
+        <AppIcon name="search" />
         <input v-model="keyword" aria-label="搜索标题" placeholder="搜索项目、任务或笔记标题…" @keyup.enter="search('notes')" />
       </div>
       <div class="search-scopes">
@@ -42,7 +42,7 @@
       <section class="panel collection-panel">
         <div class="section-heading">
           <div>
-            <span class="eyebrow">Projects</span>
+            <span class="eyebrow">项目</span>
             <h2>最近项目</h2>
           </div>
           <RouterLink class="text-link" :to="{ name: 'projects' }">查看全部 →</RouterLink>
@@ -63,7 +63,7 @@
       <section class="panel collection-panel">
         <div class="section-heading">
           <div>
-            <span class="eyebrow">Notes</span>
+            <span class="eyebrow">笔记</span>
             <h2>最近笔记</h2>
           </div>
           <RouterLink class="text-link" :to="{ name: 'notes' }">进入知识库 →</RouterLink>
@@ -89,6 +89,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { dashboardApi } from '../api/workstation';
 import { PROJECT_STATUSES, optionLabel } from '../constants/options';
+import AppIcon from '../components/AppIcon.vue';
 
 const router = useRouter();
 const keyword = ref('');

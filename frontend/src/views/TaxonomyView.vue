@@ -1,9 +1,12 @@
 <template>
-  <section class="page">
+  <section class="page taxonomy-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split">
-      <section class="panel">
-        <h2>分类</h2>
+    <div class="split taxonomy-grid">
+      <section class="panel taxonomy-panel">
+        <div class="section-heading">
+          <div><span class="eyebrow">层级组织</span><h2>分类</h2></div>
+          <span class="section-count">{{ categories.length }} 个</span>
+        </div>
         <form class="form-grid" @submit.prevent="saveCategory">
           <label>名称<input v-model="categoryForm.name" required /></label>
           <label>描述<input v-model="categoryForm.description" /></label>
@@ -13,7 +16,7 @@
           </div>
         </form>
         <div v-if="categories.length" class="list">
-          <div v-for="category in categories" :key="category.id" class="card">
+          <article v-for="category in categories" :key="category.id" class="card taxonomy-card">
             <div class="card-title">
               <h3>{{ category.name }}</h3>
             </div>
@@ -22,13 +25,16 @@
               <button class="secondary" @click="editCategory(category)">编辑</button>
               <button class="danger" @click="removeCategory(category.id)">删除</button>
             </div>
-          </div>
+          </article>
         </div>
         <p v-else class="empty">暂无分类</p>
       </section>
 
-      <section class="panel">
-        <h2>标签</h2>
+      <section class="panel taxonomy-panel">
+        <div class="section-heading">
+          <div><span class="eyebrow">交叉检索</span><h2>标签</h2></div>
+          <span class="section-count">{{ tags.length }} 个</span>
+        </div>
         <form class="form-grid" @submit.prevent="saveTag">
           <label class="wide">名称<input v-model="tagForm.name" required /></label>
           <div class="actions wide">
@@ -37,7 +43,7 @@
           </div>
         </form>
         <div v-if="tags.length" class="list">
-          <div v-for="tag in tags" :key="tag.id" class="card">
+          <article v-for="tag in tags" :key="tag.id" class="card taxonomy-card tag-card">
             <div class="card-title">
               <h3>{{ tag.name }}</h3>
             </div>
@@ -45,7 +51,7 @@
               <button class="secondary" @click="editTag(tag)">编辑</button>
               <button class="danger" @click="removeTag(tag.id)">删除</button>
             </div>
-          </div>
+          </article>
         </div>
         <p v-else class="empty">暂无标签</p>
       </section>

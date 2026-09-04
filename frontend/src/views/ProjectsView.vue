@@ -1,37 +1,50 @@
 <template>
-  <section class="page">
+  <section class="page projects-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split">
-      <section class="panel">
+    <div class="split workspace-split">
+      <section class="panel collection-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">项目列表</span>
+            <h2>正在维护的项目</h2>
+          </div>
+          <span class="section-count">{{ projects.length }} 个</span>
+        </div>
         <div class="toolbar">
-          <input v-model="filters.keyword" placeholder="项目标题" @keyup.enter="load" />
+          <input v-model="filters.keyword" aria-label="搜索项目" placeholder="搜索项目名称…" @keyup.enter="load" />
           <select v-model="filters.status">
             <option value="">全部状态</option>
             <option v-for="status in PROJECT_STATUSES" :key="status.value" :value="status.value">{{ status.label }}</option>
           </select>
-          <button @click="load">查询</button>
+          <button @click="load">筛选</button>
           <button class="secondary" @click="resetFilters">重置</button>
         </div>
 
         <div v-if="projects.length" class="list">
-          <div v-for="project in projects" :key="project.id" class="card">
+          <article v-for="project in projects" :key="project.id" class="card entity-card">
             <div class="card-title">
               <RouterLink :to="`/projects/${project.id}`"><h3>{{ project.name }}</h3></RouterLink>
               <span class="badge">{{ statusLabel(project.status) }}</span>
             </div>
+            <p class="card-description">{{ project.description || '还没有补充项目描述。' }}</p>
             <p class="meta">{{ project.techStack || '未填写技术栈' }} · {{ formatDate(project.updatedAt) }}</p>
             <div class="actions">
               <button class="secondary" @click="edit(project)">编辑</button>
               <RouterLink :to="`/projects/${project.id}`"><button class="secondary">详情</button></RouterLink>
               <button class="danger" @click="remove(project.id)">删除</button>
             </div>
-          </div>
+          </article>
         </div>
         <p v-else class="empty">暂无项目</p>
       </section>
 
-      <section class="panel">
-        <h2>{{ form.id ? '编辑项目' : '新建项目' }}</h2>
+      <section class="panel form-panel sticky-panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">{{ form.id ? '编辑模式' : '快速创建' }}</span>
+            <h2>{{ form.id ? '编辑项目' : '新建项目' }}</h2>
+          </div>
+        </div>
         <form class="form-grid" @submit.prevent="save">
           <label>名称<input v-model="form.name" required /></label>
           <label>状态

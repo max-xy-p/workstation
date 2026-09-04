@@ -1,73 +1,81 @@
 <template>
   <main class="login-page">
-    <section class="login-atmosphere" aria-labelledby="login-title">
-      <div class="login-brand">
+    <header class="login-header">
+      <div class="login-brand" aria-label="个人工作台">
         <span class="brand-mark">知</span>
         <span>
           <strong>个人工作台</strong>
-          <small>Knowledge desk</small>
+          <small>私人知识库</small>
         </span>
       </div>
+      <span class="login-privacy"><span class="status-dot"></span>仅限所有者</span>
+    </header>
 
-      <div class="login-statement">
-        <span class="eyebrow">Private knowledge base</span>
-        <h1 id="login-title">回到你的<br>知识书房。</h1>
-        <p>笔记、项目与仍在生长的想法，都安静地留在这里。</p>
-      </div>
+    <div class="login-stage">
+      <section class="login-intro" aria-labelledby="login-title">
+        <span class="login-kicker">私人知识库</span>
+        <h1 id="login-title">把想法放在<br><em>找得到的地方。</em></h1>
+        <p>记录笔记，连接项目，用分类和标签把零散信息整理成可以继续使用的知识。</p>
 
-      <div class="login-index" aria-hidden="true">
-        <span>OWNER / 01</span>
-        <strong>知</strong>
-      </div>
-    </section>
-
-    <section class="login-entry" aria-label="登录">
-      <form class="login-form" @submit.prevent="submit">
-        <div class="login-form-heading">
-          <span class="section-kicker">Welcome back</span>
-          <h2>验证身份</h2>
-          <p>这是一个私人空间，请使用站点所有者账号进入。</p>
+        <div class="login-capabilities" aria-label="知识库功能">
+          <span><AppIcon name="notes" />Markdown 笔记</span>
+          <span><AppIcon name="projects" />项目关联</span>
+          <span><AppIcon name="taxonomy" />分类与标签</span>
         </div>
+      </section>
 
-        <p v-if="expired" class="login-notice" role="status">登录状态已失效，请重新验证。</p>
-        <p v-if="error" class="error" role="alert">{{ error }}</p>
+      <section class="login-sheet" aria-label="登录">
+        <div class="sheet-binding" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span class="sheet-tab">OWNER ACCESS</span>
+        <form class="login-form" @submit.prevent="submit">
+          <div class="login-form-heading">
+            <span class="section-kicker">欢迎回来</span>
+            <h2>登录工作台</h2>
+            <p>输入站点所有者账号，继续整理你的知识。</p>
+          </div>
 
-        <label class="login-field">
-          <span>用户名</span>
-          <input
-            v-model.trim="form.username"
-            name="username"
-            type="text"
-            autocomplete="username"
-            autofocus
-            required
-            placeholder="请输入用户名"
-          >
-        </label>
+          <p v-if="expired" class="login-notice" role="status">登录状态已失效，请重新验证。</p>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
 
-        <label class="login-field">
-          <span>密码</span>
-          <input
-            v-model="form.password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            required
-            placeholder="请输入密码"
-          >
-        </label>
+          <label class="login-field">
+            <span>用户名</span>
+            <input
+              v-model.trim="form.username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              autofocus
+              required
+              placeholder="例如 owner"
+            >
+          </label>
 
-        <button class="login-submit" type="submit" :disabled="submitting">
-          <span>{{ submitting ? '正在验证…' : '进入工作台' }}</span>
-          <AppIcon v-if="!submitting" name="arrow" />
-        </button>
+          <label class="login-field">
+            <span>密码</span>
+            <input
+              v-model="form.password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              placeholder="输入登录密码"
+            >
+          </label>
 
-        <p class="login-footnote">
-          <span class="status-dot"></span>
-          密码由服务器校验，浏览器不会保存明文凭据
-        </p>
-      </form>
-    </section>
+          <button class="login-submit" type="submit" :disabled="submitting">
+            <span>{{ submitting ? '正在验证…' : '登录到工作台' }}</span>
+            <AppIcon v-if="!submitting" name="arrow" />
+          </button>
+
+          <p class="login-footnote">登录状态由服务器安全保存，退出后立即失效。</p>
+        </form>
+      </section>
+    </div>
+
+    <footer class="login-footer">
+      <span>WORKSTATION</span>
+      <span>记录 · 连接 · 回看</span>
+    </footer>
   </main>
 </template>
 

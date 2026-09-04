@@ -3,16 +3,16 @@
     <p v-if="error" class="error">{{ error }}</p>
     <div class="library-summary">
       <div>
-        <span class="eyebrow">Your library</span>
-        <h2>{{ notes.length }} 篇笔记</h2>
+        <span class="eyebrow">知识索引</span>
+        <h2>所有笔记</h2>
         <p>按标题、分类和标签找到需要的内容。</p>
       </div>
-      <RouterLink class="button" :to="{ name: 'note-new' }">新建笔记</RouterLink>
+      <span class="library-count"><strong>{{ notes.length }}</strong> 篇</span>
     </div>
 
     <section class="filter-panel">
       <div class="filter-search">
-        <span>⌕</span>
+        <AppIcon name="search" />
         <input v-model="filters.keyword" aria-label="搜索笔记标题" placeholder="搜索笔记标题…" @keyup.enter="load" />
       </div>
       <div class="filter-selects">
@@ -110,6 +110,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
+import AppIcon from '../components/AppIcon.vue';
 
 const route = useRoute();
 const error = ref('');

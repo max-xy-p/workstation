@@ -1,8 +1,8 @@
 <template>
-  <section class="page">
+  <section class="page project-detail-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div v-if="detail.project" class="split">
-      <section class="panel">
+    <div v-if="detail.project" class="split workspace-split">
+      <section class="panel project-overview-panel">
         <div class="card-title">
           <h2>{{ detail.project.name }}</h2>
           <span class="badge">{{ projectStatusLabel(detail.project.status) }}</span>
@@ -34,8 +34,8 @@
         <p v-else class="empty">暂无笔记</p>
       </section>
 
-      <section class="panel">
-        <h2>编辑项目</h2>
+      <section class="panel form-panel">
+        <div class="section-heading"><div><span class="eyebrow">项目设置</span><h2>编辑项目</h2></div></div>
         <form class="form-grid" @submit.prevent="saveProject">
           <label class="wide">名称<input v-model="projectForm.name" required /></label>
           <label class="wide">状态
@@ -55,7 +55,7 @@
           </div>
         </form>
 
-        <h2>新建任务</h2>
+        <div class="section-heading form-section-heading"><div><span class="eyebrow">关联工作</span><h2>新建任务</h2></div></div>
         <form class="form-grid" @submit.prevent="createTask">
           <label class="wide">标题<input v-model="taskForm.title" required /></label>
           <label>状态
