@@ -3150,6 +3150,33 @@ textarea:focus {
   background: #f8fafc;
 }
 
+.markdown-tools {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.markdown-tools button {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--ink-soft);
+  background: transparent;
+  font-family: Consolas, "Cascadia Code", monospace;
+  font-size: 11px;
+}
+
+.markdown-tools button:hover,
+.markdown-tools button:focus-visible {
+  border-color: var(--line);
+  color: var(--moss-dark);
+  background: #fff;
+}
+
 .note-editor {
   padding-left: 52px;
   color: #263447;

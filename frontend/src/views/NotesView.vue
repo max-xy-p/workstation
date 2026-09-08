@@ -13,7 +13,7 @@
     <section class="filter-panel">
       <div class="filter-search">
         <AppIcon name="search" />
-        <input v-model="filters.keyword" aria-label="搜索笔记标题" placeholder="搜索笔记标题…" @keyup.enter="load" />
+        <input v-model="filters.keyword" aria-label="搜索笔记" placeholder="搜索笔记标题或内容…" @input="scheduleKeywordSearch" @keyup.enter="load" />
       </div>
       <div class="filter-selects">
         <select v-model="filters.categoryId">
@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
 import AppIcon from '../components/AppIcon.vue';
@@ -120,6 +120,7 @@ const projects = ref([]);
 const tags = ref([]);
 const filters = reactive({ keyword: route.query.keyword || '', categoryId: '', tagId: '' });
 const importResult = ref(null);
+let keywordSearchTimer;
 const importForm = reactive({
   sourcePath: '',
   categoryId: '',
@@ -143,10 +144,16 @@ function excerpt(content) {
 }
 
 function resetFilters() {
+  window.clearTimeout(keywordSearchTimer);
   filters.keyword = '';
   filters.categoryId = '';
   filters.tagId = '';
   load();
+}
+
+function scheduleKeywordSearch() {
+  window.clearTimeout(keywordSearchTimer);
+  keywordSearchTimer = window.setTimeout(load, 280);
 }
 
 // 加载筛选项：分类、项目和标签会同时用于列表筛选与导入表单。
@@ -208,4 +215,6 @@ onMounted(async () => {
     error.value = err.message;
   }
 });
+
+onBeforeUnmount(() => window.clearTimeout(keywordSearchTimer));
 </script>

@@ -38,7 +38,7 @@ public class NoteController {
     /**
      * 查询笔记列表。
      *
-     * @param keyword 笔记标题关键字，可为空
+     * @param keyword 笔记标题或正文关键字，可为空
      * @param categoryId 分类筛选，可为空
      * @param tagId 标签筛选，可为空
      * @param projectId 关联项目筛选，可为空

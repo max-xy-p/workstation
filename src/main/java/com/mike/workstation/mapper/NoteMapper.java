@@ -18,7 +18,7 @@ import org.apache.ibatis.annotations.Update;
  */
 public interface NoteMapper {
     /**
-     * 按标题、分类、标签和项目组合筛选笔记。
+     * 按标题、正文、分类、标签和项目组合筛选笔记。
      */
     @Select("""
             <script>
@@ -29,7 +29,10 @@ public interface NoteMapper {
             LEFT JOIN projects p ON p.id = n.project_id
             <where>
                 <if test="keyword != null and keyword != ''">
-                    n.title LIKE CONCAT('%', #{keyword}, '%')
+                    (
+                        n.title LIKE CONCAT('%', #{keyword}, '%')
+                        OR n.content LIKE CONCAT('%', #{keyword}, '%')
+                    )
                 </if>
                 <if test="categoryId != null">
                     AND n.category_id = #{categoryId}
