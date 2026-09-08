@@ -3,11 +3,16 @@
     <p v-if="error" class="error">{{ error }}</p>
     <div class="library-summary">
       <div>
-        <span class="eyebrow">知识索引</span>
         <h2>所有笔记</h2>
-        <p>按标题、分类和标签找到需要的内容。</p>
+        <p>继续最近的记录，或者查找已经沉淀的内容。</p>
       </div>
-      <span class="library-count"><strong>{{ notes.length }}</strong> 篇</span>
+      <div class="library-actions">
+        <span class="library-count"><strong>{{ notes.length }}</strong> 篇</span>
+        <RouterLink class="button secondary" :to="{ name: 'note-import' }">
+          <AppIcon name="import" />
+          <span>导入</span>
+        </RouterLink>
+      </div>
     </div>
 
     <section class="filter-panel">
@@ -28,56 +33,6 @@
         <button @click="load">筛选</button>
       </div>
     </section>
-
-    <details class="import-drawer">
-      <summary>
-        <span class="import-symbol">↓</span>
-        <span><strong>导入 Markdown</strong><small>从允许的本机目录批量加入知识库</small></span>
-        <span class="summary-action">展开设置</span>
-      </summary>
-      <div class="import-content">
-        <form class="form-grid" @submit.prevent="importNotes">
-          <label class="wide">导入路径
-            <input v-model="importForm.sourcePath" placeholder="例如 D:\notes\ExportBlock-..." required />
-          </label>
-          <label>分类
-            <select v-model="importForm.categoryId">
-              <option value="">未分类</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-            </select>
-          </label>
-          <label>关联项目
-            <select v-model="importForm.projectId">
-              <option value="">未关联</option>
-              <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
-            </select>
-          </label>
-          <label>重复标题
-            <select v-model="importForm.duplicateStrategy" required>
-              <option value="" disabled>请选择处理方式</option>
-              <option value="SKIP_TITLE">跳过同标题</option>
-              <option value="CREATE_NEW">创建新笔记</option>
-            </select>
-          </label>
-          <label>标签
-            <select v-model="importForm.tagIds" multiple>
-              <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
-            </select>
-          </label>
-          <div class="actions wide"><button type="submit">开始导入</button></div>
-        </form>
-
-        <div v-if="importResult" class="import-result">
-          <p class="meta">导入 {{ importResult.importedCount }} 条，跳过 {{ importResult.skippedCount }} 条，失败 {{ importResult.failedCount }} 条</p>
-          <div class="record-list compact">
-            <div v-for="item in importResult.items" :key="item.filePath" class="record-row">
-              <div class="record-main"><h3>{{ item.title || item.filePath }}</h3><p>{{ item.message }}</p></div>
-              <span class="badge">{{ item.status }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </details>
 
     <div v-if="notes.length" class="note-list">
       <article v-for="(note, index) in notes" :key="note.id" class="note-row">
@@ -109,25 +64,16 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
+import { categoryApi, noteApi, tagApi } from '../api/workstation';
 import AppIcon from '../components/AppIcon.vue';
 
 const route = useRoute();
 const error = ref('');
 const notes = ref([]);
 const categories = ref([]);
-const projects = ref([]);
 const tags = ref([]);
 const filters = reactive({ keyword: route.query.keyword || '', categoryId: '', tagId: '' });
-const importResult = ref(null);
 let keywordSearchTimer;
-const importForm = reactive({
-  sourcePath: '',
-  categoryId: '',
-  projectId: '',
-  tagIds: [],
-  duplicateStrategy: ''
-});
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
@@ -156,15 +102,13 @@ function scheduleKeywordSearch() {
   keywordSearchTimer = window.setTimeout(load, 280);
 }
 
-// 加载筛选项：分类、项目和标签会同时用于列表筛选与导入表单。
+// 加载列表所需的分类和标签筛选项。
 async function loadOptions() {
-  const [categoryList, projectList, tagList] = await Promise.all([
+  const [categoryList, tagList] = await Promise.all([
     categoryApi.list(),
-    projectApi.list({}),
     tagApi.list()
   ]);
   categories.value = categoryList;
-  projects.value = projectList;
   tags.value = tagList;
 }
 
@@ -184,23 +128,6 @@ async function remove(id) {
   try {
     error.value = '';
     await noteApi.delete(id);
-    await load();
-  } catch (err) {
-    error.value = err.message;
-  }
-}
-
-// 导入本机 Markdown 文件或目录，导入路径必须在后端白名单配置内。
-async function importNotes() {
-  try {
-    error.value = '';
-    importResult.value = await noteApi.importMarkdown({
-      sourcePath: importForm.sourcePath,
-      categoryId: importForm.categoryId ? Number(importForm.categoryId) : null,
-      projectId: importForm.projectId ? Number(importForm.projectId) : null,
-      tagIds: importForm.tagIds.map(Number),
-      duplicateStrategy: importForm.duplicateStrategy
-    });
     await load();
   } catch (err) {
     error.value = err.message;

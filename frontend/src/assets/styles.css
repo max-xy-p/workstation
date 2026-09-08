@@ -599,7 +599,8 @@ textarea:focus {
   list-style: none;
 }
 
-.list-item,
+.list-stack > .list-item,
+.simple-list > .list-item,
 .task-row,
 .taxonomy-item {
   display: flex;
@@ -613,7 +614,8 @@ textarea:focus {
   transition: border-color 150ms ease, transform 150ms ease;
 }
 
-.list-item:hover,
+.list-stack > .list-item:hover,
+.simple-list > .list-item:hover,
 .task-row:hover,
 .taxonomy-item:hover {
   border-color: #becbc3;
@@ -3150,33 +3152,6 @@ textarea:focus {
   background: #f8fafc;
 }
 
-.markdown-tools {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.markdown-tools button {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  padding: 0;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  color: var(--ink-soft);
-  background: transparent;
-  font-family: Consolas, "Cascadia Code", monospace;
-  font-size: 11px;
-}
-
-.markdown-tools button:hover,
-.markdown-tools button:focus-visible {
-  border-color: var(--line);
-  color: var(--moss-dark);
-  background: #fff;
-}
-
 .note-editor {
   padding-left: 52px;
   color: #263447;
@@ -3195,6 +3170,376 @@ textarea:focus {
 .markdown-body pre {
   color: #edf3f8;
   background: #1d2938;
+}
+
+.library-actions,
+.focused-page-heading,
+.import-report-summary {
+  display: flex;
+  align-items: center;
+}
+
+.library-actions {
+  gap: 12px;
+}
+
+.library-actions .button {
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.focused-editor-page {
+  max-width: 1080px;
+  margin-inline: auto;
+  padding-top: 16px;
+}
+
+.editor-document {
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.editor-document > .editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  min-height: 58px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #ededeb;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.editor-document .note-title-input {
+  display: block;
+  max-width: 820px;
+  min-height: 104px;
+  margin: 0 auto;
+  padding: 32px 26px 14px;
+  font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.note-properties {
+  max-width: 820px;
+  margin: 0 auto;
+  border-top: 0;
+  border-bottom: 1px solid #ededeb;
+}
+
+.note-properties summary {
+  display: flex;
+  min-height: 48px;
+  padding: 0 26px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.note-properties summary::-webkit-details-marker {
+  display: none;
+}
+
+.note-properties summary::after {
+  color: var(--muted);
+  content: "+";
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.note-properties[open] summary::after {
+  content: "−";
+}
+
+.note-properties summary small {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-properties .metadata-grid {
+  padding-left: 0;
+  border-bottom: 0;
+  background: #fff;
+}
+
+.live-markdown-canvas {
+  position: relative;
+  min-height: 620px;
+}
+
+.editor-loading {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateX(-50%);
+}
+
+.tiptap-editor-shell {
+  min-height: 620px;
+  background: #fff;
+}
+
+.tiptap-format-toolbar {
+  display: flex;
+  width: min(100%, 820px);
+  min-height: 49px;
+  margin: 0 auto;
+  padding: 8px 26px;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid #eceff2;
+}
+
+.tiptap-format-toolbar button {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  color: #626b76;
+  background: transparent;
+}
+
+.tiptap-format-toolbar button:hover,
+.tiptap-format-toolbar button:focus-visible {
+  color: var(--ink);
+  background: #f0f2f4;
+}
+
+.tiptap-format-toolbar button.active {
+  color: var(--moss-dark);
+  background: var(--moss-soft);
+}
+
+.tiptap-format-toolbar button:disabled {
+  color: #b4bbc3;
+  background: transparent;
+}
+
+.tiptap-block-select {
+  width: 108px;
+  height: 32px;
+  padding: 0 28px 0 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #4c5662;
+  background-color: transparent;
+  font-size: 13px;
+}
+
+.tiptap-block-select:hover,
+.tiptap-block-select:focus {
+  border-color: #d8dde3;
+  outline: 0;
+  background-color: #f7f8f9;
+}
+
+.tiptap-toolbar-divider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 20px;
+  margin: 0 5px;
+  background: #e1e5e9;
+}
+
+.tiptap-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.tiptap-editor-content .tiptap {
+  width: min(100%, 820px);
+  min-height: 620px;
+  margin: 0 auto;
+  padding: 34px 26px 120px;
+  color: #2e3742;
+  caret-color: var(--moss-dark);
+  font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+.tiptap-editor-content .tiptap:focus {
+  outline: 0;
+}
+
+.tiptap-editor-content .tiptap h1,
+.tiptap-editor-content .tiptap h2,
+.tiptap-editor-content .tiptap h3 {
+  color: #202934;
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+.tiptap-editor-content .tiptap h1 {
+  margin: 32px 0 10px;
+  font-size: 34px;
+  font-weight: 720;
+  line-height: 1.24;
+}
+
+.tiptap-editor-content .tiptap h2 {
+  margin: 28px 0 8px;
+  font-size: 25px;
+  font-weight: 680;
+  line-height: 1.32;
+}
+
+.tiptap-editor-content .tiptap h3 {
+  margin: 22px 0 6px;
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.tiptap-editor-content .tiptap > :first-child {
+  margin-top: 0;
+}
+
+.tiptap-editor-content .tiptap p {
+  margin: 0 0 12px;
+}
+
+.tiptap-editor-content .tiptap ul,
+.tiptap-editor-content .tiptap ol {
+  margin: 4px 0 14px;
+  padding-left: 28px;
+}
+
+.tiptap-editor-content .tiptap li {
+  margin: 2px 0;
+  padding-left: 2px;
+}
+
+.tiptap-editor-content .tiptap li > p {
+  margin: 0;
+}
+
+.tiptap-editor-content .tiptap blockquote {
+  margin: 18px 0;
+  padding-left: 16px;
+  border-left: 3px solid #bcc5ce;
+  color: #59636f;
+}
+
+.tiptap-editor-content .tiptap blockquote p {
+  margin: 0;
+}
+
+.tiptap-editor-content .tiptap code {
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: #33495f;
+  background: #eef1f4;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.tiptap-editor-content .tiptap pre {
+  overflow-x: auto;
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid #e1e5e9;
+  border-radius: 5px;
+  color: #263444;
+  background: #f6f8fa;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.tiptap-editor-content .tiptap pre code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+}
+
+.tiptap-editor-content .tiptap a {
+  color: #315f8c;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.tiptap-editor-content .tiptap hr {
+  margin: 28px 0;
+  border: 0;
+  border-top: 1px solid #dfe4e9;
+}
+
+.tiptap-editor-content .tiptap p.is-editor-empty:first-child::before {
+  float: left;
+  height: 0;
+  color: #a1a9b2;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.note-import-page {
+  max-width: 920px;
+  margin-inline: auto;
+}
+
+.focused-page-heading {
+  justify-content: space-between;
+  gap: 24px;
+  padding: 8px 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.focused-page-heading h2 {
+  margin: 0 0 7px;
+  font-size: 28px;
+}
+
+.focused-page-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.import-workspace {
+  max-width: 720px;
+  padding: 30px 0;
+}
+
+.import-workspace .form-grid {
+  gap: 20px;
+}
+
+.import-report {
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+}
+
+.import-report-summary {
+  gap: 18px;
+  margin-bottom: 16px;
+  color: var(--ink-soft);
+  font-size: 12px;
 }
 
 .kanban {
@@ -3410,8 +3755,13 @@ textarea:focus {
   }
 
   .library-summary {
-    align-items: center;
-    flex-direction: row;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .library-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .note-list::before {
@@ -3439,6 +3789,49 @@ textarea:focus {
 
   .editor-workspace::before {
     left: 21px;
+  }
+
+  .focused-editor-page {
+    padding: 0 0 92px;
+  }
+
+  .editor-document {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .editor-document .note-title-input {
+    min-height: 96px;
+    padding: 28px 20px 14px;
+    font-size: 32px;
+  }
+
+  .note-properties summary {
+    padding-inline: 20px;
+  }
+
+  .note-properties .metadata-grid {
+    padding-left: 0;
+  }
+
+  .tiptap-format-toolbar {
+    overflow-x: auto;
+    padding-inline: 20px;
+  }
+
+  .tiptap-toolbar-spacer {
+    min-width: 8px;
+  }
+
+  .tiptap-editor-content .tiptap {
+    padding: 30px 20px 100px;
+  }
+
+  .focused-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .note-title-input {

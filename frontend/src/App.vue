@@ -18,8 +18,15 @@
 
       <p class="nav-label">工作区</p>
       <nav class="nav" aria-label="主导航">
-        <RouterLink v-for="item in navItems" :key="item.name" class="nav-item" :to="{ name: item.name }">
-          <AppIcon :name="item.name" />
+        <RouterLink
+          v-for="item in navItems"
+          :key="item.name"
+          class="nav-item"
+          :class="{ 'router-link-active': isNavActive(item.name) }"
+          active-class="route-active"
+          :to="{ name: item.name }"
+        >
+          <AppIcon :name="item.icon" />
           <span>{{ item.title }}</span>
         </RouterLink>
       </nav>
@@ -40,7 +47,7 @@
     </aside>
 
     <main class="main">
-      <header class="topbar">
+      <header v-if="!isEditorPage" class="topbar">
         <div class="page-context">
           <span class="eyebrow">{{ currentMeta.section }}</span>
           <h1>{{ route.meta.title }}</h1>
@@ -76,10 +83,13 @@ const route = useRoute();
 const router = useRouter();
 const loggingOut = ref(false);
 const isLoginPage = computed(() => route.name === 'login');
+const isEditorPage = computed(() => ['note-new', 'note-edit'].includes(route.name));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
-const navItems = computed(() => routes
-  .filter((item) => ['dashboard', 'projects', 'tasks', 'notes', 'taxonomy'].includes(item.name))
-  .map((item) => ({ name: item.name, title: item.meta.title })));
+const navOrder = ['notes', 'note-import', 'taxonomy', 'dashboard', 'projects', 'tasks'];
+const navItems = computed(() => navOrder.map((name) => {
+  const item = routes.find((routeItem) => routeItem.name === name);
+  return { name, title: item.meta.title, icon: name === 'note-import' ? 'import' : name };
+}));
 
 const pageMeta = {
   dashboard: { section: '今日工作台', description: '回到最重要的项目、任务与笔记。' },
@@ -87,12 +97,18 @@ const pageMeta = {
   'project-detail': { section: '项目资料', description: '查看一个项目的任务与知识记录。' },
   tasks: { section: '任务清单', description: '让正在推进的工作保持清晰。' },
   notes: { section: '个人知识库', description: '检索、整理并继续你的知识积累。' },
+  'note-import': { section: '内容迁移', description: '将已有 Markdown 文档加入知识库。' },
   'note-new': { section: 'Markdown 编辑器', description: '把刚刚想到的内容写下来。' },
-  'note-edit': { section: 'Markdown 编辑器', description: '专注编辑，右侧即时查看最终效果。' },
+  'note-edit': { section: 'Markdown 编辑器', description: '在一张文稿中书写和阅读。' },
   taxonomy: { section: '知识组织', description: '维护知识库的分类与标签。' }
 };
 
 const currentMeta = computed(() => pageMeta[route.name] || { section: 'Workspace', description: '' });
+
+function isNavActive(name) {
+  if (name === 'notes') return ['notes', 'note-new', 'note-edit'].includes(route.name);
+  return route.name === name;
+}
 
 async function signOut() {
   loggingOut.value = true;
