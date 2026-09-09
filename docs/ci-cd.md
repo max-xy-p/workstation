@@ -1,5 +1,7 @@
 # Docker 与 GitHub Actions
 
+本文描述可选的容器化运行、CI 和服务器部署流程。本地无 Docker 开发方式以根目录 `README.md` 为准。
+
 项目的交付流程分为两部分：
 
 - CI：提交到 `master` 或发起 Pull Request 时，自动执行后端测试、前端构建和 Docker 镜像构建检查。
@@ -21,7 +23,7 @@
 | `.github/workflows/ci.yml` | CI 验证 |
 | `.github/workflows/release.yml` | GHCR 镜像发布与 VPS 自动部署 |
 
-## 本地 Docker 运行
+## 可选的本地 Docker 运行
 
 首次启动前创建环境文件和笔记目录：
 
