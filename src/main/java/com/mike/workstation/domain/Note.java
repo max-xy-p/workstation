@@ -13,8 +13,8 @@ public class Note {
     private Long id;
     private String title;
     private String content;
-    private Long categoryId;
-    private String categoryName;
+    private Long folderId;
+    private String folderName;
     private Long projectId;
     private String projectName;
     private LocalDateTime createdAt;

@@ -4,15 +4,13 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
-
-
 /**
- * 笔记分类实体，对应 categories 表。
+ * 笔记文件夹实体，对应 note_folders 表。
  */
-public class Category {
+public class NoteFolder {
     private Long id;
     private String name;
-    private String description;
+    private Long parentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -8,6 +8,7 @@
         <div class="editor-status">
           <span>{{ characterCount }} 字</span>
           <span v-if="saveState" class="save-state">{{ saveState }}</span>
+          <button v-if="isEdit" class="editor-delete-button" type="button" title="删除笔记" aria-label="删除笔记" @click="removeNote"><Trash2 /></button>
           <button type="submit">保存</button>
         </div>
       </div>
@@ -20,10 +21,10 @@
           <small>{{ propertySummary }}</small>
         </summary>
         <div class="metadata-grid">
-          <label><span>分类</span>
-            <select v-model="form.categoryId">
-              <option value="">未分类</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+          <label><span>文件夹</span>
+            <select v-model="form.folderId">
+              <option value="">未归档</option>
+              <option v-for="folder in folderOptions" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
             </select>
           </label>
           <label><span>关联项目</span>
@@ -54,30 +55,34 @@
 </template>
 
 <script setup>
+import { Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
+import { noteApi, noteFolderApi, projectApi, tagApi } from '../api/workstation';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
+import { flattenFolderOptions } from '../utils/noteFolders';
 
 const route = useRoute();
 const router = useRouter();
 const error = ref('');
-const categories = ref([]);
+const folders = ref([]);
 const projects = ref([]);
 const tags = ref([]);
 const saved = ref(null);
 const saveState = ref('');
 const contentReady = ref(false);
 const editorReady = ref(false);
-const form = reactive({ title: '', content: '', categoryId: '', projectId: route.query.projectId || '', tagIds: [] });
+const emit = defineEmits(['saved', 'deleted']);
+const form = reactive({ title: '', content: '', folderId: route.query.folderId || '', projectId: route.query.projectId || '', tagIds: [] });
 const isEdit = computed(() => Boolean(route.params.id));
+const folderOptions = computed(() => flattenFolderOptions(folders.value));
 const characterCount = computed(() => form.content.replace(/\s/g, '').length);
 const draftKey = computed(() => `workstation:note-draft:${route.params.id || 'new'}`);
 const canSave = computed(() => form.title.trim().length > 0 && form.content.trim().length > 0);
 const propertySummary = computed(() => {
-  const category = categories.value.find((item) => item.id === Number(form.categoryId))?.name || '未分类';
+  const folder = folderOptions.value.find((item) => item.id === Number(form.folderId))?.path || '未归档';
   const project = projects.value.find((item) => item.id === Number(form.projectId))?.name;
-  const parts = [category];
+  const parts = [folder];
   if (project) parts.push(project);
   if (form.tagIds.length) parts.push(`${form.tagIds.length} 个标签`);
   return parts.join(' / ');
@@ -93,19 +98,19 @@ function payload() {
   return {
     title: form.title,
     content: form.content,
-    categoryId: form.categoryId ? Number(form.categoryId) : null,
+    folderId: form.folderId ? Number(form.folderId) : null,
     projectId: form.projectId ? Number(form.projectId) : null,
     tagIds: form.tagIds.map(Number)
   };
 }
 
 async function loadOptions() {
-  const [categoryList, projectList, tagList] = await Promise.all([
-    categoryApi.list(),
+  const [folderList, projectList, tagList] = await Promise.all([
+    noteFolderApi.list(),
     projectApi.list({}),
     tagApi.list()
   ]);
-  categories.value = categoryList;
+  folders.value = folderList;
   projects.value = projectList;
   tags.value = tagList;
 }
@@ -117,7 +122,7 @@ async function loadNote() {
   Object.assign(form, {
     title: note.title,
     content: note.content,
-    categoryId: note.categoryId || '',
+    folderId: note.folderId || '',
     projectId: note.projectId || '',
     tagIds: note.tags.map((tag) => tag.id)
   });
@@ -125,6 +130,20 @@ async function loadNote() {
 
 async function save() {
   await persist(true);
+}
+
+async function removeNote() {
+  if (!window.confirm('确认删除笔记？')) return;
+  try {
+    error.value = '';
+    await noteApi.delete(route.params.id);
+    clearDraft();
+    skipDraftPersistOnUnmount = true;
+    emit('deleted', Number(route.params.id));
+    await router.replace({ name: 'notes' });
+  } catch (err) {
+    error.value = err.message;
+  }
 }
 
 async function persist(manual = false) {
@@ -152,6 +171,7 @@ async function persist(manual = false) {
       clearDraft();
       skipDraftPersistOnUnmount = true;
     }
+    emit('saved', saved.value);
     saveState.value = manual ? '已保存' : '已自动保存';
   } catch (err) {
     error.value = err.message;
@@ -169,7 +189,7 @@ function formSnapshot() {
   return JSON.stringify({
     title: form.title,
     content: form.content,
-    categoryId: form.categoryId,
+    folderId: form.folderId,
     projectId: form.projectId,
     tagIds: [...form.tagIds]
   });
@@ -177,7 +197,7 @@ function formSnapshot() {
 
 function saveDraft() {
   try {
-    if (!form.title.trim() && !form.content.trim() && !form.categoryId && !form.projectId && form.tagIds.length === 0) {
+    if (!form.title.trim() && !form.content.trim() && !form.folderId && !form.projectId && form.tagIds.length === 0) {
       clearDraft();
       return;
     }
@@ -214,7 +234,7 @@ function restoreDraft() {
     Object.assign(form, {
       title: typeof parsed.title === 'string' ? parsed.title : '',
       content: typeof parsed.content === 'string' ? parsed.content : '',
-      categoryId: parsed.categoryId || '',
+      folderId: parsed.folderId || '',
       projectId: parsed.projectId || '',
       tagIds: parsed.tagIds
     });

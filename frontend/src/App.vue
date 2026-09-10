@@ -83,7 +83,7 @@ const route = useRoute();
 const router = useRouter();
 const loggingOut = ref(false);
 const isLoginPage = computed(() => route.name === 'login');
-const isEditorPage = computed(() => ['note-new', 'note-edit'].includes(route.name));
+const isEditorPage = computed(() => ['notes', 'note-new', 'note-edit'].includes(route.name));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
 const navOrder = ['notes', 'note-import', 'taxonomy', 'dashboard', 'projects', 'tasks'];
 const navItems = computed(() => navOrder.map((name) => {
@@ -100,7 +100,7 @@ const pageMeta = {
   'note-import': { section: '内容迁移', description: '将已有 Markdown 文档加入知识库。' },
   'note-new': { section: 'Markdown 编辑器', description: '把刚刚想到的内容写下来。' },
   'note-edit': { section: 'Markdown 编辑器', description: '在一张文稿中书写和阅读。' },
-  taxonomy: { section: '知识组织', description: '维护知识库的分类与标签。' }
+  taxonomy: { section: '知识组织', description: '维护笔记的棬索标签。' }
 };
 
 const currentMeta = computed(() => pageMeta[route.name] || { section: 'Workspace', description: '' });

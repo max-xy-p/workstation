@@ -28,7 +28,7 @@
         <div v-if="detail.notes.length" class="list">
           <RouterLink v-for="note in detail.notes" :key="note.id" class="card" :to="`/notes/${note.id}/edit`">
             <h3>{{ note.title }}</h3>
-            <p class="meta">{{ note.categoryName || '未分类' }}</p>
+            <p class="meta">{{ note.folderName || '未归档' }}</p>
           </RouterLink>
         </div>
         <p v-else class="empty">暂无笔记</p>

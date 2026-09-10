@@ -4,7 +4,6 @@ import ProjectDetailView from '../views/ProjectDetailView.vue';
 import ProjectsView from '../views/ProjectsView.vue';
 import TasksView from '../views/TasksView.vue';
 import NotesView from '../views/NotesView.vue';
-import NoteEditorView from '../views/NoteEditorView.vue';
 import NoteImportView from '../views/NoteImportView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
 import LoginView from '../views/LoginView.vue';
@@ -19,9 +18,9 @@ export const routes = [
   { path: '/tasks', name: 'tasks', component: TasksView, meta: { title: '任务看板' } },
   { path: '/notes', name: 'notes', component: NotesView, meta: { title: '笔记' } },
   { path: '/notes/import', name: 'note-import', component: NoteImportView, meta: { title: '导入笔记' } },
-  { path: '/notes/new', name: 'note-new', component: NoteEditorView, meta: { title: '新建笔记' } },
-  { path: '/notes/:id/edit', name: 'note-edit', component: NoteEditorView, meta: { title: '编辑笔记' } },
-  { path: '/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '分类标签' } }
+  { path: '/notes/new', name: 'note-new', component: NotesView, meta: { title: '新建笔记' } },
+  { path: '/notes/:id/edit', name: 'note-edit', component: NotesView, meta: { title: '编辑笔记' } },
+  { path: '/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '标签' } }
 ];
 
 const router = createRouter({

@@ -73,7 +73,7 @@
             <span class="record-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <div class="record-main">
               <h3>{{ note.title }}</h3>
-              <p>{{ note.categoryName || '未分类' }} · {{ formatDate(note.updatedAt) }}</p>
+              <p>{{ note.folderName || '未归档' }} · {{ formatDate(note.updatedAt) }}</p>
             </div>
             <span class="row-arrow">→</span>
           </RouterLink>

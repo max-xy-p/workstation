@@ -39,7 +39,7 @@ public class NoteController {
      * 查询笔记列表。
      *
      * @param keyword 笔记标题或正文关键字，可为空
-     * @param categoryId 分类筛选，可为空
+     * @param folderId 文件夹筛选，可为空
      * @param tagId 标签筛选，可为空
      * @param projectId 关联项目筛选，可为空
      * @return 满足筛选条件的笔记列表，每条笔记会携带标签信息
@@ -47,18 +47,18 @@ public class NoteController {
     @GetMapping
     public List<Note> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) Long tagId,
             @RequestParam(required = false) Long projectId
     ) {
-        return noteService.list(keyword, categoryId, tagId, projectId);
+        return noteService.list(keyword, folderId, tagId, projectId);
     }
 
     /**
      * 查询单篇笔记详情。
      *
      * @param id 笔记 ID
-     * @return 笔记详情，包含分类、项目和标签信息
+     * @return 笔记详情，包含文件夹、项目和标签信息
      */
     @GetMapping("/{id}")
     public Note get(@PathVariable Long id) {
@@ -82,7 +82,7 @@ public class NoteController {
      *
      * <p>导入路径必须位于配置允许的根目录下，避免接口读取任意系统文件。</p>
      *
-     * @param request 导入请求，包含源路径、分类、项目、标签和重复标题处理策略
+     * @param request 导入请求，包含源路径、文件夹、项目、标签和重复标题处理策略
      * @return 导入结果汇总和每个文件的处理明细
      */
     @PostMapping("/import")
@@ -105,7 +105,7 @@ public class NoteController {
     /**
      * 删除笔记。
      *
-     * <p>删除笔记会先移除笔记与标签的关联，不影响项目、分类、标签本身。</p>
+     * <p>删除笔记会先移除笔记与标签的关联，不影响项目、文件夹、标签本身。</p>
      *
      * @param id 笔记 ID
      */

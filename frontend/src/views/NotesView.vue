@@ -1,134 +1,187 @@
 <template>
-  <section class="page notes-page">
-    <p v-if="error" class="error">{{ error }}</p>
-    <div class="library-summary">
-      <div>
-        <h2>所有笔记</h2>
-        <p>继续最近的记录，或者查找已经沉淀的内容。</p>
-      </div>
-      <div class="library-actions">
-        <span class="library-count"><strong>{{ notes.length }}</strong> 篇</span>
-        <RouterLink class="button secondary" :to="{ name: 'note-import' }">
-          <AppIcon name="import" />
-          <span>导入</span>
-        </RouterLink>
-      </div>
-    </div>
+  <section class="notes-workspace" :class="{ 'has-open-note': isEditorRoute }">
+    <aside class="note-explorer">
+      <header class="note-explorer-header">
+        <div><h1>笔记</h1><span>{{ notes.length }} 篇</span></div>
+        <div class="note-explorer-actions">
+          <RouterLink :to="{ name: 'note-import' }" title="导入 Markdown" aria-label="导入 Markdown"><Import /></RouterLink>
+          <button type="button" title="新建文件夹" aria-label="新建文件夹" @click="openFolderForm()"><FolderPlus /></button>
+          <RouterLink :to="{ name: 'note-new' }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
+        </div>
+      </header>
 
-    <section class="filter-panel">
-      <div class="filter-search">
-        <AppIcon name="search" />
-        <input v-model="filters.keyword" aria-label="搜索笔记" placeholder="搜索笔记标题或内容…" @input="scheduleKeywordSearch" @keyup.enter="load" />
-      </div>
-      <div class="filter-selects">
-        <select v-model="filters.categoryId">
-          <option value="">全部分类</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-        </select>
-        <select v-model="filters.tagId">
+      <div class="note-explorer-filters">
+        <label class="explorer-search">
+          <Search />
+          <input v-model="filters.keyword" aria-label="搜索笔记" placeholder="搜索笔记" @input="scheduleKeywordSearch" @keyup.enter="loadNotes" />
+          <button v-if="filters.keyword" type="button" aria-label="清除搜索" @click="clearSearch"><X /></button>
+        </label>
+        <select v-model="filters.tagId" aria-label="按标签筛选" @change="loadNotes">
           <option value="">全部标签</option>
           <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
         </select>
-        <button class="secondary" @click="resetFilters">重置</button>
-        <button @click="load">筛选</button>
       </div>
-    </section>
 
-    <div v-if="notes.length" class="note-list">
-      <article v-for="(note, index) in notes" :key="note.id" class="note-row">
-        <span class="note-index">{{ String(index + 1).padStart(2, '0') }}</span>
-        <div class="note-content">
-          <div class="note-title-line">
-            <RouterLink :to="`/notes/${note.id}/edit`"><h3>{{ note.title }}</h3></RouterLink>
-            <span class="category-label">{{ note.categoryName || '未分类' }}</span>
-          </div>
-          <p class="note-excerpt">{{ excerpt(note.content) }}</p>
-          <div class="note-meta">
-            <span>{{ formatDate(note.updatedAt) }}</span>
-            <span>{{ note.projectName || '未关联项目' }}</span>
-            <div class="badges">
-              <span v-for="tag in note.tags" :key="tag.id" class="badge"># {{ tag.name }}</span>
-            </div>
-          </div>
+      <form v-if="folderForm.open" class="folder-editor" @submit.prevent="saveFolder">
+        <input ref="folderNameInput" v-model="folderForm.name" aria-label="文件夹名称" placeholder="文件夹名称" required maxlength="120" />
+        <select v-model="folderForm.parentId" aria-label="上级文件夹">
+          <option value="">根目录</option>
+          <option v-for="folder in availableParents" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
+        </select>
+        <div>
+          <button type="submit" title="保存文件夹" aria-label="保存文件夹"><Check /></button>
+          <button type="button" title="取消" aria-label="取消" @click="closeFolderForm"><X /></button>
         </div>
-        <div class="note-actions">
-          <RouterLink class="icon-action" :to="`/notes/${note.id}/edit`" aria-label="编辑笔记">编辑</RouterLink>
-          <button class="icon-action danger-text" aria-label="删除笔记" @click="remove(note.id)">删除</button>
+      </form>
+
+      <p v-if="error" class="explorer-error">{{ error }}</p>
+      <nav class="note-tree" aria-label="笔记文件夹">
+        <NoteTreeItem
+          v-for="folder in folderTree"
+          :key="folder.id"
+          :folder="folder"
+          :expanded-ids="expandedIds"
+          :selected-note-id="selectedNoteId"
+          @toggle="toggleFolder"
+          @new-note="newNoteInFolder"
+          @new-child="openFolderForm(null, $event)"
+          @edit="openFolderForm($event)"
+          @delete="removeFolder"
+        />
+
+        <div v-if="unfiledNotes.length" class="unfiled-notes">
+          <p>未归档</p>
+          <RouterLink
+            v-for="note in unfiledNotes"
+            :key="note.id"
+            class="note-tree-note-row"
+            :class="{ selected: selectedNoteId === note.id }"
+            :to="{ name: 'note-edit', params: { id: note.id } }"
+          ><FileText /><span>{{ note.title }}</span></RouterLink>
         </div>
-      </article>
-    </div>
-    <p v-else class="empty">没有找到笔记。调整筛选条件，或者新建一篇。</p>
+        <p v-if="!loading && !folders.length && !unfiledNotes.length" class="tree-empty">暂无文件夹或笔记</p>
+      </nav>
+    </aside>
+
+    <main class="note-workspace-editor">
+      <NoteEditorView v-if="isEditorRoute" :key="route.fullPath" @saved="refreshTree" @deleted="refreshTree" />
+      <div v-else class="note-workspace-empty">
+        <FileText />
+        <h2>选择一篇笔记</h2>
+        <p>从左侧文件夹中打开笔记，或新建一篇。</p>
+        <RouterLink class="button" :to="{ name: 'note-new' }">新建笔记</RouterLink>
+      </div>
+    </main>
   </section>
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
-import { categoryApi, noteApi, tagApi } from '../api/workstation';
-import AppIcon from '../components/AppIcon.vue';
+import { Check, FileText, FolderPlus, Import, Search, SquarePen, X } from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
+import NoteTreeItem from '../components/NoteTreeItem.vue';
+import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../utils/noteFolders';
+import NoteEditorView from './NoteEditorView.vue';
 
 const route = useRoute();
+const router = useRouter();
 const error = ref('');
+const loading = ref(true);
 const notes = ref([]);
-const categories = ref([]);
+const folders = ref([]);
 const tags = ref([]);
-const filters = reactive({ keyword: route.query.keyword || '', categoryId: '', tagId: '' });
+const expandedIds = reactive(new Set());
+const folderNameInput = ref(null);
+const filters = reactive({ keyword: route.query.keyword || '', tagId: '' });
+const folderForm = reactive({ open: false, id: null, name: '', parentId: '' });
+const isEditorRoute = computed(() => ['note-new', 'note-edit'].includes(route.name));
+const selectedNoteId = computed(() => route.name === 'note-edit' ? Number(route.params.id) : null);
+const folderTree = computed(() => buildFolderTree(folders.value, notes.value));
+const unfiledNotes = computed(() => notes.value.filter((note) => !note.folderId));
+const unavailableParentIds = computed(() => folderForm.id ? descendantFolderIds(folders.value, folderForm.id) : new Set());
+const availableParents = computed(() => flattenFolderOptions(folders.value).filter((folder) => !unavailableParentIds.value.has(folder.id)));
 let keywordSearchTimer;
 
-function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+async function loadFolders() {
+  folders.value = await noteFolderApi.list();
+  if (filters.keyword || filters.tagId) folders.value.forEach((folder) => expandedIds.add(folder.id));
+  else if (!expandedIds.size) folders.value.filter((folder) => folder.parentId === null).forEach((folder) => expandedIds.add(folder.id));
 }
 
-function excerpt(content) {
-  if (!content) return '这篇笔记还没有摘要。';
-  const plain = content
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/[#>*_`\[\]()~-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return plain.length > 110 ? `${plain.slice(0, 110)}…` : plain;
+async function loadNotes() {
+  try {
+    error.value = '';
+    notes.value = await noteApi.list({ keyword: filters.keyword, tagId: filters.tagId });
+    if (filters.keyword || filters.tagId) folders.value.forEach((folder) => expandedIds.add(folder.id));
+  } catch (err) {
+    error.value = err.message;
+  } finally {
+    loading.value = false;
+  }
 }
 
-function resetFilters() {
-  window.clearTimeout(keywordSearchTimer);
-  filters.keyword = '';
-  filters.categoryId = '';
-  filters.tagId = '';
-  load();
+async function refreshTree() {
+  await Promise.all([loadFolders(), loadNotes()]);
 }
 
 function scheduleKeywordSearch() {
   window.clearTimeout(keywordSearchTimer);
-  keywordSearchTimer = window.setTimeout(load, 280);
+  keywordSearchTimer = window.setTimeout(loadNotes, 280);
 }
 
-// 加载列表所需的分类和标签筛选项。
-async function loadOptions() {
-  const [categoryList, tagList] = await Promise.all([
-    categoryApi.list(),
-    tagApi.list()
-  ]);
-  categories.value = categoryList;
-  tags.value = tagList;
+function clearSearch() {
+  filters.keyword = '';
+  loadNotes();
 }
 
-// 根据当前筛选条件加载笔记列表。
-async function load() {
+function toggleFolder(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id);
+  else expandedIds.add(id);
+}
+
+function newNoteInFolder(folderId) {
+  expandedIds.add(folderId);
+  router.push({ name: 'note-new', query: { folderId } });
+}
+
+async function openFolderForm(folder = null, parentId = null) {
+  Object.assign(folderForm, {
+    open: true,
+    id: folder?.id || null,
+    name: folder?.name || '',
+    parentId: folder ? (folder.parentId || '') : (parentId || '')
+  });
+  if (parentId) expandedIds.add(parentId);
+  await nextTick();
+  folderNameInput.value?.focus();
+}
+
+function closeFolderForm() {
+  Object.assign(folderForm, { open: false, id: null, name: '', parentId: '' });
+}
+
+async function saveFolder() {
   try {
     error.value = '';
-    notes.value = await noteApi.list(filters);
+    const payload = { name: folderForm.name, parentId: folderForm.parentId ? Number(folderForm.parentId) : null };
+    const saved = folderForm.id ? await noteFolderApi.update(folderForm.id, payload) : await noteFolderApi.create(payload);
+    if (saved.parentId) expandedIds.add(saved.parentId);
+    expandedIds.add(saved.id);
+    closeFolderForm();
+    await loadFolders();
   } catch (err) {
     error.value = err.message;
   }
 }
 
-// 删除笔记；后端会同步清理笔记和标签的关联关系。
-async function remove(id) {
-  if (!window.confirm('确认删除笔记？')) return;
+async function removeFolder(folder) {
+  if (!window.confirm(`确认删除文件夹“${folder.name}”？只能删除空文件夹。`)) return;
   try {
     error.value = '';
-    await noteApi.delete(id);
-    await load();
+    await noteFolderApi.delete(folder.id);
+    expandedIds.delete(folder.id);
+    await loadFolders();
   } catch (err) {
     error.value = err.message;
   }
@@ -136,10 +189,10 @@ async function remove(id) {
 
 onMounted(async () => {
   try {
-    await loadOptions();
-    await load();
+    [tags.value] = await Promise.all([tagApi.list(), loadFolders(), loadNotes()]);
   } catch (err) {
     error.value = err.message;
+    loading.value = false;
   }
 });
 

@@ -8,7 +8,7 @@ import java.util.List;
 public record NoteRequest(
         String title,
         String content,
-        Long categoryId,
+        Long folderId,
         Long projectId,
         List<Long> tagIds
 ) {

@@ -18,14 +18,14 @@ import org.apache.ibatis.annotations.Update;
  */
 public interface NoteMapper {
     /**
-     * 按标题、正文、分类、标签和项目组合筛选笔记。
+     * 按标题、正文、文件夹、标签和项目组合筛选笔记。
      */
     @Select("""
             <script>
-            SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
-            LEFT JOIN categories c ON c.id = n.category_id
+            LEFT JOIN note_folders f ON f.id = n.folder_id
             LEFT JOIN projects p ON p.id = n.project_id
             <where>
                 <if test="keyword != null and keyword != ''">
@@ -34,8 +34,8 @@ public interface NoteMapper {
                         OR n.content LIKE CONCAT('%', #{keyword}, '%')
                     )
                 </if>
-                <if test="categoryId != null">
-                    AND n.category_id = #{categoryId}
+                <if test="folderId != null">
+                    AND n.folder_id = #{folderId}
                 </if>
                 <if test="projectId != null">
                     AND n.project_id = #{projectId}
@@ -52,7 +52,7 @@ public interface NoteMapper {
             """)
     List<Note> list(
             @Param("keyword") String keyword,
-            @Param("categoryId") Long categoryId,
+            @Param("folderId") Long folderId,
             @Param("tagId") Long tagId,
             @Param("projectId") Long projectId
     );
@@ -61,10 +61,10 @@ public interface NoteMapper {
      * 根据主键查询笔记详情。
      */
     @Select("""
-            SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
-            LEFT JOIN categories c ON c.id = n.category_id
+            LEFT JOIN note_folders f ON f.id = n.folder_id
             LEFT JOIN projects p ON p.id = n.project_id
             WHERE n.id = #{id}
             """)
@@ -74,8 +74,8 @@ public interface NoteMapper {
      * 插入笔记，并回填自增主键到 note.id。
      */
     @Insert("""
-            INSERT INTO notes (title, content, category_id, project_id, created_at, updated_at)
-            VALUES (#{title}, #{content}, #{categoryId}, #{projectId}, #{createdAt}, #{updatedAt})
+            INSERT INTO notes (title, content, folder_id, project_id, created_at, updated_at)
+            VALUES (#{title}, #{content}, #{folderId}, #{projectId}, #{createdAt}, #{updatedAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Note note);
@@ -87,7 +87,7 @@ public interface NoteMapper {
             UPDATE notes
             SET title = #{title},
                 content = #{content},
-                category_id = #{categoryId},
+                folder_id = #{folderId},
                 project_id = #{projectId},
                 updated_at = #{updatedAt}
             WHERE id = #{id}
@@ -109,10 +109,10 @@ public interface NoteMapper {
     int clearProject(@Param("projectId") Long projectId, @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
     /**
-     * 统计某分类下的笔记数量，用于分类删除前校验。
+     * 统计某文件夹下的笔记数量，用于文件夹删除前校验。
      */
-    @Select("SELECT COUNT(*) FROM notes WHERE category_id = #{categoryId}")
-    long countByCategoryId(Long categoryId);
+    @Select("SELECT COUNT(*) FROM notes WHERE folder_id = #{folderId}")
+    long countByFolderId(Long folderId);
 
     /**
      * 按标题统计笔记数量，用于导入时跳过同标题笔记。
@@ -124,10 +124,10 @@ public interface NoteMapper {
      * 查询最近更新的笔记，用于首页概览。
      */
     @Select("""
-            SELECT n.id, n.title, n.content, n.category_id, c.name AS category_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
-            LEFT JOIN categories c ON c.id = n.category_id
+            LEFT JOIN note_folders f ON f.id = n.folder_id
             LEFT JOIN projects p ON p.id = n.project_id
             ORDER BY n.updated_at DESC, n.id DESC
             LIMIT #{limit}

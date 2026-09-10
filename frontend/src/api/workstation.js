@@ -48,13 +48,13 @@ export const noteApi = {
   delete: (id) => api.delete(`/notes/${id}`)
 };
 
-// 分类 API：用于维护知识库分类。
-export const categoryApi = {
-  list: () => api.get('/categories'),
-  get: (id) => api.get(`/categories/${id}`),
-  create: (payload) => api.post('/categories', payload),
-  update: (id, payload) => api.put(`/categories/${id}`, payload),
-  delete: (id) => api.delete(`/categories/${id}`)
+// 文件夹 API：用于维护笔记的多级目录。
+export const noteFolderApi = {
+  list: () => api.get('/note-folders'),
+  get: (id) => api.get(`/note-folders/${id}`),
+  create: (payload) => api.post('/note-folders', payload),
+  update: (id, payload) => api.put(`/note-folders/${id}`, payload),
+  delete: (id) => api.delete(`/note-folders/${id}`)
 };
 
 // 标签 API：用于维护笔记标签。

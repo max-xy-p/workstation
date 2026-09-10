@@ -12,8 +12,8 @@ Browser -> Vue/Vite -> /api -> Spring MVC -> Service -> MyBatis Mapper -> MySQL
 
 ## Main Modules
 
-- **Notes**：笔记 CRUD、标题/正文搜索、分类/标签/项目筛选、Markdown 导入。后端入口是 `NoteController`，业务位于 `NoteService` 和 `NoteImportService`。
-- **Taxonomy**：分类与标签 CRUD。分类是一对多关系，标签通过 `note_tag` 与笔记多对多关联。
+- **Notes**：笔记 CRUD、多级文件夹、标题/正文搜索、标签/项目筛选和 Markdown 导入。后端入口是 `NoteController` 和 `NoteFolderController`。
+- **Taxonomy**：标签 CRUD；标签通过 `note_tag` 与笔记多对多关联。
 - **Projects**：项目资料、状态和详情聚合。项目详情同时返回关联任务和笔记。
 - **Tasks**：任务 CRUD、项目归属、优先级、截止日期和 `TODO / IN_PROGRESS / DONE` 看板状态。
 - **Dashboard**：聚合活跃项目、任务数量以及最近项目/笔记。
@@ -25,15 +25,15 @@ Browser -> Vue/Vite -> /api -> Spring MVC -> Service -> MyBatis Mapper -> MySQL
 ### 笔记读取与保存
 
 ```text
-NotesView / NoteEditorView
-  -> noteApi
-  -> NoteController
-  -> NoteService
-  -> NoteMapper + TagMapper
-  -> notes / note_tag / tags
+NotesView / NoteEditorView / NoteTreeItem
+  -> noteApi / noteFolderApi
+  -> NoteController / NoteFolderController
+  -> NoteService / NoteFolderService
+  -> NoteMapper + NoteFolderMapper + TagMapper
+  -> notes / note_folders / note_tag / tags
 ```
 
-打开笔记时，编辑页加载分类、项目、标签和笔记详情，然后检查 `localStorage` 草稿。Tiptap 解析数据库返回的 Markdown；编辑后通过 `getMarkdown()` 更新 Vue 表单。已有笔记停止修改 8 秒后调用 `PUT /api/notes/{id}`，后端更新整篇笔记并重建标签关联。
+笔记工作区同时加载文件夹和笔记，前端按 `parentId` 组装树。打开笔记时，右侧编辑器加载文件夹、项目、标签和笔记详情，然后检查 `localStorage` 草稿。Tiptap 解析数据库返回的 Markdown；已有笔记停止修改 8 秒后调用 `PUT /api/notes/{id}`。
 
 ### 登录与写请求
 
@@ -48,6 +48,8 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 
 - `MarkdownEditor.vue`：Tiptap StarterKit、Markdown 转换、基础格式工具栏和撤销/重做。
 - `NoteEditorView.vue`：笔记表单、350ms 本地草稿、8 秒自动保存和草稿恢复。
+- `NotesView.vue` / `NoteTreeItem.vue`：两栏笔记工作区、递归文件夹树和文件夹管理。
+- `NoteFolderService`：校验父节点、同级重名、循环层级与非空删除。
 - `NoteImportService`：递归读取白名单目录下的 `.md`/`.markdown` 文件，提取标题并处理同标题策略。
 - `SecurityConfig`：单管理员认证、Session 登录/退出、CSRF 和 JSON 安全错误。
 - `GlobalExceptionHandler`：将不存在、业务校验和数据库约束错误转换为统一 JSON。
@@ -58,8 +60,8 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 
 - `Project`：可拥有多个 `Task`，也可被多个 `Note` 关联。
 - `Task`：必须属于一个 `Project`。
-- `Note`：包含标题和 Markdown 正文，可选关联一个 `Category` 和一个 `Project`。
-- `Category`：可被多篇笔记引用；存在关联笔记时不能删除。
+- `Note`：包含标题和 Markdown 正文，可选关联一个 `NoteFolder` 和一个 `Project`。
+- `NoteFolder`：通过可空 `parentId` 形成多级树；存在子文件夹或笔记时不能删除。
 - `Tag`：通过 `note_tag` 与 `Note` 多对多关联；删除标签会先解除关联。
 
 删除项目时，如果存在任务则拒绝删除；如果只有关联笔记，则先清空笔记的项目关联。删除笔记是物理删除。
@@ -70,4 +72,3 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 - **本机文件系统**：Markdown 导入依赖后端可访问且位于 `NOTE_IMPORT_ALLOWED_ROOTS` 下的目录。
 - **Nginx / Docker**：仅用于可选本机代理和容器部署，不是本地开发必需项。
 - **GitHub Actions / GHCR / VPS**：现有工作流在 `master` 和 PR 上执行后端校验、前端构建和镜像构建；版本标签可发布镜像并部署到 VPS。
-

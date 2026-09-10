@@ -15,12 +15,12 @@
       <section class="login-intro" aria-labelledby="login-title">
         <span class="login-kicker">私人知识库</span>
         <h1 id="login-title">把想法放在<br><em>找得到的地方。</em></h1>
-        <p>记录笔记，连接项目，用分类和标签把零散信息整理成可以继续使用的知识。</p>
+        <p>记录笔记，连接项目，用文件夹和标签把零散信息整理成可以继续使用的知识。</p>
 
         <div class="login-capabilities" aria-label="知识库功能">
           <span><AppIcon name="notes" />Markdown 笔记</span>
           <span><AppIcon name="projects" />项目关联</span>
-          <span><AppIcon name="taxonomy" />分类与标签</span>
+          <span><AppIcon name="taxonomy" />文件夹与标签</span>
         </div>
       </section>
 

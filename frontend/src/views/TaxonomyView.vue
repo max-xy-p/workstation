@@ -1,132 +1,58 @@
 <template>
   <section class="page taxonomy-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split taxonomy-grid">
-      <section class="panel taxonomy-panel">
-        <div class="section-heading">
-          <div><span class="eyebrow">层级组织</span><h2>分类</h2></div>
-          <span class="section-count">{{ categories.length }} 个</span>
+    <section class="panel taxonomy-panel">
+      <div class="section-heading">
+        <div><span class="eyebrow">交叉检索</span><h2>标签</h2></div>
+        <span class="section-count">{{ tags.length }} 个</span>
+      </div>
+      <form class="form-grid" @submit.prevent="saveTag">
+        <label class="wide">名称<input v-model="tagForm.name" required /></label>
+        <div class="actions wide">
+          <button type="submit">{{ tagForm.id ? '保存标签' : '创建标签' }}</button>
+          <button type="button" class="secondary" @click="resetTag">清空</button>
         </div>
-        <form class="form-grid" @submit.prevent="saveCategory">
-          <label>名称<input v-model="categoryForm.name" required /></label>
-          <label>描述<input v-model="categoryForm.description" /></label>
-          <div class="actions wide">
-            <button type="submit">{{ categoryForm.id ? '保存分类' : '创建分类' }}</button>
-            <button type="button" class="secondary" @click="resetCategory">清空</button>
+      </form>
+      <div v-if="tags.length" class="list">
+        <article v-for="tag in tags" :key="tag.id" class="card taxonomy-card tag-card">
+          <div class="card-title"><h3>{{ tag.name }}</h3></div>
+          <div class="actions">
+            <button class="secondary" @click="editTag(tag)">编辑</button>
+            <button class="danger" @click="removeTag(tag.id)">删除</button>
           </div>
-        </form>
-        <div v-if="categories.length" class="list">
-          <article v-for="category in categories" :key="category.id" class="card taxonomy-card">
-            <div class="card-title">
-              <h3>{{ category.name }}</h3>
-            </div>
-            <p class="meta">{{ category.description || '未填写描述' }}</p>
-            <div class="actions">
-              <button class="secondary" @click="editCategory(category)">编辑</button>
-              <button class="danger" @click="removeCategory(category.id)">删除</button>
-            </div>
-          </article>
-        </div>
-        <p v-else class="empty">暂无分类</p>
-      </section>
-
-      <section class="panel taxonomy-panel">
-        <div class="section-heading">
-          <div><span class="eyebrow">交叉检索</span><h2>标签</h2></div>
-          <span class="section-count">{{ tags.length }} 个</span>
-        </div>
-        <form class="form-grid" @submit.prevent="saveTag">
-          <label class="wide">名称<input v-model="tagForm.name" required /></label>
-          <div class="actions wide">
-            <button type="submit">{{ tagForm.id ? '保存标签' : '创建标签' }}</button>
-            <button type="button" class="secondary" @click="resetTag">清空</button>
-          </div>
-        </form>
-        <div v-if="tags.length" class="list">
-          <article v-for="tag in tags" :key="tag.id" class="card taxonomy-card tag-card">
-            <div class="card-title">
-              <h3>{{ tag.name }}</h3>
-            </div>
-            <div class="actions">
-              <button class="secondary" @click="editTag(tag)">编辑</button>
-              <button class="danger" @click="removeTag(tag.id)">删除</button>
-            </div>
-          </article>
-        </div>
-        <p v-else class="empty">暂无标签</p>
-      </section>
-    </div>
+        </article>
+      </div>
+      <p v-else class="empty">暂无标签</p>
+    </section>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
-import { categoryApi, tagApi } from '../api/workstation';
+import { tagApi } from '../api/workstation';
 
 const error = ref('');
-const categories = ref([]);
 const tags = ref([]);
-const categoryForm = reactive({ id: null, name: '', description: '' });
 const tagForm = reactive({ id: null, name: '' });
 
-// 清空分类表单，退出分类编辑状态。
-function resetCategory() {
-  Object.assign(categoryForm, { id: null, name: '', description: '' });
-}
-
-// 清空标签表单，退出标签编辑状态。
 function resetTag() {
   Object.assign(tagForm, { id: null, name: '' });
 }
 
-// 把分类数据填入表单，进入编辑状态。
-function editCategory(category) {
-  Object.assign(categoryForm, {
-    id: category.id,
-    name: category.name,
-    description: category.description || ''
-  });
-}
-
-// 把标签数据填入表单，进入编辑状态。
 function editTag(tag) {
   Object.assign(tagForm, { id: tag.id, name: tag.name });
 }
 
-// 同时加载分类和标签列表。
 async function load() {
-  const [categoryList, tagList] = await Promise.all([categoryApi.list(), tagApi.list()]);
-  categories.value = categoryList;
-  tags.value = tagList;
+  tags.value = await tagApi.list();
 }
 
-// 创建或更新分类。
-async function saveCategory() {
-  try {
-    error.value = '';
-    const payload = { name: categoryForm.name, description: categoryForm.description || null };
-    if (categoryForm.id) {
-      await categoryApi.update(categoryForm.id, payload);
-    } else {
-      await categoryApi.create(payload);
-    }
-    resetCategory();
-    await load();
-  } catch (err) {
-    error.value = err.message;
-  }
-}
-
-// 创建或更新标签。
 async function saveTag() {
   try {
     error.value = '';
     const payload = { name: tagForm.name };
-    if (tagForm.id) {
-      await tagApi.update(tagForm.id, payload);
-    } else {
-      await tagApi.create(payload);
-    }
+    if (tagForm.id) await tagApi.update(tagForm.id, payload);
+    else await tagApi.create(payload);
     resetTag();
     await load();
   } catch (err) {
@@ -134,19 +60,6 @@ async function saveTag() {
   }
 }
 
-// 删除分类；如果分类下存在笔记，后端会拒绝。
-async function removeCategory(id) {
-  if (!window.confirm('确认删除分类？')) return;
-  try {
-    error.value = '';
-    await categoryApi.delete(id);
-    await load();
-  } catch (err) {
-    error.value = err.message;
-  }
-}
-
-// 删除标签；后端会先解除标签和笔记的关联。
 async function removeTag(id) {
   if (!window.confirm('确认删除标签？')) return;
   try {

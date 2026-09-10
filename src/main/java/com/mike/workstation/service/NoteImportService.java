@@ -7,7 +7,7 @@ import com.mike.workstation.dto.NoteImportItemResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.exception.BusinessException;
-import com.mike.workstation.mapper.CategoryMapper;
+import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
@@ -34,20 +34,20 @@ public class NoteImportService {
 
     private final NoteImportProperties properties;
     private final NoteMapper noteMapper;
-    private final CategoryMapper categoryMapper;
+    private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
 
     public NoteImportService(
             NoteImportProperties properties,
             NoteMapper noteMapper,
-            CategoryMapper categoryMapper,
+            NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
             TagMapper tagMapper
     ) {
         this.properties = properties;
         this.noteMapper = noteMapper;
-        this.categoryMapper = categoryMapper;
+        this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
     }
@@ -101,7 +101,7 @@ public class NoteImportService {
             Note note = new Note();
             note.setTitle(title);
             note.setContent(content);
-            note.setCategoryId(request.categoryId());
+            note.setFolderId(request.folderId());
             note.setProjectId(request.projectId());
             LocalDateTime now = LocalDateTime.now();
             note.setCreatedAt(now);
@@ -128,7 +128,7 @@ public class NoteImportService {
     /**
      * 校验导入请求。
      *
-     * <p>除基础必填项外，还会确认分类、项目和标签 ID 是否真实存在。</p>
+     * <p>除基础必填项外，还会确认文件夹、项目和标签 ID 是否真实存在。</p>
      */
     private void validateRequest(NoteImportRequest request) {
         RequestChecks.requiredObject(request, "导入请求");
@@ -140,8 +140,8 @@ public class NoteImportService {
         if (properties.maxFileBytes() == null || properties.maxFileBytes() < 1) {
             throw new BusinessException("笔记导入文件大小限制未正确配置");
         }
-        if (request.categoryId() != null) {
-            RequestChecks.requiredExisting(categoryMapper.findById(request.categoryId()), "分类不存在");
+        if (request.folderId() != null) {
+            RequestChecks.requiredExisting(folderMapper.findById(request.folderId()), "文件夹不存在");
         }
         if (request.projectId() != null) {
             RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "关联项目不存在");

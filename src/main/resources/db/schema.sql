@@ -15,14 +15,17 @@ CREATE TABLE IF NOT EXISTS projects (
     INDEX idx_projects_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS categories (
+CREATE TABLE IF NOT EXISTS note_folders (
     id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(120) NOT NULL,
-    description TEXT NULL,
+    parent_id BIGINT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_categories_name (name)
+    INDEX idx_note_folders_parent_id (parent_id),
+    UNIQUE KEY uk_note_folders_parent_name (parent_id, name),
+    CONSTRAINT fk_note_folders_parent
+        FOREIGN KEY (parent_id) REFERENCES note_folders (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -56,16 +59,16 @@ CREATE TABLE IF NOT EXISTS notes (
     id BIGINT NOT NULL AUTO_INCREMENT,
     title VARCHAR(200) NOT NULL,
     content MEDIUMTEXT NOT NULL,
-    category_id BIGINT NULL,
+    folder_id BIGINT NULL,
     project_id BIGINT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
-    INDEX idx_notes_category_id (category_id),
+    INDEX idx_notes_folder_id (folder_id),
     INDEX idx_notes_project_id (project_id),
     INDEX idx_notes_updated_at (updated_at),
-    CONSTRAINT fk_notes_category
-        FOREIGN KEY (category_id) REFERENCES categories (id),
+    CONSTRAINT fk_notes_folder
+        FOREIGN KEY (folder_id) REFERENCES note_folders (id),
     CONSTRAINT fk_notes_project
         FOREIGN KEY (project_id) REFERENCES projects (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

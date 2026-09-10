@@ -3,7 +3,7 @@ package com.mike.workstation.service;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.exception.BusinessException;
-import com.mike.workstation.mapper.CategoryMapper;
+import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
@@ -16,22 +16,22 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 笔记业务服务。
  *
- * <p>负责 Markdown 笔记的 CRUD、分类/项目存在性校验，以及笔记标签多对多关系维护。</p>
+ * <p>负责 Markdown 笔记的 CRUD、文件夹/项目存在性校验，以及笔记标签多对多关系维护。</p>
  */
 public class NoteService {
     private final NoteMapper noteMapper;
-    private final CategoryMapper categoryMapper;
+    private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
 
     public NoteService(
             NoteMapper noteMapper,
-            CategoryMapper categoryMapper,
+            NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
             TagMapper tagMapper
     ) {
         this.noteMapper = noteMapper;
-        this.categoryMapper = categoryMapper;
+        this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
     }
@@ -40,13 +40,13 @@ public class NoteService {
      * 查询笔记列表，并为每篇笔记补充标签集合。
      *
      * @param keyword 标题关键字，可为空
-     * @param categoryId 分类筛选，可为空
+     * @param folderId 文件夹筛选，可为空
      * @param tagId 标签筛选，可为空
      * @param projectId 关联项目筛选，可为空
      * @return 笔记列表
      */
-    public List<Note> list(String keyword, Long categoryId, Long tagId, Long projectId) {
-        List<Note> notes = noteMapper.list(keyword, categoryId, tagId, projectId);
+    public List<Note> list(String keyword, Long folderId, Long tagId, Long projectId) {
+        List<Note> notes = noteMapper.list(keyword, folderId, tagId, projectId);
         notes.forEach(this::attachTags);
         return notes;
     }
@@ -84,7 +84,7 @@ public class NoteService {
     }
 
     /**
-     * 更新笔记正文、分类、项目和标签关联。
+     * 更新笔记正文、文件夹、项目和标签关联。
      *
      * @param id 笔记 ID
      * @param request 笔记更新请求
@@ -120,14 +120,14 @@ public class NoteService {
     /**
      * 校验笔记请求。
      *
-     * <p>分类、项目和标签都是可选关系；只要传入 ID，就必须能在数据库中找到对应记录。</p>
+     * <p>文件夹、项目和标签都是可选关系；只要传入 ID，就必须能在数据库中找到对应记录。</p>
      */
     private void validate(NoteRequest request) {
         RequestChecks.requiredObject(request, "笔记请求");
         RequestChecks.requiredText(request.title(), "笔记标题");
         RequestChecks.requiredText(request.content(), "笔记内容");
-        if (request.categoryId() != null) {
-            RequestChecks.requiredExisting(categoryMapper.findById(request.categoryId()), "分类不存在");
+        if (request.folderId() != null) {
+            RequestChecks.requiredExisting(folderMapper.findById(request.folderId()), "文件夹不存在");
         }
         if (request.projectId() != null) {
             RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "关联项目不存在");
@@ -144,7 +144,7 @@ public class NoteService {
     private void applyRequest(Note note, NoteRequest request) {
         note.setTitle(request.title());
         note.setContent(request.content());
-        note.setCategoryId(request.categoryId());
+        note.setFolderId(request.folderId());
         note.setProjectId(request.projectId());
     }
 

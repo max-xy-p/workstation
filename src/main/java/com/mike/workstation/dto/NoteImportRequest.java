@@ -8,7 +8,7 @@ import java.util.List;
  */
 public record NoteImportRequest(
         String sourcePath,
-        Long categoryId,
+        Long folderId,
         Long projectId,
         List<Long> tagIds,
         NoteImportDuplicateStrategy duplicateStrategy

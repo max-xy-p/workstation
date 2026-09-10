@@ -15,10 +15,10 @@
         <label class="wide">导入路径
           <input v-model="form.sourcePath" placeholder="例如 /data/notes 或 D:\notes" required />
         </label>
-        <label>分类
-          <select v-model="form.categoryId">
-            <option value="">未分类</option>
-            <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+        <label>文件夹
+          <select v-model="form.folderId">
+            <option value="">未归档</option>
+            <option v-for="folder in folderOptions" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
           </select>
         </label>
         <label>关联项目
@@ -62,17 +62,19 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { categoryApi, noteApi, projectApi, tagApi } from '../api/workstation';
+import { noteApi, noteFolderApi, projectApi, tagApi } from '../api/workstation';
+import { flattenFolderOptions } from '../utils/noteFolders';
 
 const error = ref('');
 const importing = ref(false);
 const result = ref(null);
-const categories = ref([]);
+const folders = ref([]);
 const projects = ref([]);
 const tags = ref([]);
-const form = reactive({ sourcePath: '', categoryId: '', projectId: '', tagIds: [], duplicateStrategy: '' });
+const form = reactive({ sourcePath: '', folderId: '', projectId: '', tagIds: [], duplicateStrategy: '' });
+const folderOptions = computed(() => flattenFolderOptions(folders.value));
 
 async function importNotes() {
   try {
@@ -80,7 +82,7 @@ async function importNotes() {
     importing.value = true;
     result.value = await noteApi.importMarkdown({
       sourcePath: form.sourcePath,
-      categoryId: form.categoryId ? Number(form.categoryId) : null,
+      folderId: form.folderId ? Number(form.folderId) : null,
       projectId: form.projectId ? Number(form.projectId) : null,
       tagIds: form.tagIds.map(Number),
       duplicateStrategy: form.duplicateStrategy
@@ -94,8 +96,8 @@ async function importNotes() {
 
 onMounted(async () => {
   try {
-    [categories.value, projects.value, tags.value] = await Promise.all([
-      categoryApi.list(),
+    [folders.value, projects.value, tags.value] = await Promise.all([
+      noteFolderApi.list(),
       projectApi.list({}),
       tagApi.list()
     ]);
