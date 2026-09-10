@@ -1,8 +1,8 @@
 <template>
   <RouterView v-if="isLoginPage" />
 
-  <div v-else class="app-shell">
-    <aside class="sidebar">
+  <div v-else :class="isModuleWorkspace ? 'module-workspace-shell' : 'app-shell'">
+    <aside v-if="!isModuleWorkspace" class="sidebar">
       <RouterLink class="brand" to="/">
         <span class="brand-mark">知</span>
         <span class="brand-copy">
@@ -46,8 +46,8 @@
       </div>
     </aside>
 
-    <main class="main">
-      <header v-if="!isEditorPage" class="topbar">
+    <main :class="isModuleWorkspace ? 'module-workspace-main' : 'main'">
+      <header v-if="!isModuleWorkspace && !isEditorPage" class="topbar">
         <div class="page-context">
           <span class="eyebrow">{{ currentMeta.section }}</span>
           <h1>{{ route.meta.title }}</h1>
@@ -84,8 +84,9 @@ const router = useRouter();
 const loggingOut = ref(false);
 const isLoginPage = computed(() => route.name === 'login');
 const isEditorPage = computed(() => ['notes', 'note-new', 'note-edit'].includes(route.name));
+const isModuleWorkspace = computed(() => ['notes', 'note-new', 'note-edit', 'note-import'].includes(route.name));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
-const navOrder = ['notes', 'note-import', 'taxonomy', 'dashboard', 'projects', 'tasks'];
+const navOrder = ['notes', 'projects', 'tasks', 'taxonomy', 'dashboard'];
 const navItems = computed(() => navOrder.map((name) => {
   const item = routes.find((routeItem) => routeItem.name === name);
   return { name, title: item.meta.title, icon: name === 'note-import' ? 'import' : name };

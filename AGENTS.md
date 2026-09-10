@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。当前默认入口和主要开发重点是笔记模块；后端数据以 MySQL 为准，浏览器 IndexedDB 仅保存尚未获得服务端确认的草稿。
+Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。概览页是默认入口，当前主要开发重点是独立的笔记工作区；后端数据以 MySQL 为准，浏览器 IndexedDB 仅保存尚未获得服务端确认的草稿。
 
 ## Tech Stack
 

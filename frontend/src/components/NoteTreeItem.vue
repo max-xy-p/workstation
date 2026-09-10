@@ -10,12 +10,15 @@
         <span>{{ folder.name }}</span>
       </button>
       <span class="tree-folder-count">{{ folder.notes.length }}</span>
-      <div class="tree-row-actions">
-        <button type="button" title="在此文件夹中新建笔记" aria-label="在此文件夹中新建笔记" @click="$emit('new-note', folder.id)"><FilePlus2 /></button>
-        <button type="button" title="新建子文件夹" aria-label="新建子文件夹" @click="$emit('new-child', folder.id)"><FolderPlus /></button>
-        <button type="button" title="编辑文件夹" aria-label="编辑文件夹" @click="$emit('edit', folder)"><Pencil /></button>
-        <button type="button" title="删除文件夹" aria-label="删除文件夹" @click="$emit('delete', folder)"><Trash2 /></button>
-      </div>
+      <details ref="actionMenu" class="tree-action-menu" @focusout="closeMenuOnFocusOut">
+        <summary title="文件夹操作" aria-label="文件夹操作"><Ellipsis /></summary>
+        <div class="tree-action-popover">
+          <button type="button" @click="runAction('new-note', folder.id)"><FilePlus2 /><span>新建笔记</span></button>
+          <button type="button" @click="runAction('new-child', folder.id)"><FolderPlus /><span>新建子文件夹</span></button>
+          <button type="button" @click="runAction('edit', folder)"><Pencil /><span>编辑文件夹</span></button>
+          <button class="danger" type="button" @click="runAction('delete', folder)"><Trash2 /><span>删除文件夹</span></button>
+        </div>
+      </details>
     </div>
 
     <div v-if="expanded">
@@ -48,8 +51,8 @@
 </template>
 
 <script setup>
-import { ChevronRight, FilePlus2, FileText, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from '@lucide/vue';
-import { computed } from 'vue';
+import { ChevronRight, Ellipsis, FilePlus2, FileText, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from '@lucide/vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 const props = defineProps({
@@ -59,7 +62,17 @@ const props = defineProps({
   selectedNoteId: { type: Number, default: null }
 });
 
-defineEmits(['toggle', 'new-note', 'new-child', 'edit', 'delete']);
+const emit = defineEmits(['toggle', 'new-note', 'new-child', 'edit', 'delete']);
 
 const expanded = computed(() => props.expandedIds.has(props.folder.id));
+const actionMenu = ref(null);
+
+function runAction(action, payload) {
+  actionMenu.value?.removeAttribute('open');
+  emit(action, payload);
+}
+
+function closeMenuOnFocusOut(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute('open');
+}
 </script>

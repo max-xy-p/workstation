@@ -18,7 +18,7 @@ Browser -> Vue/Vite -> /api -> Spring MVC -> Service -> MyBatis Mapper -> MySQL
 - **Tasks**：任务 CRUD、项目归属、优先级、截止日期和 `TODO / IN_PROGRESS / DONE` 看板状态。
 - **Dashboard**：聚合活跃项目、任务数量以及最近项目/笔记。
 - **Authentication**：配置文件中的单一管理员账号、Spring Security Session、CSRF 和前端路由守卫。
-- **Frontend shell**：`App.vue` 提供侧栏和页面框架，`router/index.js` 定义路由，`api/client.js` 统一处理 HTTP、认证和错误。
+- **Frontend shell**：`App.vue` 为概览、项目、任务和标签提供全局侧栏；笔记相关路由使用不含全局侧栏的独立工作区外壳。`router/index.js` 定义路由，`api/client.js` 统一处理 HTTP、认证和错误。
 
 ## Data / Request Flow
 
@@ -49,7 +49,7 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 - `MarkdownEditor.vue`：Tiptap StarterKit、Markdown 转换、基础格式工具栏和撤销/重做。
 - `NoteEditorView.vue`：笔记表单、350ms IndexedDB 草稿、8 秒自动保存和草稿恢复。
 - `noteDraftStore.js`：封装 `workstation-cache/note-drafts` IndexedDB 对象仓库。
-- `NotesView.vue` / `NoteTreeItem.vue`：两栏笔记工作区、递归文件夹树和文件夹管理。
+- `NotesView.vue` / `NoteTreeItem.vue`：独立的两栏笔记工作区、递归文件夹树、文件夹管理和笔记模块内导航。
 - `NoteFolderService`：校验父节点、同级重名、循环层级与非空删除。
 - `NoteImportService`：递归读取白名单目录下的 `.md`/`.markdown` 文件，提取标题并处理同标题策略。
 - `SecurityConfig`：单管理员认证、Session 登录/退出、CSRF 和 JSON 安全错误。

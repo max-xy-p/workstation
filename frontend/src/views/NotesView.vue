@@ -1,12 +1,22 @@
 <template>
-  <section class="notes-workspace" :class="{ 'has-open-note': isEditorRoute }">
+  <section class="notes-workspace" :class="{ 'has-open-note': hasWorkspaceContent }">
     <aside class="note-explorer">
       <header class="note-explorer-header">
-        <div><h1>笔记</h1><span>{{ notes.length }} 篇</span></div>
+        <div class="note-workspace-identity">
+          <RouterLink class="workspace-home-link" :to="{ name: 'dashboard' }" title="返回工作台" aria-label="返回工作台">知</RouterLink>
+          <span class="workspace-identity-divider">/</span>
+          <h1>笔记</h1>
+          <span>{{ notes.length }} 篇</span>
+        </div>
         <div class="note-explorer-actions">
-          <RouterLink :to="{ name: 'note-import' }" title="导入 Markdown" aria-label="导入 Markdown"><Import /></RouterLink>
-          <button type="button" title="新建文件夹" aria-label="新建文件夹" @click="openFolderForm()"><FolderPlus /></button>
           <RouterLink :to="{ name: 'note-new' }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
+          <details class="explorer-action-menu" @focusout="closeExplorerMenu">
+            <summary title="更多笔记操作" aria-label="更多笔记操作"><Ellipsis /></summary>
+            <div class="explorer-action-popover">
+              <button type="button" @click="openFolderFromMenu"><FolderPlus /><span>新建文件夹</span></button>
+              <RouterLink :to="{ name: 'note-import' }"><Import /><span>导入 Markdown</span></RouterLink>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -14,9 +24,19 @@
         <label class="explorer-search">
           <Search />
           <input v-model="filters.keyword" aria-label="搜索笔记" placeholder="搜索笔记" @input="scheduleKeywordSearch" @keyup.enter="loadNotes" />
-          <button v-if="filters.keyword" type="button" aria-label="清除搜索" @click="clearSearch"><X /></button>
+          <span class="explorer-search-actions">
+            <button v-if="filters.keyword" type="button" title="清除搜索" aria-label="清除搜索" @click="clearSearch"><X /></button>
+            <button
+              type="button"
+              title="按标签筛选"
+              aria-label="按标签筛选"
+              :aria-expanded="showFilters"
+              :class="{ active: showFilters || filters.tagId }"
+              @click="showFilters = !showFilters"
+            ><ListFilter /></button>
+          </span>
         </label>
-        <select v-model="filters.tagId" aria-label="按标签筛选" @change="loadNotes">
+        <select v-if="showFilters" v-model="filters.tagId" class="explorer-tag-filter" aria-label="按标签筛选" @change="loadNotes">
           <option value="">全部标签</option>
           <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
         </select>
@@ -64,7 +84,8 @@
     </aside>
 
     <main class="note-workspace-editor">
-      <NoteEditorView v-if="isEditorRoute" :key="route.fullPath" @saved="refreshTree" @deleted="refreshTree" />
+      <NoteImportView v-if="isImportRoute" />
+      <NoteEditorView v-else-if="isEditorRoute" :key="route.fullPath" @saved="refreshTree" @deleted="refreshTree" />
       <div v-else class="note-workspace-empty">
         <FileText />
         <h2>选择一篇笔记</h2>
@@ -76,13 +97,14 @@
 </template>
 
 <script setup>
-import { Check, FileText, FolderPlus, Import, Search, SquarePen, X } from '@lucide/vue';
+import { Check, Ellipsis, FileText, FolderPlus, Import, ListFilter, Search, SquarePen, X } from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
 import NoteTreeItem from '../components/NoteTreeItem.vue';
 import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../utils/noteFolders';
 import NoteEditorView from './NoteEditorView.vue';
+import NoteImportView from './NoteImportView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -94,8 +116,11 @@ const tags = ref([]);
 const expandedIds = reactive(new Set());
 const folderNameInput = ref(null);
 const filters = reactive({ keyword: route.query.keyword || '', tagId: '' });
+const showFilters = ref(false);
 const folderForm = reactive({ open: false, id: null, name: '', parentId: '' });
 const isEditorRoute = computed(() => ['note-new', 'note-edit'].includes(route.name));
+const isImportRoute = computed(() => route.name === 'note-import');
+const hasWorkspaceContent = computed(() => isEditorRoute.value || isImportRoute.value);
 const selectedNoteId = computed(() => route.name === 'note-edit' ? Number(route.params.id) : null);
 const folderTree = computed(() => buildFolderTree(folders.value, notes.value));
 const unfiledNotes = computed(() => notes.value.filter((note) => !note.folderId));
@@ -159,6 +184,15 @@ async function openFolderForm(folder = null, parentId = null) {
 
 function closeFolderForm() {
   Object.assign(folderForm, { open: false, id: null, name: '', parentId: '' });
+}
+
+function openFolderFromMenu(event) {
+  event.currentTarget.closest('details')?.removeAttribute('open');
+  openFolderForm();
+}
+
+function closeExplorerMenu(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.removeAttribute('open');
 }
 
 async function saveFolder() {

@@ -75,13 +75,20 @@ button:disabled {
 }
 
 ::selection {
-  color: #fff;
-  background: var(--moss);
+  color: inherit;
+  background: #dbe8f2;
 }
 
 .app-shell {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.module-workspace-shell,
+.module-workspace-main {
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
 }
 
@@ -3840,7 +3847,7 @@ textarea:focus {
 /* Notes folder workspace */
 .notes-workspace {
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   width: 100%;
   height: 100vh;
   min-height: 620px;
@@ -3849,6 +3856,7 @@ textarea:focus {
 }
 
 .note-explorer {
+  --explorer-gutter: 12px;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -3859,18 +3867,42 @@ textarea:focus {
 .note-explorer-header {
   display: flex;
   min-height: 64px;
-  padding: 12px 13px 10px 17px;
+  padding: 12px var(--explorer-gutter) 10px;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--line);
 }
 
-.note-explorer-header > div:first-child {
+.note-workspace-identity {
   display: flex;
   min-width: 0;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 7px;
+}
+
+.workspace-home-link {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid #dbe2e9;
+  border-radius: 6px;
+  place-items: center;
+  color: #40556a;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.workspace-home-link:hover {
+  border-color: #c8d2dc;
+  background: #eef3f7;
+}
+
+.workspace-identity-divider {
+  color: #b2bdc8;
+  font-size: 13px;
 }
 
 .note-explorer-header h1 {
@@ -3885,16 +3917,15 @@ textarea:focus {
 }
 
 .note-explorer-actions,
-.tree-row-actions,
 .folder-editor > div {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.note-explorer-actions button,
-.note-explorer-actions a,
-.tree-row-actions button,
+.note-explorer-actions > button,
+.note-explorer-actions > a,
+.note-explorer-actions > details > summary,
 .folder-editor button,
 .explorer-search button {
   display: grid;
@@ -3908,33 +3939,89 @@ textarea:focus {
   background: transparent;
 }
 
-.note-explorer-actions button:hover,
-.note-explorer-actions a:hover,
-.tree-row-actions button:hover,
+.note-explorer-actions > button:hover,
+.note-explorer-actions > a:hover,
+.note-explorer-actions > details > summary:hover,
+.note-explorer-actions > details[open] > summary,
 .folder-editor button:hover,
 .explorer-search button:hover {
   color: var(--ink);
   background: #e9eef4;
 }
 
-.note-explorer-actions svg,
-.tree-row-actions svg,
+.note-explorer-actions > button svg,
+.note-explorer-actions > a svg,
+.note-explorer-actions > details > summary svg,
 .folder-editor button svg,
 .explorer-search button svg {
   width: 16px;
   height: 16px;
 }
 
+.explorer-action-menu {
+  position: relative;
+}
+
+.explorer-action-menu > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.explorer-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.explorer-action-popover {
+  position: absolute;
+  z-index: 30;
+  top: 34px;
+  right: 0;
+  width: 164px;
+  padding: 4px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(28, 39, 52, 0.14);
+}
+
+.explorer-action-popover button,
+.explorer-action-popover a {
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 4px;
+  color: #3f4e5f;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+}
+
+.explorer-action-popover button:hover,
+.explorer-action-popover a:hover {
+  color: var(--ink);
+  background: #f0f3f6;
+}
+
+.explorer-action-popover svg {
+  width: 15px;
+  height: 15px;
+}
+
 .note-explorer-filters {
   display: grid;
   gap: 7px;
-  padding: 11px 12px;
+  padding: 11px var(--explorer-gutter);
   border-bottom: 1px solid var(--line);
 }
 
 .explorer-search {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 26px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   min-height: 34px;
   padding-left: 9px;
   align-items: center;
@@ -3959,6 +4046,22 @@ textarea:focus {
   font-size: 12px;
 }
 
+.explorer-search-actions {
+  display: flex;
+  padding-right: 3px;
+  align-items: center;
+}
+
+.explorer-search-actions button {
+  width: 27px;
+  height: 27px;
+}
+
+.explorer-search-actions button.active {
+  color: #52677b;
+  background: #f0f4f7;
+}
+
 .note-explorer-filters select,
 .folder-editor input,
 .folder-editor select {
@@ -3974,7 +4077,7 @@ textarea:focus {
 .folder-editor {
   display: grid;
   gap: 7px;
-  padding: 11px 12px;
+  padding: 11px var(--explorer-gutter);
   border-bottom: 1px solid var(--line);
   background: #eef3f7;
 }
@@ -3984,7 +4087,7 @@ textarea:focus {
 }
 
 .explorer-error {
-  margin: 8px 12px 0;
+  margin: 8px var(--explorer-gutter) 0;
   padding: 8px 9px;
   border-radius: 5px;
   color: var(--danger);
@@ -3995,13 +4098,13 @@ textarea:focus {
 
 .note-tree {
   min-height: 0;
-  padding: 8px 6px 24px;
+  padding: 8px 4px 24px;
   overflow: auto;
 }
 
 .note-tree-folder-row,
 .note-tree-note-row {
-  display: flex;
+  display: grid;
   width: 100%;
   height: 34px;
   min-width: 0;
@@ -4011,12 +4114,13 @@ textarea:focus {
 }
 
 .note-tree-folder-row {
-  padding-left: calc(var(--tree-depth) * 14px);
+  grid-template-columns: 20px minmax(0, 1fr) auto 28px;
+  padding-left: calc(var(--tree-depth) * 16px);
   border-radius: 5px;
 }
 
 .note-tree-folder-row:hover {
-  background: #edf1f5;
+  background: #f6f8f9;
 }
 
 .tree-disclosure,
@@ -4030,9 +4134,29 @@ textarea:focus {
   background: transparent;
 }
 
+.tree-disclosure:hover,
+.tree-folder-name:hover,
+.tree-disclosure:active,
+.tree-folder-name:active {
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.tree-disclosure:focus-visible,
+.tree-folder-name:focus-visible {
+  color: inherit;
+  background: #f6f8f9;
+  outline: 2px solid #d7e0e7;
+  outline-offset: -2px;
+  box-shadow: none;
+  transform: none;
+}
+
 .tree-disclosure {
-  flex: 0 0 22px;
-  width: 22px;
+  flex: 0 0 20px;
+  width: 20px;
   justify-content: center;
 }
 
@@ -4046,10 +4170,14 @@ textarea:focus {
 }
 
 .tree-folder-name {
+  display: grid;
   min-width: 0;
-  flex: 1;
-  gap: 6px;
+  width: 100%;
+  grid-template-columns: 15px minmax(0, 1fr);
+  gap: 7px;
+  color: #3e4f60;
   text-align: left;
+  font-weight: 600;
 }
 
 .tree-folder-name svg,
@@ -4072,40 +4200,112 @@ textarea:focus {
   font-size: 10px;
 }
 
-.tree-row-actions {
+.tree-action-menu {
+  position: relative;
+  flex: 0 0 28px;
+  margin-right: 2px;
+}
+
+.tree-action-menu > summary {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  place-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  opacity: 0;
+}
+
+.tree-action-menu > summary::-webkit-details-marker {
   display: none;
-  padding-right: 3px;
 }
 
-.note-tree-folder-row:hover .tree-row-actions,
-.note-tree-folder-row:focus-within .tree-row-actions {
-  display: flex;
+.note-tree-folder-row:hover .tree-action-menu > summary,
+.note-tree-folder-row:focus-within .tree-action-menu > summary,
+.tree-action-menu[open] > summary {
+  opacity: 1;
 }
 
-.tree-row-actions button {
-  width: 25px;
-  height: 27px;
+.tree-action-menu > summary:hover,
+.tree-action-menu[open] > summary {
+  color: var(--ink);
+  background: #eef2f5;
 }
 
-.tree-row-actions button:last-child:hover {
+.tree-action-menu > summary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tree-action-popover {
+  position: absolute;
+  z-index: 20;
+  top: 30px;
+  right: 0;
+  width: 150px;
+  padding: 4px;
+  border: 1px solid #d7dee6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(28, 39, 52, 0.14);
+}
+
+.tree-action-popover button {
+  display: grid;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 4px;
+  color: #3f4e5f;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+}
+
+.tree-action-popover button:hover {
+  color: var(--ink);
+  background: #f0f3f6;
+}
+
+.tree-action-popover button.danger:hover {
   color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.tree-action-popover svg {
+  width: 15px;
+  height: 15px;
 }
 
 .note-tree-note-row {
-  padding: 0 8px 0 calc(var(--tree-depth, 0) * 14px + 24px);
+  grid-template-columns: 15px minmax(0, 1fr);
+  padding: 0 8px 0 calc(var(--tree-depth, 0) * 16px + 20px);
   gap: 7px;
   border-radius: 5px;
+  justify-content: start;
 }
 
 .note-tree-note-row:hover {
-  color: var(--ink);
-  background: #edf1f5;
+  color: #2d4052;
+  background: #f6f8f9;
 }
 
 .note-tree-note-row.selected {
-  color: var(--moss-dark);
-  background: #e3ebf4;
-  font-weight: 650;
+  color: #1f3142;
+  background: #fff;
+  box-shadow: inset 2px 0 #a7b6c3, inset 0 0 0 1px #e7ecef;
+  font-weight: 600;
+}
+
+.note-tree-note-row.selected > svg,
+.note-tree-note-row.selected > span {
+  color: #1f3142;
 }
 
 .unfiled-notes {
@@ -4117,7 +4317,7 @@ textarea:focus {
 .unfiled-notes > p,
 .tree-empty {
   margin: 0;
-  padding: 6px 10px;
+  padding: 6px 0;
   color: var(--muted);
   font-size: 10px;
   font-weight: 700;
@@ -4134,6 +4334,20 @@ textarea:focus {
   min-height: 100%;
   margin: 0;
   padding: 0;
+}
+
+.note-workspace-editor > .note-import-page {
+  width: min(920px, 100%);
+  min-height: 100%;
+  padding: clamp(28px, 4vw, 56px);
+}
+
+.note-workspace-editor .back-link {
+  display: none;
+}
+
+.note-workspace-editor .editor-status {
+  margin-left: auto;
 }
 
 .editor-status .editor-delete-button {
@@ -4190,11 +4404,13 @@ textarea:focus {
 
 @media (max-width: 1100px) {
   .notes-workspace {
-    grid-template-columns: 270px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
   }
+}
 
-  .tree-row-actions button:nth-child(2) {
-    display: none;
+@media (hover: none) {
+  .tree-action-menu > summary {
+    opacity: 1;
   }
 }
 
@@ -4216,6 +4432,10 @@ textarea:focus {
 
   .note-workspace-editor {
     height: 100%;
+  }
+
+  .note-workspace-editor .back-link {
+    display: inline-flex;
   }
 
   .notes-workspace:not(.has-open-note) .note-workspace-editor {
