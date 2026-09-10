@@ -7,7 +7,7 @@
         <RouterLink class="back-link" :to="{ name: 'notes' }">← 返回笔记</RouterLink>
         <div class="editor-status">
           <span>{{ characterCount }} 字</span>
-          <span v-if="saveState" class="save-state">{{ saveState }}</span>
+          <span v-if="saveState" class="save-state" :data-sync-status="syncStatus" :title="persistenceReceipt">{{ saveState }}</span>
           <button v-if="isEdit" class="editor-delete-button" type="button" title="删除笔记" aria-label="删除笔记" @click="removeNote"><Trash2 /></button>
           <button type="submit">保存</button>
         </div>
@@ -59,8 +59,10 @@ import { Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, projectApi, tagApi } from '../api/workstation';
+import { auth } from '../auth';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import { flattenFolderOptions } from '../utils/noteFolders';
+import { deleteNoteDraft, getNoteDraft, putNoteDraft } from '../utils/noteDraftStore';
 
 const route = useRoute();
 const router = useRouter();
@@ -70,6 +72,7 @@ const projects = ref([]);
 const tags = ref([]);
 const saved = ref(null);
 const saveState = ref('');
+const syncStatus = ref('SYNCED');
 const contentReady = ref(false);
 const editorReady = ref(false);
 const emit = defineEmits(['saved', 'deleted']);
@@ -77,8 +80,9 @@ const form = reactive({ title: '', content: '', folderId: route.query.folderId |
 const isEdit = computed(() => Boolean(route.params.id));
 const folderOptions = computed(() => flattenFolderOptions(folders.value));
 const characterCount = computed(() => form.content.replace(/\s/g, '').length);
-const draftKey = computed(() => `workstation:note-draft:${route.params.id || 'new'}`);
+const draftKey = computed(() => `note-draft:${auth.state.user?.username || 'anonymous'}:${route.params.id || 'new'}`);
 const canSave = computed(() => form.title.trim().length > 0 && form.content.trim().length > 0);
+const persistenceReceipt = computed(() => persistedVersion === null ? syncStatus.value : `${syncStatus.value} · version ${persistedVersion}`);
 const propertySummary = computed(() => {
   const folder = folderOptions.value.find((item) => item.id === Number(form.folderId))?.path || '未归档';
   const project = projects.value.find((item) => item.id === Number(form.projectId))?.name;
@@ -92,7 +96,8 @@ let draftTimer;
 let saving = false;
 let saveQueued = false;
 let hydrating = true;
-let skipDraftPersistOnUnmount = false;
+let persistedSnapshot = '';
+let persistedVersion = null;
 
 function payload() {
   return {
@@ -118,6 +123,7 @@ async function loadOptions() {
 async function loadNote() {
   if (!isEdit.value) return;
   const note = await noteApi.get(route.params.id);
+  persistedVersion = requirePersistenceReceipt(note);
   saved.value = note;
   Object.assign(form, {
     title: note.title,
@@ -137,8 +143,7 @@ async function removeNote() {
   try {
     error.value = '';
     await noteApi.delete(route.params.id);
-    clearDraft();
-    skipDraftPersistOnUnmount = true;
+    await clearDraft();
     emit('deleted', Number(route.params.id));
     await router.replace({ name: 'notes' });
   } catch (err) {
@@ -157,25 +162,38 @@ async function persist(manual = false) {
   }
 
   const snapshot = formSnapshot();
+  const pendingDraftKey = draftKey.value;
+  const previousVersion = persistedVersion;
+  let createdNoteId = null;
   try {
     error.value = '';
     saving = true;
+    syncStatus.value = 'SYNCING';
     saveState.value = manual ? '保存中…' : '自动保存中…';
     if (isEdit.value) {
       saved.value = await noteApi.update(route.params.id, payload());
     } else {
       saved.value = await noteApi.create(payload());
-      router.replace({ name: 'note-edit', params: { id: saved.value.id } });
+      createdNoteId = saved.value.id;
     }
-    if (snapshot === formSnapshot()) {
-      clearDraft();
-      skipDraftPersistOnUnmount = true;
+    persistedVersion = requirePersistenceReceipt(saved.value, previousVersion);
+    persistedSnapshot = snapshot;
+    if (!isDirty()) {
+      await clearDraft(pendingDraftKey);
+    } else {
+      scheduleDraft();
     }
     emit('saved', saved.value);
+    syncStatus.value = 'SYNCED';
     saveState.value = manual ? '已保存' : '已自动保存';
+    if (createdNoteId) {
+      await router.replace({ name: 'note-edit', params: { id: createdNoteId } });
+    }
   } catch (err) {
     error.value = err.message;
-    saveState.value = '';
+    const cached = await saveDraft();
+    syncStatus.value = 'ERROR';
+    saveState.value = cached ? '保存失败，修改已缓存' : '保存和本地缓存均失败';
   } finally {
     saving = false;
     if (saveQueued) {
@@ -195,36 +213,70 @@ function formSnapshot() {
   });
 }
 
-function saveDraft() {
+function isDirty() {
+  return formSnapshot() !== persistedSnapshot;
+}
+
+function requirePersistenceReceipt(note, previousVersion = null) {
+  const version = Number(note?.version);
+  if (!Number.isSafeInteger(version) || version < 1) {
+    throw new Error('服务器未返回有效的持久化凭证');
+  }
+  if (previousVersion !== null && version <= previousVersion) {
+    throw new Error('服务器返回的持久化版本没有递增');
+  }
+  return version;
+}
+
+async function saveDraft() {
   try {
-    if (!form.title.trim() && !form.content.trim() && !form.folderId && !form.projectId && form.tagIds.length === 0) {
-      clearDraft();
-      return;
+    if (!isDirty()) {
+      await clearDraft();
+      return true;
     }
-    window.localStorage.setItem(draftKey.value, formSnapshot());
+    await putNoteDraft({
+      key: draftKey.value,
+      noteId: isEdit.value ? Number(route.params.id) : null,
+      snapshot: formSnapshot(),
+      baseSnapshot: persistedSnapshot,
+      baseVersion: persistedVersion,
+      updatedAt: new Date().toISOString()
+    });
+    syncStatus.value = 'CACHED';
+    saveState.value = '待同步，修改已缓存';
+    return true;
   } catch {
-    // 浏览器存储不可用时，服务端保存仍然可用。
+    syncStatus.value = 'ERROR';
+    saveState.value = '本地草稿缓存失败';
+    return false;
   }
 }
 
-function clearDraft() {
+async function clearDraft(key = draftKey.value) {
   try {
-    window.localStorage.removeItem(draftKey.value);
+    await deleteNoteDraft(key);
   } catch {
-    // 浏览器存储不可用时，不影响服务端保存。
+    // 清理失败只会留下可识别的旧快照，不影响服务端保存。
   }
 }
 
-function restoreDraft() {
-  let draft;
+async function restoreDraft() {
+  let record;
   try {
-    draft = window.localStorage.getItem(draftKey.value);
+    record = await getNoteDraft(draftKey.value);
   } catch {
+    syncStatus.value = 'ERROR';
+    saveState.value = '无法读取本地草稿';
     return;
   }
+  const draft = record?.snapshot;
   if (!draft) return;
+  if (draft === persistedSnapshot) {
+    await clearDraft();
+    return;
+  }
   if (!window.confirm('发现未保存的本地草稿，是否恢复？')) {
-    clearDraft();
+    await clearDraft();
     return;
   }
 
@@ -238,15 +290,16 @@ function restoreDraft() {
       projectId: parsed.projectId || '',
       tagIds: parsed.tagIds
     });
-    saveState.value = '已恢复本地草稿';
+    syncStatus.value = 'PENDING';
+    saveState.value = '已恢复，等待同步';
   } catch {
-    clearDraft();
+    await clearDraft();
   }
 }
 
 function scheduleDraft() {
   window.clearTimeout(draftTimer);
-  draftTimer = window.setTimeout(saveDraft, 350);
+  draftTimer = window.setTimeout(() => void saveDraft(), 350);
 }
 
 function scheduleAutoSave() {
@@ -262,7 +315,16 @@ function handleEditorError(err) {
 
 watch(form, () => {
   if (hydrating) return;
-  skipDraftPersistOnUnmount = false;
+  if (!isDirty()) {
+    window.clearTimeout(autoSaveTimer);
+    window.clearTimeout(draftTimer);
+    void clearDraft();
+    syncStatus.value = 'SYNCED';
+    saveState.value = '已同步';
+    return;
+  }
+  syncStatus.value = 'PENDING';
+  saveState.value = '待同步';
   scheduleDraft();
   scheduleAutoSave();
 }, { deep: true });
@@ -274,12 +336,20 @@ function handleShortcut(event) {
   }
 }
 
+function persistDraftWhenHidden() {
+  if (!hydrating && document.visibilityState === 'hidden' && isDirty()) {
+    void saveDraft();
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('keydown', handleShortcut);
+  document.addEventListener('visibilitychange', persistDraftWhenHidden);
   try {
     await loadOptions();
     await loadNote();
-    restoreDraft();
+    persistedSnapshot = formSnapshot();
+    await restoreDraft();
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -291,7 +361,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.clearTimeout(autoSaveTimer);
   window.clearTimeout(draftTimer);
-  if (!hydrating && !skipDraftPersistOnUnmount) saveDraft();
+  if (!hydrating && isDirty()) void saveDraft();
   window.removeEventListener('keydown', handleShortcut);
+  document.removeEventListener('visibilitychange', persistDraftWhenHidden);
 });
 </script>

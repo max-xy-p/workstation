@@ -5,7 +5,7 @@ Workstation 是一个面向个人开发者的单用户 Web 工作台，用于集
 ## 主要功能
 
 - 使用 Tiptap 所见即所得编辑 Markdown 笔记
-- 手动保存、已有笔记自动保存和浏览器本地草稿恢复
+- 手动保存、已有笔记自动保存和 IndexedDB 待同步草稿恢复
 - 多级文件夹树组织笔记，左侧选择后在右侧直接编辑
 - 按标题/正文搜索笔记，按标签筛选
 - 标签、项目关联和本机 Markdown 文件导入
@@ -42,6 +42,12 @@ SOURCE D:/dev/project/workstation/src/main/resources/db/schema.sql;
 
 ```sql
 SOURCE D:/dev/project/workstation/src/main/resources/db/migrate-to-note-folders.sql;
+```
+
+任何由旧版 `schema.sql` 创建的现有数据库，还需要执行一次笔记版本凭证迁移。全新数据库不需要执行：
+
+```sql
+SOURCE D:/dev/project/workstation/src/main/resources/db/add-note-version.sql;
 ```
 
 3. 创建本地配置：

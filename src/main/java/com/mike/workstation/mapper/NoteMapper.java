@@ -22,7 +22,7 @@ public interface NoteMapper {
      */
     @Select("""
             <script>
-            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name, n.version,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
             LEFT JOIN note_folders f ON f.id = n.folder_id
@@ -61,7 +61,7 @@ public interface NoteMapper {
      * 根据主键查询笔记详情。
      */
     @Select("""
-            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name, n.version,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
             LEFT JOIN note_folders f ON f.id = n.folder_id
@@ -89,6 +89,7 @@ public interface NoteMapper {
                 content = #{content},
                 folder_id = #{folderId},
                 project_id = #{projectId},
+                version = version + 1,
                 updated_at = #{updatedAt}
             WHERE id = #{id}
             """)
@@ -105,7 +106,11 @@ public interface NoteMapper {
      *
      * <p>用于删除没有任务的项目时保留笔记。</p>
      */
-    @Update("UPDATE notes SET project_id = NULL, updated_at = #{updatedAt} WHERE project_id = #{projectId}")
+    @Update("""
+            UPDATE notes
+            SET project_id = NULL, version = version + 1, updated_at = #{updatedAt}
+            WHERE project_id = #{projectId}
+            """)
     int clearProject(@Param("projectId") Long projectId, @Param("updatedAt") java.time.LocalDateTime updatedAt);
 
     /**
@@ -124,7 +129,7 @@ public interface NoteMapper {
      * 查询最近更新的笔记，用于首页概览。
      */
     @Select("""
-            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name,
+            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name, n.version,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
             LEFT JOIN note_folders f ON f.id = n.folder_id

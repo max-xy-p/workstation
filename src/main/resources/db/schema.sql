@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS notes (
     content MEDIUMTEXT NOT NULL,
     folder_id BIGINT NULL,
     project_id BIGINT NULL,
+    version BIGINT NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),

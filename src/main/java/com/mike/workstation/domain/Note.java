@@ -17,6 +17,7 @@ public class Note {
     private String folderName;
     private Long projectId;
     private String projectName;
+    private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<Tag> tags = new ArrayList<>();

@@ -33,7 +33,7 @@ NotesView / NoteEditorView / NoteTreeItem
   -> notes / note_folders / note_tag / tags
 ```
 
-笔记工作区同时加载文件夹和笔记，前端按 `parentId` 组装树。打开笔记时，右侧编辑器加载文件夹、项目、标签和笔记详情，然后检查 `localStorage` 草稿。Tiptap 解析数据库返回的 Markdown；已有笔记停止修改 8 秒后调用 `PUT /api/notes/{id}`。
+笔记工作区同时加载文件夹和笔记，前端按 `parentId` 组装树。打开笔记时，右侧编辑器加载文件夹、项目、标签和笔记详情，然后检查 IndexedDB 待同步草稿。Tiptap 解析数据库返回的 Markdown；已有笔记停止修改 8 秒后调用 `PUT /api/notes/{id}`。MySQL 更新会递增 `notes.version`，前端确认响应版本有效且递增后才清除对应草稿。
 
 ### 登录与写请求
 
@@ -47,7 +47,8 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 ## Important Components
 
 - `MarkdownEditor.vue`：Tiptap StarterKit、Markdown 转换、基础格式工具栏和撤销/重做。
-- `NoteEditorView.vue`：笔记表单、350ms 本地草稿、8 秒自动保存和草稿恢复。
+- `NoteEditorView.vue`：笔记表单、350ms IndexedDB 草稿、8 秒自动保存和草稿恢复。
+- `noteDraftStore.js`：封装 `workstation-cache/note-drafts` IndexedDB 对象仓库。
 - `NotesView.vue` / `NoteTreeItem.vue`：两栏笔记工作区、递归文件夹树和文件夹管理。
 - `NoteFolderService`：校验父节点、同级重名、循环层级与非空删除。
 - `NoteImportService`：递归读取白名单目录下的 `.md`/`.markdown` 文件，提取标题并处理同标题策略。
@@ -60,7 +61,7 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 
 - `Project`：可拥有多个 `Task`，也可被多个 `Note` 关联。
 - `Task`：必须属于一个 `Project`。
-- `Note`：包含标题和 Markdown 正文，可选关联一个 `NoteFolder` 和一个 `Project`。
+- `Note`：包含标题、Markdown 正文和单调递增的持久化版本，可选关联一个 `NoteFolder` 和一个 `Project`。
 - `NoteFolder`：通过可空 `parentId` 形成多级树；存在子文件夹或笔记时不能删除。
 - `Tag`：通过 `note_tag` 与 `Note` 多对多关联；删除标签会先解除关联。
 

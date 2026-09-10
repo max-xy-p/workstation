@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。当前默认入口和主要开发重点是笔记模块；后端数据以 MySQL 为准，浏览器 `localStorage` 仅保存未提交草稿。
+Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。当前默认入口和主要开发重点是笔记模块；后端数据以 MySQL 为准，浏览器 IndexedDB 仅保存尚未获得服务端确认的草稿。
 
 ## Tech Stack
 
@@ -41,6 +41,8 @@ nginx/                               可选的本机 Nginx 配置
 - 所有业务 API 都受 Session 认证保护；前端写请求通过 `frontend/src/api/client.js` 自动携带 CSRF Token 和 Cookie。
 - 前端页面使用 Vue Composition API 与 `<script setup>`，通过 `frontend/src/api/workstation.js` 调用后端。
 - Tiptap 适配集中在 `frontend/src/components/MarkdownEditor.vue`；笔记正文保存为 Markdown，不保存 HTML。
+- IndexedDB 草稿访问集中在 `frontend/src/utils/noteDraftStore.js`；它只作待同步内容兜底，不能代替 MySQL。
+- `notes.version` 是简易持久化凭证；每次笔记更新必须递增，前端只有校验响应版本后才能清除待同步草稿。
 - 文件夹以 `note_folders.parent_id` 自关联形成树；层级和删除约束由 `NoteFolderService` 校验。
 - 沿用现有全局样式和页面结构；修改编辑器样式时注意通用选择器可能影响 ProseMirror 节点。
 - 后端测试沿用 JUnit 5、Mockito 和 MockMvc。行为变化时补充对应 Service 或集成测试。

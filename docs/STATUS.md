@@ -4,14 +4,15 @@
 
 ## Current State
 
-项目已可作为单用户本地工作台使用。笔记页是左侧文件夹树、右侧 Tiptap 编辑器的两栏工作区；笔记正文持久化在 MySQL，未提交草稿保存在浏览器 `localStorage`。
+项目已可作为单用户本地工作台使用。笔记页是左侧文件夹树、右侧 Tiptap 编辑器的两栏工作区；笔记正文持久化在 MySQL，待同步草稿保存在浏览器 IndexedDB。
 
 ## Completed
 
 - [x] 单管理员登录、Session 认证、退出和 CSRF 防护
 - [x] 笔记创建、详情、更新、删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
-- [x] 手动保存、快捷键保存、8 秒自动保存和本地草稿恢复
+- [x] 手动保存、快捷键保存、8 秒自动保存和 IndexedDB 草稿恢复
+- [x] `notes.version` 持久化凭证及前端递增校验
 - [x] 多级文件夹 CRUD、循环校验和非空删除保护
 - [x] 左侧文件夹/笔记树与右侧编辑器布局
 - [x] 笔记标题/正文关键词搜索，文件夹/标签/项目筛选
@@ -36,7 +37,7 @@
 - 笔记、项目和任务列表没有分页；笔记列表会返回完整 `MEDIUMTEXT` 正文。
 - 笔记列表和项目详情逐篇查询标签，存在 N+1 查询。
 - 笔记搜索使用 `%keyword%` SQL `LIKE`，没有全文索引、相关度或命中高亮。
-- 自动保存更新完整笔记并删除后重建标签；没有失败重试或多标签页冲突检测。
+- 自动保存更新完整笔记并删除后重建标签；版本目前只作持久化凭证，尚未用于乐观锁和多标签页冲突检测。
 - 笔记删除是物理删除；没有回收站、版本历史或恢复功能。
 - 编辑器和后端没有图片/附件上传能力。
 - Markdown 导入读取后端机器路径，不是浏览器文件上传。
@@ -46,10 +47,12 @@
 
 ## Notes
 
-- 2026-09-10 验证：`mvn.cmd test` 通过 15 个后端测试；`npm.cmd run build` 构建成功。
+- 2026-09-10 验证：`mvn.cmd test` 通过 16 个后端测试；`npm.cmd run build` 构建成功。
 - 现有旧数据库需备份后手动执行一次 `src/main/resources/db/migrate-to-note-folders.sql`。
+- 由旧版结构创建的现有数据库还需执行一次 `src/main/resources/db/add-note-version.sql`。
 - MySQL `notes.content` 保存 Markdown；Tiptap JSON 和渲染 HTML 都不持久化。
-- `localStorage` 草稿键为 `workstation:note-draft:{id}`；它不是服务端缓存或备份。
+- IndexedDB 数据库为 `workstation-cache`，对象仓库为 `note-drafts`；记录按用户和笔记 ID 隔离，包含当前快照、数据库基准快照和更新时间。
+- IndexedDB 不是服务端备份；服务端保存成功后会删除对应待同步草稿。
 - 同级文件夹名由 Service 校验，标签名由数据库唯一约束保证唯一。
 - `sample-data.sql` 会清空六张业务表后写入样例数据，只能在可丢弃数据的环境中执行。
 - 当前代码没有可确认的 SaaS、多用户或多租户实现。
