@@ -1,6 +1,6 @@
 # Project Status
 
-> 核对日期：2026-09-10。
+> 核对日期：2026-09-12。
 
 ## Current State
 
@@ -23,6 +23,7 @@
 - [x] 任务 CRUD、优先级、截止日期和状态看板
 - [x] 仪表盘统计和最近项目/笔记
 - [x] Maven 后端测试、Vite 前端构建和 GitHub Actions CI
+- [x] 后端源码、Maven 配置和 Dockerfile 统一整理到 `backend/`
 
 ## In Progress
 
@@ -48,9 +49,9 @@
 
 ## Notes
 
-- 2026-09-10 验证：`mvn.cmd test` 通过 16 个后端测试；`npm.cmd run build` 构建成功。
-- 现有旧数据库需备份后手动执行一次 `src/main/resources/db/migrate-to-note-folders.sql`。
-- 由旧版结构创建的现有数据库还需执行一次 `src/main/resources/db/add-note-version.sql`。
+- 2026-09-12 验证：在 `backend/` 执行 `mvn.cmd test` 通过 16 个后端测试；`npm.cmd run build` 构建成功。
+- 现有旧数据库需备份后手动执行一次 `backend/src/main/resources/db/migrate-to-note-folders.sql`。
+- 由旧版结构创建的现有数据库还需执行一次 `backend/src/main/resources/db/add-note-version.sql`。
 - MySQL `notes.content` 保存 Markdown；Tiptap JSON 和渲染 HTML 都不持久化。
 - IndexedDB 数据库为 `workstation-cache`，对象仓库为 `note-drafts`；记录按用户和笔记 ID 隔离，包含当前快照、数据库基准快照和更新时间。
 - IndexedDB 不是服务端备份；服务端保存成功后会删除对应待同步草稿。

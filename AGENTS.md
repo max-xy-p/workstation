@@ -13,9 +13,10 @@ Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown �
 ## Repository Structure
 
 ```text
-src/main/java/com/mike/workstation/  Spring Boot 后端
-src/main/resources/                  应用配置和数据库脚本
-src/test/                            后端测试
+backend/                                     Spring Boot、Maven 和后端容器配置
+backend/src/main/java/com/mike/workstation/  后端业务代码
+backend/src/main/resources/                  应用配置和数据库脚本
+backend/src/test/                            后端测试
 frontend/src/                        Vue 页面、组件、路由和 API Client
 frontend/                            前端构建及容器配置
 .github/workflows/                   CI 和镜像发布流程
@@ -52,13 +53,14 @@ nginx/                               可选的本机 Nginx 配置
 
 ```powershell
 # Backend
+cd backend
 mvn.cmd spring-boot:run
 mvn.cmd test
 mvn.cmd verify
 mvn.cmd package
 
 # Frontend
-cd frontend
+cd ../frontend
 npm.cmd ci
 npm.cmd run dev
 npm.cmd run build

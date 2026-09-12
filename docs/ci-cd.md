@@ -15,7 +15,7 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| `Dockerfile` | 构建 Spring Boot 后端镜像 |
+| `backend/Dockerfile` | 构建 Spring Boot 后端镜像 |
 | `frontend/Dockerfile` | 构建 Vue 静态资源和 Nginx Web 镜像 |
 | `frontend/nginx.conf` | 在 Web 容器中托管前端并代理 `/api/` |
 | `compose.yaml` | 本地从源码构建并启动完整环境 |

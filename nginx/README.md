@@ -7,6 +7,7 @@
 启动后端：
 
 ```powershell
+cd backend
 mvn.cmd spring-boot:run
 ```
 

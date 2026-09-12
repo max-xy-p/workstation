@@ -54,7 +54,7 @@ unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> prot
 - `NoteImportService`：递归读取白名单目录下的 `.md`/`.markdown` 文件，提取标题并处理同标题策略。
 - `SecurityConfig`：单管理员认证、Session 登录/退出、CSRF 和 JSON 安全错误。
 - `GlobalExceptionHandler`：将不存在、业务校验和数据库约束错误转换为统一 JSON。
-- `schema.sql`：MySQL 初始表结构；应用本身不会自动执行增量迁移。
+- `backend/src/main/resources/db/schema.sql`：MySQL 初始表结构；应用本身不会自动执行增量迁移。
 - `styles.css`：全站样式，包含页面布局和 Tiptap 文档样式。
 
 ## Key Data Models

@@ -31,8 +31,8 @@ jobs:
       matrix:
         include:
           - name: backend
-            context: .
-            dockerfile: ./Dockerfile
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
             image: workstation-backend
           - name: web
             context: ./frontend
@@ -134,11 +134,11 @@ jobs:
         shell: bash
         run: |
           ssh -p "$VPS_PORT" -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
-            "mkdir -p '$DEPLOY_PATH/src/main/resources/db' '$DEPLOY_PATH/notes'"
+            "mkdir -p '$DEPLOY_PATH/backend/src/main/resources/db' '$DEPLOY_PATH/notes'"
           scp -P "$VPS_PORT" compose.prod.yaml \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/compose.prod.yaml"
-          scp -P "$VPS_PORT" src/main/resources/db/schema.sql \
-            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/src/main/resources/db/schema.sql"
+          scp -P "$VPS_PORT" backend/src/main/resources/db/schema.sql \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/backend/src/main/resources/db/schema.sql"
 
       - name: Pull and restart services
         shell: bash

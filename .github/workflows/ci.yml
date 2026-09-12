@@ -22,6 +22,10 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -78,8 +82,8 @@ jobs:
       matrix:
         include:
           - name: backend
-            context: .
-            dockerfile: ./Dockerfile
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
           - name: web
             context: ./frontend
             dockerfile: ./frontend/Dockerfile

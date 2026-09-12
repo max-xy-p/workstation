@@ -1,6 +1,6 @@
 # Workstation
 
-Workstation 是一个面向个人开发者的单用户 Web 工作台，用于集中管理 Markdown 笔记、软件项目和项目任务。应用默认进入笔记列表，当前主要使用场景是笔记记录、组织和检索。
+Workstation 是一个面向个人开发者的单用户 Web 工作台，用于集中管理 Markdown 笔记、软件项目和项目任务。应用默认进入概览页，当前主要使用场景是笔记记录、组织和检索。
 
 ## 主要功能
 
@@ -35,29 +35,29 @@ CREATE DATABASE workstation
 2. 在 MySQL 客户端执行建表脚本，路径按实际仓库位置调整：
 
 ```sql
-SOURCE D:/dev/project/workstation/src/main/resources/db/schema.sql;
+SOURCE D:/dev/project/workstation/backend/src/main/resources/db/schema.sql;
 ```
 
 如果数据库是旧版 `categories/category_id` 结构，请先备份数据，然后只执行一次迁移脚本，不要再执行 `schema.sql`：
 
 ```sql
-SOURCE D:/dev/project/workstation/src/main/resources/db/migrate-to-note-folders.sql;
+SOURCE D:/dev/project/workstation/backend/src/main/resources/db/migrate-to-note-folders.sql;
 ```
 
 任何由旧版 `schema.sql` 创建的现有数据库，还需要执行一次笔记版本凭证迁移。全新数据库不需要执行：
 
 ```sql
-SOURCE D:/dev/project/workstation/src/main/resources/db/add-note-version.sql;
+SOURCE D:/dev/project/workstation/backend/src/main/resources/db/add-note-version.sql;
 ```
 
 3. 创建本地配置：
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-4. 编辑根目录 `.env`。`APP_ADMIN_PASSWORD_HASH` 必须填写 BCrypt 散列，不能填写明文密码。
+4. 编辑 `backend/.env`。`APP_ADMIN_PASSWORD_HASH` 必须填写 BCrypt 散列，不能填写明文密码。
 
 | 变量 | 说明 |
 | --- | --- |
@@ -84,6 +84,7 @@ npm.cmd ci
 终端一启动后端：
 
 ```powershell
+cd backend
 mvn.cmd spring-boot:run
 ```
 
@@ -100,10 +101,13 @@ Vite 默认把 `/api` 代理到 `http://localhost:8080`。如后端地址不同�
 
 ```powershell
 # 后端测试、校验和打包
+cd backend
 mvn.cmd test
 mvn.cmd verify
 mvn.cmd package
+```
 
+```powershell
 # 前端开发、构建和预览
 cd frontend
 npm.cmd run dev
@@ -113,7 +117,7 @@ npm.cmd run preview
 
 前端目前没有配置 `test`、`lint` 或 `format` 脚本。
 
-仓库包含 Maven Wrapper，Linux/CI 使用 `./mvnw`。当前 `mvnw.cmd` 在 Windows 上无法正常启动，因此本地命令使用已安装的 `mvn.cmd`，详见状态文档。
+`backend/` 包含 Maven Wrapper，Linux/CI 在该目录使用 `./mvnw`。当前 `mvnw.cmd` 在 Windows 上无法正常启动，因此本地命令使用已安装的 `mvn.cmd`，详见状态文档。
 
 ## 项目文档
 
