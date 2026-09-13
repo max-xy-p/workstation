@@ -1,75 +1,79 @@
 # Architecture
 
-## Overview
+## 总览
 
-Workstation 是一个前后端分离的模块化单体应用。Vue 单页应用通过 `/api` 调用 Spring Boot JSON 接口；Spring Boot 使用 MyBatis 访问 MySQL。开发环境由 Vite 代理 API，容器环境由 Nginx 托管前端并反向代理后端。
+Workstation 是前后端分离的单用户工作台。浏览器只访问 Web/Nginx 入口；身份认证由 Keycloak 负责，Gateway 作为 OAuth2 Client 与 BFF 保存浏览器会话并向后端转发 Access Token；Backend 是无状态 OAuth2 Resource Server。
 
 ```text
-Browser -> Vue/Vite -> /api -> Spring MVC -> Service -> MyBatis Mapper -> MySQL
+Browser
+  -> Web/Nginx
+      -> Vue 静态资源
+      -> /auth/**                         -> Keycloak -> MySQL(keycloak)
+      -> /oauth2/**、/login/oauth2/**     -> Gateway
+      -> /api/**                          -> Gateway -> Backend -> MySQL
+                                                   -> Redis（Gateway Session）
 ```
 
-系统没有 Redis、消息队列、搜索服务、对象存储或第三方业务 API。
+浏览器不保存 Access Token 或 Refresh Token，只持有 HttpOnly 的 `WORKSTATION_SESSION` Cookie。所有业务 API 仍位于 `/api`。
 
-## Main Modules
+## 认证与授权边界
 
-- **Notes**：笔记 CRUD、多级文件夹、标题/正文搜索、标签/项目筛选和 Markdown 导入。后端入口是 `NoteController` 和 `NoteFolderController`。
-- **Taxonomy**：标签 CRUD；标签通过 `note_tag` 与笔记多对多关联。
-- **Projects**：项目资料、状态和详情聚合。项目详情同时返回关联任务和笔记。
-- **Tasks**：任务 CRUD、项目归属、优先级、截止日期和 `TODO / IN_PROGRESS / DONE` 看板状态。
-- **Dashboard**：聚合活跃项目、任务数量以及最近项目/笔记。
-- **Authentication**：配置文件中的单一管理员账号、Spring Security Session、CSRF 和前端路由守卫。
-- **Frontend shell**：`App.vue` 为概览、项目、任务和标签提供全局侧栏；笔记相关路由使用不含全局侧栏的独立工作区外壳。`router/index.js` 定义路由，`api/client.js` 统一处理 HTTP、认证和错误。
-
-## Data / Request Flow
-
-### 笔记读取与保存
+- Keycloak：账号、密码、登录页面、SSO 会话、OIDC Token、暴力破解保护和 `OWNER` 角色。
+- Gateway：Authorization Code + PKCE、OIDC 回调、Redis Session、CSRF、当前用户接口、注销和 Token Relay。
+- Backend：只验证 Bearer JWT 的签名、Issuer、Audience、有效期和 `OWNER` 角色，不再实现登录、Session 或浏览器 CSRF。
+- Vue：触发登录跳转、读取 `/api/auth/me`、获取 CSRF Token；不接触 OAuth2 Token。
 
 ```text
-NotesView / NoteEditorView / NoteTreeItem
-  -> noteApi / noteFolderApi
+登录：LoginView -> /oauth2/authorization/keycloak -> Keycloak
+    -> /login/oauth2/code/keycloak -> Gateway Session -> Vue
+
+读请求：Browser Cookie -> Gateway -> Bearer Access Token -> Backend
+写请求：Browser Cookie + CSRF Header -> Gateway -> Bearer Access Token -> Backend
+退出：POST /api/auth/logout + CSRF -> 清除 Gateway Session -> Keycloak Logout
+```
+
+Gateway 中的认证状态用于浏览器会话，Backend 中保留的是资源访问校验，不是重复实现登录。即使内部网络绕过 Gateway，Backend 仍会拒绝无效 Token 或缺少 `OWNER` 角色的请求。
+
+## 业务模块
+
+- Notes：Markdown 笔记 CRUD、多级文件夹、搜索、标签/项目筛选和文件导入。
+- Projects：项目资料、状态以及关联任务和笔记。
+- Tasks：任务 CRUD、优先级、截止日期和看板状态。
+- Dashboard：活跃项目、任务数量和最近记录。
+- Frontend shell：概览、项目、任务和标签使用全局侧栏；笔记使用独立工作区外壳。
+
+后端业务沿用 `Controller -> Service -> Mapper -> MySQL` 分层。写操作和关联对象校验位于 Service。
+
+## 笔记数据流
+
+```text
+NotesView / NoteEditorView
+  -> frontend/src/api/workstation.js
+  -> Gateway Token Relay
   -> NoteController / NoteFolderController
   -> NoteService / NoteFolderService
-  -> NoteMapper + NoteFolderMapper + TagMapper
+  -> MyBatis Mapper
   -> notes / note_folders / note_tag / tags
 ```
 
-笔记工作区同时加载文件夹和笔记，前端按 `parentId` 组装树。打开笔记时，右侧编辑器加载文件夹、项目、标签和笔记详情，然后检查 IndexedDB 待同步草稿。Tiptap 解析数据库返回的 Markdown；已有笔记停止修改 8 秒后调用 `PUT /api/notes/{id}`。MySQL 更新会递增 `notes.version`，前端确认响应版本有效且递增后才清除对应草稿。
+笔记正文以 Markdown 保存在 MySQL。浏览器 IndexedDB 的 `workstation-cache/note-drafts` 仅保存尚未获得服务端确认的草稿。更新成功后 `notes.version` 递增，前端确认响应版本后才清理草稿。
 
-### 登录与写请求
+## 关键组件
 
-```text
-LoginView -> Spring Security /api/auth/login -> JSESSIONID
-unsafe API request -> GET /api/auth/csrf -> CSRF header + session cookie -> protected API
-```
+- `gateway/SecurityConfig`：OIDC、PKCE、CSRF、角色映射、登录回调和全局退出。
+- `gateway/AuthController`：`/api/auth/csrf` 与 `/api/auth/me`。
+- `backend/config/SecurityConfig`：无状态 JWT Resource Server 和 `OWNER` 授权。
+- `keycloak/workstation-realm.json`：Realm、Client、Audience Mapper、角色和初始 Owner。
+- `frontend/src/api/client.js`：同源 API、Cookie、CSRF 与未认证事件。
+- `MarkdownEditor.vue`：Tiptap 与 Markdown 转换。
+- `noteDraftStore.js`：IndexedDB 待同步草稿。
+- `GlobalExceptionHandler`：业务异常的统一 JSON 响应。
 
-`frontend/src/auth.js` 缓存当前会话用户；收到 `401` 时 API Client 触发全局事件并跳回登录页。
+## 外部依赖
 
-## Important Components
+- MySQL 8：使用独立的 `workstation` 与 `keycloak` 数据库分别保存业务和身份数据。
+- Redis 8：Gateway 服务端 Session。
+- 本机文件系统：受 `NOTE_IMPORT_ALLOWED_ROOTS` 限制的 Markdown 导入源。
+- Nginx：唯一公开入口和同源反向代理。
 
-- `MarkdownEditor.vue`：Tiptap StarterKit、Markdown 转换、基础格式工具栏和撤销/重做。
-- `NoteEditorView.vue`：笔记表单、350ms IndexedDB 草稿、8 秒自动保存和草稿恢复。
-- `noteDraftStore.js`：封装 `workstation-cache/note-drafts` IndexedDB 对象仓库。
-- `NotesView.vue` / `NoteTreeItem.vue`：独立的两栏笔记工作区、递归文件夹树、文件夹管理和笔记模块内导航。
-- `NoteFolderService`：校验父节点、同级重名、循环层级与非空删除。
-- `NoteImportService`：递归读取白名单目录下的 `.md`/`.markdown` 文件，提取标题并处理同标题策略。
-- `SecurityConfig`：单管理员认证、Session 登录/退出、CSRF 和 JSON 安全错误。
-- `GlobalExceptionHandler`：将不存在、业务校验和数据库约束错误转换为统一 JSON。
-- `backend/src/main/resources/db/schema.sql`：MySQL 初始表结构；应用本身不会自动执行增量迁移。
-- `styles.css`：全站样式，包含页面布局和 Tiptap 文档样式。
-
-## Key Data Models
-
-- `Project`：可拥有多个 `Task`，也可被多个 `Note` 关联。
-- `Task`：必须属于一个 `Project`。
-- `Note`：包含标题、Markdown 正文和单调递增的持久化版本，可选关联一个 `NoteFolder` 和一个 `Project`。
-- `NoteFolder`：通过可空 `parentId` 形成多级树；存在子文件夹或笔记时不能删除。
-- `Tag`：通过 `note_tag` 与 `Note` 多对多关联；删除标签会先解除关联。
-
-删除项目时，如果存在任务则拒绝删除；如果只有关联笔记，则先清空笔记的项目关联。删除笔记是物理删除。
-
-## External Dependencies
-
-- **MySQL 8**：唯一必需的外部运行服务，保存全部业务数据。
-- **本机文件系统**：Markdown 导入依赖后端可访问且位于 `NOTE_IMPORT_ALLOWED_ROOTS` 下的目录。
-- **Nginx / Docker**：仅用于可选本机代理和容器部署，不是本地开发必需项。
-- **GitHub Actions / GHCR / VPS**：现有工作流在 `master` 和 PR 上执行后端校验、前端构建和镜像构建；版本标签可发布镜像并部署到 VPS。
+CI 验证 Backend、Gateway、Frontend 和三个应用镜像；发布流程把 Backend、Gateway、Web 镜像推送到 GHCR，并在 VPS 上通过生产 Compose 运行它们以及 MySQL、Redis、Keycloak。

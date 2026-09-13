@@ -37,19 +37,13 @@ async function ensureSession() {
   return sessionCheck;
 }
 
-async function login(username, password) {
-  await authApi.login(username, password);
-  state.user = await authApi.currentUser();
-  state.initialized = true;
-  return state.user;
+function login() {
+  authApi.login();
 }
 
 async function logout() {
-  try {
-    await authApi.logout();
-  } finally {
-    clearSession();
-  }
+  await authApi.logout();
+  clearSession();
 }
 
 function clearSession() {

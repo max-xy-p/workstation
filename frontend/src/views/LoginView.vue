@@ -27,48 +27,21 @@
       <section class="login-sheet" aria-label="登录">
         <div class="sheet-binding" aria-hidden="true"><span></span><span></span><span></span></div>
         <span class="sheet-tab">OWNER ACCESS</span>
-        <form class="login-form" @submit.prevent="submit">
+        <div class="login-form">
           <div class="login-form-heading">
             <span class="section-kicker">欢迎回来</span>
             <h2>登录工作台</h2>
-            <p>输入站点所有者账号，继续整理你的知识。</p>
+            <p>通过统一身份中心验证身份，继续整理你的知识。</p>
           </div>
 
           <p v-if="expired" class="login-notice" role="status">登录状态已失效，请重新验证。</p>
-          <p v-if="error" class="error" role="alert">{{ error }}</p>
-
-          <label class="login-field">
-            <span>用户名</span>
-            <input
-              v-model.trim="form.username"
-              name="username"
-              type="text"
-              autocomplete="username"
-              autofocus
-              required
-              placeholder="例如 owner"
-            >
-          </label>
-
-          <label class="login-field">
-            <span>密码</span>
-            <input
-              v-model="form.password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              placeholder="输入登录密码"
-            >
-          </label>
-
-          <button class="login-submit" type="submit" :disabled="submitting">
-            <span>{{ submitting ? '正在验证…' : '登录到工作台' }}</span>
+          <button class="login-submit" type="button" :disabled="submitting" @click="submit">
+            <span>{{ submitting ? '正在前往身份中心…' : '使用统一身份登录' }}</span>
             <AppIcon v-if="!submitting" name="arrow" />
           </button>
 
-          <p class="login-footnote">登录状态由服务器安全保存，退出后立即失效。</p>
-        </form>
+          <p class="login-footnote">账号凭据只提交给 Keycloak，工作台不会在浏览器中保存访问令牌。</p>
+        </div>
       </section>
     </div>
 
@@ -80,17 +53,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ApiError } from '../api/client';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { auth } from '../auth';
 import AppIcon from '../components/AppIcon.vue';
 
 const route = useRoute();
-const router = useRouter();
-const form = reactive({ username: '', password: '' });
 const submitting = ref(false);
-const error = ref('');
 const expired = computed(() => route.query.reason === 'expired');
 
 function safeRedirect() {
@@ -98,21 +67,9 @@ function safeRedirect() {
   return target.startsWith('/') && !target.startsWith('//') ? target : '/notes';
 }
 
-async function submit() {
-  error.value = '';
+function submit() {
   submitting.value = true;
-  try {
-    await auth.login(form.username, form.password);
-    await router.replace(safeRedirect());
-  } catch (requestError) {
-    if (requestError instanceof ApiError && requestError.status === 401) {
-      error.value = '用户名或密码不正确，请重新输入。';
-    } else {
-      error.value = '暂时无法连接服务器，请稍后重试。';
-    }
-    form.password = '';
-  } finally {
-    submitting.value = false;
-  }
+  sessionStorage.setItem('workstation:login-redirect', safeRedirect());
+  auth.login();
 }
 </script>

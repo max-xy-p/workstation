@@ -6,6 +6,8 @@ if (!API_BASE_URL) {
 
 let csrfToken = null;
 let csrfHeaderName = 'X-CSRF-TOKEN';
+let csrfParameterName = '_csrf';
+// 多个并发写请求共用同一次 CSRF 初始化请求，避免重复访问 Gateway。
 let csrfRequest = null;
 
 export class ApiError extends Error {
@@ -60,6 +62,7 @@ async function loadCsrfToken() {
       .then(parseResponse)
       .then((data) => {
         csrfHeaderName = data.headerName;
+        csrfParameterName = data.parameterName;
         csrfToken = data.token;
       })
       .finally(() => {
@@ -74,6 +77,21 @@ export function resetCsrfToken() {
   csrfRequest = null;
 }
 
+export async function submitWithCsrf(path) {
+  await loadCsrfToken();
+  // OIDC 退出需要浏览器跟随页面跳转，因此使用原生表单，而不是普通 fetch。
+  const form = document.createElement('form');
+  form.method = 'post';
+  form.action = buildUrl(path).toString();
+  const csrfField = document.createElement('input');
+  csrfField.type = 'hidden';
+  csrfField.name = csrfParameterName;
+  csrfField.value = csrfToken;
+  form.appendChild(csrfField);
+  document.body.appendChild(form);
+  form.submit();
+}
+
 async function request(path, options = {}) {
   const {
     params,
@@ -86,6 +104,7 @@ async function request(path, options = {}) {
   const isUnsafeMethod = !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
   if (isUnsafeMethod) {
+    // 所有可能修改数据的请求都先取得 Gateway 签发的 CSRF Token。
     await loadCsrfToken();
   }
 

@@ -1,14 +1,13 @@
-import { api, resetCsrfToken } from './client';
+import { api, resetCsrfToken, submitWithCsrf } from './client';
 
 export const authApi = {
   currentUser: () => api.get('/auth/me', undefined, { suppressUnauthorized: true }),
-  async login(username, password) {
-    resetCsrfToken();
-    await api.form('/auth/login', { username, password }, { suppressUnauthorized: true });
-    resetCsrfToken();
+  login() {
+    // 这里只发起 OIDC 登录；用户名和密码始终由 Keycloak 页面收集。
+    window.location.assign('/oauth2/authorization/keycloak');
   },
   async logout() {
-    await api.post('/auth/logout');
+    await submitWithCsrf('/auth/logout');
     resetCsrfToken();
   }
 };

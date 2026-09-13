@@ -1,0 +1,56 @@
+server:
+  port: ${GATEWAY_PORT:8081}
+  forward-headers-strategy: framework
+  reactive:
+    session:
+      cookie:
+        name: WORKSTATION_SESSION
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+spring:
+  application:
+    name: workstation-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  session:
+    timeout: ${SESSION_TIMEOUT:8h}
+    redis:
+      namespace: workstation:gateway:session
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:30s}
+          routes:
+            - id: workstation-backend
+              uri: ${BACKEND_BASE_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/**
+              filters:
+                - SaveSession
+                - TokenRelay
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+workstation:
+  sso:
+    # 浏览器跳转和 Token issuer 使用公开地址；Gateway 后台换 Token/取公钥使用内网地址。
+    application-base-url: ${WORKSTATION_PUBLIC_URL:http://localhost:8088}
+    public-keycloak-base-url: ${KEYCLOAK_PUBLIC_BASE_URL:http://localhost:8088/auth}
+    internal-keycloak-base-url: ${KEYCLOAK_INTERNAL_BASE_URL:http://localhost:8090/auth}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET}

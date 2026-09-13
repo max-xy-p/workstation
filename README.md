@@ -10,17 +10,19 @@ Workstation 是一个面向个人开发者的单用户 Web 工作台，用于集
 - 按标题/正文搜索笔记，按标签筛选
 - 标签、项目关联和本机 Markdown 文件导入
 - 项目资料管理、项目详情和任务看板
-- 单管理员 Session 登录和 CSRF 防护
+- Keycloak 单点登录、Gateway/BFF 服务端会话和 CSRF 防护
 
 ## 技术栈
 
-- 后端：Java 17、Spring Boot 4.0.7、Spring Security、MyBatis 4.0.1
+- 后端：Java 17、Spring Boot 4.0.7、Spring Security Resource Server、MyBatis 4.0.1
+- 网关：Spring Cloud Gateway 5、OAuth2 Client、Spring Session Redis
+- 身份服务：Keycloak 26.7、OpenID Connect
 - 前端：Vue 3.5、Vue Router 4、Vite 6、Tiptap 3
-- 数据库：MySQL 8、InnoDB、utf8mb4
+- 数据：MySQL 8（业务库与 Keycloak 独立数据库）、Redis 8
 
 ## 本地环境
 
-本地开发不需要 Docker，需要安装 JDK 17、Maven 3.9、MySQL 8.x、Node.js 20 LTS 和 npm。
+推荐使用 Docker Compose 启动完整环境，需要 Docker Engine 和 Docker Compose。单独调试源码还需要 JDK 17、Maven 3.9、Node.js 20 LTS 和 npm。
 
 ## 初始化
 
@@ -50,23 +52,24 @@ SOURCE D:/dev/project/workstation/backend/src/main/resources/db/migrate-to-note-
 SOURCE D:/dev/project/workstation/backend/src/main/resources/db/add-note-version.sql;
 ```
 
-3. 创建本地配置：
+3. 完整环境创建配置：
 
 ```powershell
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
+Copy-Item .env.docker.example .env.docker
 ```
 
-4. 编辑 `backend/.env`。`APP_ADMIN_PASSWORD_HASH` 必须填写 BCrypt 散列，不能填写明文密码。
+4. 编辑 `.env.docker`，替换全部 `replace-with-...` 值。Keycloak 会在首次启动时创建临时 Owner 账号，首次登录必须修改密码。
 
 | 变量 | 说明 |
 | --- | --- |
 | `SERVER_PORT` | 后端端口 |
 | `DB_URL` | MySQL JDBC 地址 |
 | `DB_USERNAME` / `DB_PASSWORD` | 数据库账号 |
-| `APP_ADMIN_USERNAME` | 管理员用户名 |
-| `APP_ADMIN_PASSWORD_HASH` | 管理员密码 BCrypt 散列 |
-| `SESSION_COOKIE_SECURE` | HTTPS 部署时设为 `true` |
+| `WORKSTATION_PUBLIC_URL` | 浏览器访问 Workstation 的完整外部地址 |
+| `KEYCLOAK_CLIENT_SECRET` | Gateway 的 OIDC Client Secret |
+| `WORKSTATION_OWNER_USERNAME` | Workstation 所有者登录名 |
+| `WORKSTATION_OWNER_INITIAL_PASSWORD` | 首次登录临时密码 |
+| `REDIS_PASSWORD` | Gateway Session Redis 密码 |
 | `DASHBOARD_RECENT_LIMIT` | 概览页最近记录数量 |
 | `NOTE_IMPORT_ALLOWED_ROOTS` | 后端允许读取 Markdown 的根目录 |
 | `NOTE_IMPORT_MAX_FILE_BYTES` | 单个导入文件大小上限 |
@@ -74,34 +77,48 @@ Copy-Item frontend/.env.example frontend/.env
 
 ## 安装与启动
 
-安装前端依赖：
+启动完整环境：
 
 ```powershell
-cd frontend
-npm.cmd ci
+docker compose --env-file .env.docker up -d --build
 ```
 
-终端一启动后端：
+访问 `http://localhost:8088`，点击“使用统一身份登录”。Keycloak Admin Console 位于 `http://localhost:8088/auth/admin/`。
+
+调试源码时，可只启动 MySQL、Redis、Keycloak 数据库初始化任务和 Keycloak：
+
+```powershell
+docker compose --env-file .env.docker up -d db redis keycloak-db-init keycloak
+```
+
+然后参照 `backend/.env.example` 与 `gateway/.env.example` 把配置写入当前终端或 IDE 运行环境，再分别启动后端、网关和前端：
 
 ```powershell
 cd backend
 mvn.cmd spring-boot:run
-```
 
-终端二启动前端：
+cd ../gateway
+mvn.cmd spring-boot:run
 
-```powershell
-cd frontend
+cd ../frontend
 npm.cmd run dev
 ```
 
-Vite 默认把 `/api` 代理到 `http://localhost:8080`。如后端地址不同，启动前设置 `VITE_DEV_API_TARGET`。
+Vite 默认把 API/OAuth2 回调代理到 `http://localhost:8081`，把 `/auth` 代理到 `http://localhost:8090`。完整说明见 [Keycloak + Gateway/BFF 实施说明](docs/gateway-implementation-plan.md)。
 
 ## 常用命令
 
 ```powershell
 # 后端测试、校验和打包
 cd backend
+mvn.cmd test
+mvn.cmd verify
+mvn.cmd package
+```
+
+```powershell
+# 网关测试、校验和打包
+cd gateway
 mvn.cmd test
 mvn.cmd verify
 mvn.cmd package
@@ -117,7 +134,7 @@ npm.cmd run preview
 
 前端目前没有配置 `test`、`lint` 或 `format` 脚本。
 
-`backend/` 包含 Maven Wrapper，Linux/CI 在该目录使用 `./mvnw`。当前 `mvnw.cmd` 在 Windows 上无法正常启动，因此本地命令使用已安装的 `mvn.cmd`，详见状态文档。
+`backend/` 包含 Maven Wrapper，Linux/CI 在该目录使用 `./mvnw`；Gateway 在 CI 中使用 Maven 3.9。当前后端 `mvnw.cmd` 在 Windows 上无法正常启动，因此本地命令使用已安装的 `mvn.cmd`。
 
 ## 项目文档
 
@@ -125,4 +142,5 @@ npm.cmd run preview
 - [系统架构](ARCHITECTURE.md)
 - [当前状态](docs/STATUS.md)
 - [CI/CD 与容器部署](docs/ci-cd.md)
+- [Keycloak + Gateway/BFF 实施说明](docs/gateway-implementation-plan.md)
 - [可选 Nginx 本机代理](nginx/README.md)

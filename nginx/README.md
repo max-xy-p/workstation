@@ -1,58 +1,56 @@
-# Nginx 本地代理配置
+# Nginx 本机代理配置
 
-使用本配置时，前端 API 地址采用同源路径 `/api`，由 nginx 转发到 Spring Boot，因此不需要后端配置 CORS。常规本地开发也可以直接使用 Vite 自带的 API 代理，详见根目录 `README.md`。
+Nginx 是浏览器的同源入口，默认监听 `http://localhost:8088`：
+
+- `/` 转发 Vue 开发服务或读取 `frontend/dist`。
+- `/api/`、`/oauth2/`、`/login/oauth2/` 转发 Gateway `localhost:8081`。
+- `/auth/` 转发 Keycloak `localhost:8090`。
+- Backend `localhost:8080` 不应直接暴露给浏览器。
 
 ## 开发模式
 
-启动后端：
+先启动 MySQL、Redis、Keycloak 数据库初始化任务和 Keycloak：
+
+```powershell
+docker compose --env-file .env.docker up -d db redis keycloak-db-init keycloak
+```
+
+再分别启动 Backend、Gateway 和 Vite：
 
 ```powershell
 cd backend
 mvn.cmd spring-boot:run
-```
 
-启动前端：
+cd ../gateway
+mvn.cmd spring-boot:run
 
-```powershell
-cd frontend
+cd ../frontend
 npm.cmd run dev -- --host 127.0.0.1
 ```
 
-开发代理配置固定连接 Vite 的 `5173` 端口。如果 Vite 因端口占用启动到其他端口，需要释放 `5173` 或同步修改 `workstation.dev.conf`。
-
-把 `nginx/workstation.dev.conf` 作为 server block 放进 nginx 的 `http {}` 中。例如在 nginx 主配置里加入：
+把 `nginx/workstation.dev.conf` 包含到 Nginx 的 `http {}` 中：
 
 ```nginx
 include D:/dev/project/workstation/nginx/workstation.dev.conf;
 ```
 
-然后访问：
-
-```text
-http://localhost:8088
-```
-
-如果页面显示 `Unexpected token '<', "<!doctype "... is not valid JSON`，说明 `/api/...` 请求拿到的是前端 HTML 页面，不是后端 JSON。常见原因是直接访问了 Vite 地址 `http://127.0.0.1:5173`，或者 nginx 没有加载本配置；请改用 `http://localhost:8088` 并确认 `/api/` location 已生效。
+然后只访问 `http://localhost:8088`。Vite 必须监听 `5173`；若端口变化，需要同步修改代理配置和 Keycloak Client 的回调白名单。
 
 ## 构建产物模式
-
-构建前端：
 
 ```powershell
 cd frontend
 npm.cmd run build
 ```
 
-把 `nginx/workstation.prod.conf` 作为 server block 放进 nginx 的 `http {}` 中。例如：
+把 `nginx/workstation.prod.conf` 包含到 Nginx 的 `http {}` 中：
 
 ```nginx
 include D:/dev/project/workstation/nginx/workstation.prod.conf;
 ```
 
-然后访问：
+配置默认从 `D:/dev/project/workstation/frontend/dist` 读取静态文件。仓库路径变化时应同步修改 `root`。
 
-```text
-http://localhost:8088
-```
+## 代理要求
 
-如果项目路径不是 `D:/dev/project/workstation`，需要同步修改 `workstation.prod.conf` 中的 `root`。
+OIDC 回调地址依赖准确的外部地址，因此代理必须传递 `Host`、`X-Forwarded-Proto` 和 `X-Forwarded-Port`。生产环境必须使用 HTTPS，并把 `.env.docker` 的 `WORKSTATION_PUBLIC_URL` 设置为真实公网地址且不带末尾斜杠。

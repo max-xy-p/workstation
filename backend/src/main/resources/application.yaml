@@ -1,12 +1,6 @@
 server:
   port: ${SERVER_PORT}
   forward-headers-strategy: framework
-  servlet:
-    session:
-      cookie:
-        http-only: true
-        same-site: lax
-        secure: ${SESSION_COOKIE_SECURE:false}
 
 spring:
   application:
@@ -24,8 +18,10 @@ mybatis:
 
 workstation:
   security:
-    admin-username: ${APP_ADMIN_USERNAME}
-    admin-password-hash: ${APP_ADMIN_PASSWORD_HASH}
+    oauth2:
+      issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8088/auth/realms/workstation}
+      jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/auth/realms/workstation/protocol/openid-connect/certs}
+      audience: ${OAUTH2_AUDIENCE:workstation-api}
   dashboard:
     recent-limit: ${DASHBOARD_RECENT_LIMIT}
   note-import:

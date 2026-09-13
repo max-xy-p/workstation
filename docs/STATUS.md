@@ -1,6 +1,6 @@
 # Project Status
 
-> 核对日期：2026-09-12。
+> 核对日期：2026-09-13。
 
 ## Current State
 
@@ -8,7 +8,9 @@
 
 ## Completed
 
-- [x] 单管理员登录、Session 认证、退出和 CSRF 防护
+- [x] Keycloak 单点登录、Gateway/BFF 服务端 Session、OIDC 全局退出和 CSRF 防护
+- [x] Backend 无状态 JWT Resource Server、Issuer/Audience 校验和 `OWNER` 角色授权
+- [x] MySQL 分库保存 Workstation 业务数据和 Keycloak 身份数据，Redis 保存 Gateway Session
 - [x] 笔记创建、详情、更新、删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
 - [x] 手动保存、快捷键保存、8 秒自动保存和 IndexedDB 草稿恢复
@@ -49,6 +51,8 @@
 
 ## Notes
 
+- 2026-09-13 验证：Backend `mvn verify` 通过 14 项测试，Gateway `mvn verify` 通过 4 项测试，Frontend `npm run build` 成功；开发与生产 Compose 配置和 Keycloak Realm JSON 静态校验通过。
+- 当前验证机器未启动 Docker daemon，完整 Keycloak 浏览器登录、Token Relay 和全局退出链路仍需在可运行 Docker 的环境中做一次烟测。
 - 2026-09-12 验证：在 `backend/` 执行 `mvn.cmd test` 通过 16 个后端测试；`npm.cmd run build` 构建成功。
 - 现有旧数据库需备份后手动执行一次 `backend/src/main/resources/db/migrate-to-note-folders.sql`。
 - 由旧版结构创建的现有数据库还需执行一次 `backend/src/main/resources/db/add-note-version.sql`。

@@ -1,0 +1,88 @@
+{
+  "realm": "workstation",
+  "displayName": "Workstation",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "roles": {
+    "realm": [
+      {
+        "name": "OWNER",
+        "description": "Workstation owner"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "workstation-gateway",
+      "name": "Workstation Gateway",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "${WORKSTATION_PUBLIC_URL}/login/oauth2/code/keycloak",
+        "${WORKSTATION_DEV_URL}/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "${WORKSTATION_PUBLIC_URL}",
+        "${WORKSTATION_DEV_URL}"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "${WORKSTATION_PUBLIC_URL}/login?logout=success##${WORKSTATION_DEV_URL}/login?logout=success",
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "workstation-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "workstation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "${WORKSTATION_OWNER_USERNAME}",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${WORKSTATION_OWNER_INITIAL_PASSWORD}",
+          "temporary": true
+        }
+      ],
+      "realmRoles": [
+        "OWNER"
+      ]
+    }
+  ]
+}

@@ -3,70 +3,92 @@ package com.mike.workstation.config;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService(SecurityProperties properties) {
-        var owner = User.withUsername(properties.adminUsername())
-                .password(properties.adminPasswordHash())
-                .roles("OWNER")
-                .build();
-        return new InMemoryUserDetailsManager(owner);
-    }
-
+    /**
+     * Backend 是 OAuth2 Resource Server，只信任 Keycloak 签发的 Bearer Token。
+     * 它不负责登录和浏览器 Session，但仍必须独立校验 Token，防止请求绕过 Gateway。
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/api/**").hasRole("OWNER")
                         .anyRequest().permitAll())
-                .formLogin(form -> form
-                        .loginProcessingUrl("/api/auth/login")
-                        .successHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_NO_CONTENT))
-                        .failureHandler((request, response, exception) -> writeError(
-                                response,
-                                HttpServletResponse.SC_UNAUTHORIZED,
-                                "AUTHENTICATION_FAILED",
-                                "用户名或密码错误")))
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_NO_CONTENT))
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID"))
-                .exceptionHandling(exceptions -> exceptions
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Backend 不使用 Cookie 认证，因此没有浏览器 CSRF 状态；CSRF 已由 Gateway 校验。
+                .csrf(csrf -> csrf.disable())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                         .authenticationEntryPoint((request, response, exception) -> writeError(
                                 response,
                                 HttpServletResponse.SC_UNAUTHORIZED,
                                 "UNAUTHENTICATED",
-                                "请先登录"))
+                                "访问令牌无效或已过期"))
                         .accessDeniedHandler((request, response, exception) -> writeError(
                                 response,
                                 HttpServletResponse.SC_FORBIDDEN,
                                 "ACCESS_DENIED",
-                                "请求校验失败，请刷新后重试")))
+                                "权限不足")))
                 .requestCache(cache -> cache.disable());
 
         return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(ResourceServerProperties properties) {
+        // JWK 地址用于取得 Keycloak 公钥并验证 JWT 签名，不包含任何私钥。
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri()).build();
+        // 除签名和有效期外，同时限制签发方和目标 API，避免接受其他 Realm 或其他 Client 的 Token。
+        OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(properties.issuerUri());
+        OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<Collection<String>>(
+                "aud", audience -> audience != null && audience.contains(properties.audience()));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(issuerValidator, audienceValidator));
+        return decoder;
+    }
+
+    private JwtAuthenticationConverter jwtAuthenticationConverter() {
+        var scopes = new JwtGrantedAuthoritiesConverter();
+        var converter = new JwtAuthenticationConverter();
+        converter.setPrincipalClaimName("preferred_username");
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            var authorities = new ArrayList<GrantedAuthority>();
+            scopes.convert(jwt).forEach(authority -> authorities.add(
+                    new SimpleGrantedAuthority(authority.getAuthority())));
+
+            Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+            if (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> roles) {
+                // 把 Keycloak 的 OWNER Realm 角色转换为 Spring Security 能识别的 ROLE_OWNER。
+                roles.stream()
+                        .map(String::valueOf)
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                        .forEach(authorities::add);
+            }
+            return authorities;
+        });
+        return converter;
     }
 
     private static void writeError(HttpServletResponse response, int status, String code, String message) throws IOException {

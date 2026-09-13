@@ -33,7 +33,9 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } };
   }
   if (user && to.name === 'login') {
-    return { name: 'notes' };
+    const redirect = sessionStorage.getItem('workstation:login-redirect');
+    sessionStorage.removeItem('workstation:login-redirect');
+    return redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : { name: 'notes' };
   }
   return true;
 });
