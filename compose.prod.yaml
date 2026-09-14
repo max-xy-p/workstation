@@ -121,7 +121,8 @@ services:
     pull_policy: always
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8088}:80"
+      # 公网 HTTPS 只由宿主机 Nginx 提供，Web 容器入口不直接暴露到 VPS 公网网卡。
+      - "127.0.0.1:${APP_PORT:-8088}:80"
     depends_on:
       - gateway
       - keycloak

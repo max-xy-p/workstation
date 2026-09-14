@@ -93,7 +93,9 @@ WORKSTATION_OWNER_INITIAL_PASSWORD=<temporary-secret>
 REDIS_PASSWORD=<secret>
 ```
 
-生产 Compose 固定启用 Secure Session Cookie，所以公网入口必须配置 HTTPS，并正确转发 `Host`、`X-Forwarded-Proto` 与 `X-Forwarded-Port`。
+生产 Compose 只将 Web 入口绑定到宿主机 `127.0.0.1:${APP_PORT:-8088}`，由宿主机 Nginx 对外提供 HTTPS，
+不应将该端口直接开放到 VPS 公网。生产 Compose 固定启用 Secure Session Cookie，
+所以公网入口必须正确转发 `Host`、`X-Forwarded-Proto` 与 `X-Forwarded-Port`。
 
 Realm JSON 只会在数据库中不存在 `workstation` Realm 时自动导入。后续身份配置变更应使用 Keycloak Admin Console 或受控导入流程，不会靠重启覆盖现有 Realm。
 
