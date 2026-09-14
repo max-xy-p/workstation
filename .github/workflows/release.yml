@@ -157,6 +157,24 @@ jobs:
           image_tag="$1"
           cd /opt/workstation
 
+          show_deployment_diagnostics() {
+            exit_code="$?"
+            if ((exit_code != 0)); then
+              echo "Deployment failed with exit code ${exit_code}. Current container state:"
+              IMAGE_TAG="$image_tag" docker compose \
+                --env-file .env.docker \
+                -f compose.prod.yaml \
+                ps -a || true
+              IMAGE_TAG="$image_tag" docker compose \
+                --env-file .env.docker \
+                -f compose.prod.yaml \
+                logs --tail=100 db redis keycloak backend gateway web || true
+            fi
+            trap - EXIT
+            exit "$exit_code"
+          }
+          trap show_deployment_diagnostics EXIT
+
           if [[ ! -f .env.docker ]]; then
             echo "/opt/workstation/.env.docker does not exist"
             exit 1
@@ -170,17 +188,12 @@ jobs:
           IMAGE_TAG="$image_tag" docker compose \
             --env-file .env.docker \
             -f compose.prod.yaml \
-            up -d --wait --wait-timeout 180 db redis
-
-          IMAGE_TAG="$image_tag" docker compose \
-            --env-file .env.docker \
-            -f compose.prod.yaml \
-            exec -T db bash /docker-entrypoint-initdb.d/02-keycloak.sh
-
-          IMAGE_TAG="$image_tag" docker compose \
-            --env-file .env.docker \
-            -f compose.prod.yaml \
             up -d --remove-orphans
+
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            ps -a
 
           for attempt in {1..20}; do
             if IMAGE_TAG="$image_tag" docker compose \
@@ -197,10 +210,6 @@ jobs:
           done
 
           echo "Deployment health check failed"
-          IMAGE_TAG="$image_tag" docker compose \
-            --env-file .env.docker \
-            -f compose.prod.yaml \
-            logs --tail=100 backend gateway keycloak redis web
           exit 1
           REMOTE
 

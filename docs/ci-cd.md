@@ -56,8 +56,8 @@ docker compose --env-file .env.docker exec -T db bash /docker-entrypoint-initdb.
 docker compose --env-file .env.docker up -d
 ```
 
-这些命令不会删除或重建数据卷。发布工作流也会在启动完 MySQL 后幂等执行该脚本，
-因此通过 Git Tag 部署时不需要再登录服务器手动执行。
+这些命令不会删除或重建数据卷。这是已有数据卷升级到 Keycloak 架构时的一次性操作；
+新数据卷会在 MySQL 首次启动时自动完成初始化。
 
 访问 `http://localhost:8088`。停止但保留数据：
 
@@ -114,8 +114,8 @@ docker login ghcr.io -u <username>
 | `VPS_SSH_KNOWN_HOSTS` | 已人工核验指纹的主机公钥记录 |
 
 发布流程会上传 `compose.prod.yaml`、MySQL schema、Keycloak 数据库初始化脚本和 Realm 模板。
-拉取镜像后会先等待 MySQL/Redis 健康，在 MySQL 容器内幂等执行 Keycloak 数据库初始化，
-再启动剩余服务。部署健康检查通过 Web 入口请求 Gateway 的 `/api/auth/csrf`；
+拉取镜像后会用一次 `docker compose up -d --remove-orphans` 创建或更新全部服务；
+Keycloak 再通过 Compose 依赖等待 MySQL 健康。部署健康检查通过 Web 入口请求 Gateway 的 `/api/auth/csrf`；
 失败时输出 Backend、Gateway、Keycloak、Redis 和 Web 日志。
 
 ## 数据与安全
