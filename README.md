@@ -85,10 +85,10 @@ docker compose --env-file .env.docker up -d --build
 
 访问 `http://localhost:8088`，点击“使用统一身份登录”。Keycloak Admin Console 位于 `http://localhost:8088/auth/admin/`。
 
-调试源码时，可只启动 MySQL、Redis、Keycloak 数据库初始化任务和 Keycloak：
+调试源码时，可只启动 MySQL、Redis 和 Keycloak：
 
 ```powershell
-docker compose --env-file .env.docker up -d db redis keycloak-db-init keycloak
+docker compose --env-file .env.docker up -d db redis keycloak
 ```
 
 然后参照 `backend/.env.example` 与 `gateway/.env.example` 把配置写入当前终端或 IDE 运行环境，再分别启动后端、网关和前端：

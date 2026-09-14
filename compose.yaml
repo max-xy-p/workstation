@@ -10,31 +10,20 @@ services:
       MYSQL_USER: ${MYSQL_USER:-workstation}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.docker}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
+      KEYCLOAK_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env.docker}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      # mysqladmin ping 在鉴权失败时仍可能返回成功；执行 SQL 才能确认数据库真正可用。
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql --protocol=tcp --host=127.0.0.1 --user=root --silent --skip-column-names --execute='SELECT 1' | grep -qx 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
-
-  # 一次性初始化任务：在同一个 MySQL 实例中为 Keycloak 创建独立数据库和账号。
-  keycloak-db-init:
-    image: mysql:8.4
-    restart: "no"
-    entrypoint: ["/bin/bash", "/init/init-keycloak-database.sh"]
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
-      KEYCLOAK_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
-      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env.docker}
-    volumes:
-      - ./deployment/mysql/init-keycloak-database.sh:/init/init-keycloak-database.sh:ro
-    depends_on:
-      db:
-        condition: service_healthy
 
   redis:
     image: redis:8-alpine
@@ -80,8 +69,8 @@ services:
     ports:
       - "127.0.0.1:8090:8080"
     depends_on:
-      keycloak-db-init:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
 
   backend:
     build:

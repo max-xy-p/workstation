@@ -28,7 +28,7 @@ jobs:
 
       - name: Validate shell and configuration files
         run: |
-          bash -n deployment/mysql/init-keycloak-database.sh
+          bash -n backend/src/main/resources/db/init-keycloak-database.sh
           jq empty keycloak/workstation-realm.json
           docker compose --env-file .env.docker.example config --quiet
           docker compose --env-file .env.docker.example -f compose.prod.yaml config --quiet

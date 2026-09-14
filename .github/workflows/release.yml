@@ -138,15 +138,15 @@ jobs:
         shell: bash
         run: |
           ssh -p "$VPS_PORT" -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
-            "mkdir -p '$DEPLOY_PATH/backend/src/main/resources/db' '$DEPLOY_PATH/deployment/mysql' '$DEPLOY_PATH/keycloak' '$DEPLOY_PATH/notes'"
+            "mkdir -p '$DEPLOY_PATH/backend/src/main/resources/db' '$DEPLOY_PATH/keycloak' '$DEPLOY_PATH/notes'"
           scp -P "$VPS_PORT" compose.prod.yaml \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/compose.prod.yaml"
           scp -P "$VPS_PORT" backend/src/main/resources/db/schema.sql \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/backend/src/main/resources/db/schema.sql"
+          scp -P "$VPS_PORT" backend/src/main/resources/db/init-keycloak-database.sh \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/backend/src/main/resources/db/init-keycloak-database.sh"
           scp -P "$VPS_PORT" keycloak/workstation-realm.json \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/keycloak/workstation-realm.json"
-          scp -P "$VPS_PORT" deployment/mysql/init-keycloak-database.sh \
-            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/deployment/mysql/init-keycloak-database.sh"
 
       - name: Pull and restart services
         shell: bash
@@ -166,6 +166,16 @@ jobs:
             --env-file .env.docker \
             -f compose.prod.yaml \
             pull
+
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            up -d --wait --wait-timeout 180 db redis
+
+          IMAGE_TAG="$image_tag" docker compose \
+            --env-file .env.docker \
+            -f compose.prod.yaml \
+            exec -T db bash /docker-entrypoint-initdb.d/02-keycloak.sh
 
           IMAGE_TAG="$image_tag" docker compose \
             --env-file .env.docker \

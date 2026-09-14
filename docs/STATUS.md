@@ -51,6 +51,7 @@
 
 ## Notes
 
+- 2026-09-14 验证：移除额外的 `keycloak-db-init` 容器；Keycloak 数据库初始化已并入 MySQL `/docker-entrypoint-initdb.d`，发布流程兼容已有数据卷；开发与生产 Compose 配置静态校验通过。
 - 2026-09-13 验证：Backend `mvn verify` 通过 14 项测试，Gateway `mvn verify` 通过 4 项测试，Frontend `npm run build` 成功；开发与生产 Compose 配置和 Keycloak Realm JSON 静态校验通过。
 - 当前验证机器未启动 Docker daemon，完整 Keycloak 浏览器登录、Token Relay 和全局退出链路仍需在可运行 Docker 的环境中做一次烟测。
 - 2026-09-12 验证：在 `backend/` 执行 `mvn.cmd test` 通过 16 个后端测试；`npm.cmd run build` 构建成功。

@@ -9,10 +9,10 @@ Nginx 是浏览器的同源入口，默认监听 `http://localhost:8088`：
 
 ## 开发模式
 
-先启动 MySQL、Redis、Keycloak 数据库初始化任务和 Keycloak：
+先启动 MySQL、Redis 和 Keycloak：
 
 ```powershell
-docker compose --env-file .env.docker up -d db redis keycloak-db-init keycloak
+docker compose --env-file .env.docker up -d db redis keycloak
 ```
 
 再分别启动 Backend、Gateway 和 Vite：

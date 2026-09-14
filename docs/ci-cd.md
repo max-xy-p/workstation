@@ -17,7 +17,9 @@ ghcr.io/<namespace>/workstation-gateway:<tag>
 ghcr.io/<namespace>/workstation-web:<tag>
 ```
 
-MySQL、Redis 和 Keycloak 使用官方镜像，不由本仓库重新构建。`keycloak-db-init` 是使用 MySQL 官方镜像运行后退出的幂等初始化任务，不是常驻数据库。
+MySQL、Redis 和 Keycloak 使用官方镜像，不由本仓库重新构建。MySQL 首次创建数据卷时，
+会按顺序执行 `01-schema.sql` 和 `02-keycloak.sh`，分别初始化业务表以及 Keycloak 数据库/专用账号。
+项目不再使用额外的数据库初始化容器。
 
 ## 本地 Compose
 
@@ -43,6 +45,19 @@ docker compose --env-file .env.docker up -d --build
 docker compose --env-file .env.docker ps
 docker compose --env-file .env.docker logs -f gateway keycloak backend
 ```
+
+`db` 的健康检查会实际执行 `SELECT 1`，不只检查 MySQL 进程是否存活。
+对于已有 `mysql_data` 的环境，MySQL 不会再自动执行 `/docker-entrypoint-initdb.d`。
+首次升级到 Keycloak 架构时，必须在现有 MySQL 容器内手动执行一次同一个幂等脚本：
+
+```powershell
+docker compose --env-file .env.docker up -d db
+docker compose --env-file .env.docker exec -T db bash /docker-entrypoint-initdb.d/02-keycloak.sh
+docker compose --env-file .env.docker up -d
+```
+
+这些命令不会删除或重建数据卷。发布工作流也会在启动完 MySQL 后幂等执行该脚本，
+因此通过 Git Tag 部署时不需要再登录服务器手动执行。
 
 访问 `http://localhost:8088`。停止但保留数据：
 
@@ -98,7 +113,10 @@ docker login ghcr.io -u <username>
 | `VPS_SSH_PRIVATE_KEY` | 无口令、仅用于部署的私钥 |
 | `VPS_SSH_KNOWN_HOSTS` | 已人工核验指纹的主机公钥记录 |
 
-发布流程会上传 `compose.prod.yaml`、MySQL schema 和 Keycloak Realm 模板，拉取镜像并执行 `docker compose up -d --remove-orphans`。部署健康检查通过 Web 入口请求 Gateway 的 `/api/auth/csrf`；失败时输出 Backend、Gateway、Keycloak、Redis 和 Web 日志。
+发布流程会上传 `compose.prod.yaml`、MySQL schema、Keycloak 数据库初始化脚本和 Realm 模板。
+拉取镜像后会先等待 MySQL/Redis 健康，在 MySQL 容器内幂等执行 Keycloak 数据库初始化，
+再启动剩余服务。部署健康检查通过 Web 入口请求 Gateway 的 `/api/auth/csrf`；
+失败时输出 Backend、Gateway、Keycloak、Redis 和 Web 日志。
 
 ## 数据与安全
 

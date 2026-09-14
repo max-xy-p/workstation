@@ -1068,7 +1068,7 @@ Backend 和 Keycloak虽然可能仍在运行，但浏览器登录链路不可用
 | 前端 Cookie、CSRF、API Client | `frontend/src/api/client.js` |
 | Nginx 同源代理 | `frontend/nginx.conf` |
 | 容器组合 | `compose.yaml`、`compose.prod.yaml` |
-| Keycloak MySQL 初始化 | `deployment/mysql/init-keycloak-database.sh` |
+| Keycloak MySQL 初始化 | `backend/src/main/resources/db/init-keycloak-database.sh` |
 
 ---
 

@@ -100,7 +100,7 @@ http://localhost:8088/auth/admin/
 最稳定的方式是用 Compose 运行完整环境。若需要单独调试 Java/Vue 源码，可先启动基础设施，再在宿主机运行应用：
 
 ```powershell
-docker compose --env-file .env.docker up -d db redis keycloak-db-init keycloak
+docker compose --env-file .env.docker up -d db redis keycloak
 ```
 
 随后分别启动 Backend、Gateway 和 Vue。Backend 与 Gateway 的本机配置参照 `backend/.env.example` 和 `gateway/.env.example`；启动命令前需把其中变量写入当前终端或 IDE 的运行环境。Vite 默认把 `/api` 和 OAuth2 回调代理到 `8081`，把 `/auth` 代理到 `8090`。
