@@ -1,7 +1,10 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.TagResponseAssembler;
 import com.mike.workstation.domain.Tag;
 import com.mike.workstation.dto.TagRequest;
+import com.mike.workstation.dto.TagResponse;
+import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.TagMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,8 +29,8 @@ public class TagService {
      *
      * @return 标签列表
      */
-    public List<Tag> list() {
-        return tagMapper.list();
+    public List<TagResponse> list() {
+        return tagMapper.list().stream().map(TagResponseAssembler::toResponse).toList();
     }
 
     /**
@@ -36,7 +39,11 @@ public class TagService {
      * @param id 标签 ID
      * @return 标签实体
      */
-    public Tag get(Long id) {
+    public TagResponse get(Long id) {
+        return TagResponseAssembler.toResponse(getEntity(id));
+    }
+
+    private Tag getEntity(Long id) {
         Tag tag = tagMapper.findById(id);
         RequestChecks.requiredExisting(tag, "标签不存在");
         return tag;
@@ -49,10 +56,10 @@ public class TagService {
      * @return 创建后的标签
      */
     @Transactional
-    public Tag create(TagRequest request) {
-        validate(request);
+    public TagResponse create(TagRequest request) {
+        validate(request, null);
         Tag tag = new Tag();
-        tag.setName(request.name());
+        tag.setName(request.name().trim());
         LocalDateTime now = LocalDateTime.now();
         tag.setCreatedAt(now);
         tag.setUpdatedAt(now);
@@ -68,12 +75,12 @@ public class TagService {
      * @return 更新后的标签
      */
     @Transactional
-    public Tag update(Long id, TagRequest request) {
-        validate(request);
-        get(id);
+    public TagResponse update(Long id, TagRequest request) {
+        getEntity(id);
+        validate(request, id);
         Tag tag = new Tag();
         tag.setId(id);
-        tag.setName(request.name());
+        tag.setName(request.name().trim());
         tag.setUpdatedAt(LocalDateTime.now());
         tagMapper.update(tag);
         return get(id);
@@ -86,7 +93,7 @@ public class TagService {
      */
     @Transactional
     public void delete(Long id) {
-        get(id);
+        getEntity(id);
         tagMapper.deleteTagLinks(id);
         tagMapper.delete(id);
     }
@@ -94,8 +101,13 @@ public class TagService {
     /**
      * 校验标签请求。
      */
-    private void validate(TagRequest request) {
+    private void validate(TagRequest request, Long excludeId) {
         RequestChecks.requiredObject(request, "标签请求");
         RequestChecks.requiredText(request.name(), "标签名称");
+        String name = request.name().trim();
+        RequestChecks.maxLength(name, 80, "标签名称");
+        if (tagMapper.countByName(name, excludeId) > 0) {
+            throw new BusinessException("标签名称已存在");
+        }
     }
 }

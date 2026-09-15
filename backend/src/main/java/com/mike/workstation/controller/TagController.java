@@ -1,7 +1,7 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.domain.Tag;
 import com.mike.workstation.dto.TagRequest;
+import com.mike.workstation.dto.TagResponse;
 import com.mike.workstation.service.TagService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -35,7 +35,7 @@ public class TagController {
      * @return 按名称排序的标签列表
      */
     @GetMapping
-    public List<Tag> list() {
+    public List<TagResponse> list() {
         return tagService.list();
     }
 
@@ -46,7 +46,7 @@ public class TagController {
      * @return 标签详情
      */
     @GetMapping("/{id}")
-    public Tag get(@PathVariable Long id) {
+    public TagResponse get(@PathVariable Long id) {
         return tagService.get(id);
     }
 
@@ -58,7 +58,7 @@ public class TagController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Tag create(@RequestBody TagRequest request) {
+    public TagResponse create(@RequestBody TagRequest request) {
         return tagService.create(request);
     }
 
@@ -70,7 +70,7 @@ public class TagController {
      * @return 更新后的标签数据
      */
     @PutMapping("/{id}")
-    public Tag update(@PathVariable Long id, @RequestBody TagRequest request) {
+    public TagResponse update(@PathVariable Long id, @RequestBody TagRequest request) {
         return tagService.update(id, request);
     }
 

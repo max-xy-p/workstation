@@ -1,7 +1,9 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.NoteFolderResponseAssembler;
 import com.mike.workstation.domain.NoteFolder;
 import com.mike.workstation.dto.NoteFolderRequest;
+import com.mike.workstation.dto.NoteFolderResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
@@ -22,18 +24,22 @@ public class NoteFolderService {
         this.noteMapper = noteMapper;
     }
 
-    public List<NoteFolder> list() {
-        return folderMapper.list();
+    public List<NoteFolderResponse> list() {
+        return folderMapper.list().stream().map(NoteFolderResponseAssembler::toResponse).toList();
     }
 
-    public NoteFolder get(Long id) {
+    public NoteFolderResponse get(Long id) {
+        return NoteFolderResponseAssembler.toResponse(getEntity(id));
+    }
+
+    private NoteFolder getEntity(Long id) {
         NoteFolder folder = folderMapper.findById(id);
         RequestChecks.requiredExisting(folder, "文件夹不存在");
         return folder;
     }
 
     @Transactional
-    public NoteFolder create(NoteFolderRequest request) {
+    public NoteFolderResponse create(NoteFolderRequest request) {
         validateRequest(request, null);
         NoteFolder folder = new NoteFolder();
         folder.setName(request.name().trim());
@@ -46,8 +52,8 @@ public class NoteFolderService {
     }
 
     @Transactional
-    public NoteFolder update(Long id, NoteFolderRequest request) {
-        get(id);
+    public NoteFolderResponse update(Long id, NoteFolderRequest request) {
+        getEntity(id);
         validateRequest(request, id);
         ensureAcyclic(id, request.parentId());
 
@@ -62,7 +68,7 @@ public class NoteFolderService {
 
     @Transactional
     public void delete(Long id) {
-        get(id);
+        getEntity(id);
         if (folderMapper.countChildren(id) > 0) {
             throw new BusinessException("文件夹下存在子文件夹，不能直接删除");
         }
@@ -76,7 +82,7 @@ public class NoteFolderService {
         RequestChecks.requiredObject(request, "文件夹请求");
         RequestChecks.requiredText(request.name(), "文件夹名称");
         if (request.parentId() != null) {
-            get(request.parentId());
+            getEntity(request.parentId());
         }
         String name = request.name().trim();
         if (name.length() > 120) {
@@ -97,7 +103,7 @@ public class NoteFolderService {
             if (!visited.add(currentId)) {
                 throw new BusinessException("文件夹层级存在循环");
             }
-            currentId = get(currentId).getParentId();
+            currentId = getEntity(currentId).getParentId();
         }
     }
 }

@@ -22,7 +22,7 @@ public interface NoteMapper {
      */
     @Select("""
             <script>
-            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name, n.version,
+            SELECT n.id, n.title, n.folder_id, f.name AS folder_name, n.version,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
             LEFT JOIN note_folders f ON f.id = n.folder_id
@@ -50,7 +50,7 @@ public interface NoteMapper {
             ORDER BY n.updated_at DESC, n.id DESC
             </script>
             """)
-    List<Note> list(
+    List<Note> listSummaries(
             @Param("keyword") String keyword,
             @Param("folderId") Long folderId,
             @Param("tagId") Long tagId,
@@ -68,7 +68,7 @@ public interface NoteMapper {
             LEFT JOIN projects p ON p.id = n.project_id
             WHERE n.id = #{id}
             """)
-    Note findById(Long id);
+    Note findDetailById(Long id);
 
     /**
      * 插入笔记，并回填自增主键到 note.id。
@@ -129,7 +129,7 @@ public interface NoteMapper {
      * 查询最近更新的笔记，用于首页概览。
      */
     @Select("""
-            SELECT n.id, n.title, n.content, n.folder_id, f.name AS folder_name, n.version,
+            SELECT n.id, n.title, n.folder_id, f.name AS folder_name, n.version,
                    n.project_id, p.name AS project_name, n.created_at, n.updated_at
             FROM notes n
             LEFT JOIN note_folders f ON f.id = n.folder_id
@@ -137,5 +137,5 @@ public interface NoteMapper {
             ORDER BY n.updated_at DESC, n.id DESC
             LIMIT #{limit}
             """)
-    List<Note> recent(int limit);
+    List<Note> recentSummaries(int limit);
 }

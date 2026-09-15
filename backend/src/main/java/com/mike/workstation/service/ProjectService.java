@@ -1,10 +1,15 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.NoteResponseAssembler;
+import com.mike.workstation.assembler.ProjectResponseAssembler;
+import com.mike.workstation.assembler.TaskResponseAssembler;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.ProjectRequest;
+import com.mike.workstation.dto.ProjectResponse;
+import com.mike.workstation.dto.ProjectSummaryResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
@@ -41,8 +46,8 @@ public class ProjectService {
      * @param status 项目状态，可为空
      * @return 项目列表
      */
-    public List<Project> list(String keyword, ProjectStatus status) {
-        return projectMapper.list(keyword, status);
+    public List<ProjectSummaryResponse> list(String keyword, ProjectStatus status) {
+        return projectMapper.list(keyword, status).stream().map(ProjectResponseAssembler::toSummary).toList();
     }
 
     /**
@@ -52,7 +57,11 @@ public class ProjectService {
      * @return 项目实体
      * @throws com.mike.workstation.exception.NotFoundException 项目不存在时抛出
      */
-    public Project get(Long id) {
+    public ProjectResponse get(Long id) {
+        return ProjectResponseAssembler.toResponse(getEntity(id));
+    }
+
+    private Project getEntity(Long id) {
         Project project = projectMapper.findById(id);
         RequestChecks.requiredExisting(project, "项目不存在");
         return project;
@@ -67,10 +76,14 @@ public class ProjectService {
      * @return 项目详情、关联任务和关联笔记
      */
     public ProjectDetailResponse detail(Long id) {
-        Project project = get(id);
-        List<Note> notes = noteMapper.list(null, null, null, id);
+        Project project = getEntity(id);
+        List<Note> notes = noteMapper.listSummaries(null, null, null, id);
         notes.forEach(note -> note.setTags(tagMapper.findByNoteId(note.getId())));
-        return new ProjectDetailResponse(project, taskMapper.list(null, id, null, null), notes);
+        return new ProjectDetailResponse(
+                ProjectResponseAssembler.toResponse(project),
+                taskMapper.list(null, id, null, null).stream().map(TaskResponseAssembler::toResponse).toList(),
+                notes.stream().map(NoteResponseAssembler::toSummary).toList()
+        );
     }
 
     /**
@@ -80,7 +93,7 @@ public class ProjectService {
      * @return 创建后的项目
      */
     @Transactional
-    public Project create(ProjectRequest request) {
+    public ProjectResponse create(ProjectRequest request) {
         validate(request);
         Project project = new Project();
         applyRequest(project, request);
@@ -99,9 +112,9 @@ public class ProjectService {
      * @return 更新后的项目
      */
     @Transactional
-    public Project update(Long id, ProjectRequest request) {
+    public ProjectResponse update(Long id, ProjectRequest request) {
         validate(request);
-        get(id);
+        getEntity(id);
         Project project = new Project();
         project.setId(id);
         applyRequest(project, request);
@@ -118,9 +131,9 @@ public class ProjectService {
      * @return 更新后的项目
      */
     @Transactional
-    public Project updateStatus(Long id, ProjectStatus status) {
+    public ProjectResponse updateStatus(Long id, ProjectStatus status) {
         RequestChecks.requiredObject(status, "项目状态");
-        get(id);
+        getEntity(id);
         projectMapper.updateStatus(id, status, LocalDateTime.now());
         return get(id);
     }
@@ -134,7 +147,7 @@ public class ProjectService {
      */
     @Transactional
     public void delete(Long id) {
-        get(id);
+        getEntity(id);
         if (taskMapper.countByProjectId(id) > 0) {
             throw new BusinessException("项目下存在任务，不能直接删除");
         }
@@ -153,6 +166,9 @@ public class ProjectService {
         RequestChecks.requiredObject(request, "项目请求");
         RequestChecks.requiredText(request.name(), "项目名称");
         RequestChecks.requiredObject(request.status(), "项目状态");
+        RequestChecks.maxLength(request.name().trim(), 200, "项目名称");
+        RequestChecks.maxLength(request.repositoryUrl(), 500, "仓库地址");
+        RequestChecks.maxLength(request.techStack(), 500, "技术栈");
     }
 
     /**
@@ -161,7 +177,7 @@ public class ProjectService {
      * <p>单独拆出是为了让创建和更新共用同一套字段映射。</p>
      */
     private void applyRequest(Project project, ProjectRequest request) {
-        project.setName(request.name());
+        project.setName(request.name().trim());
         project.setDescription(request.description());
         project.setStatus(request.status());
         project.setRepositoryUrl(request.repositoryUrl());

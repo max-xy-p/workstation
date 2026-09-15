@@ -1,9 +1,10 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.domain.Note;
+import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.service.NoteImportService;
 import com.mike.workstation.service.NoteService;
 import java.util.List;
@@ -45,7 +46,7 @@ public class NoteController {
      * @return 满足筛选条件的笔记列表，每条笔记会携带标签信息
      */
     @GetMapping
-    public List<Note> list(
+    public List<NoteSummaryResponse> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) Long tagId,
@@ -61,7 +62,7 @@ public class NoteController {
      * @return 笔记详情，包含文件夹、项目和标签信息
      */
     @GetMapping("/{id}")
-    public Note get(@PathVariable Long id) {
+    public NoteDetailResponse get(@PathVariable Long id) {
         return noteService.get(id);
     }
 
@@ -73,7 +74,7 @@ public class NoteController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Note create(@RequestBody NoteRequest request) {
+    public NoteDetailResponse create(@RequestBody NoteRequest request) {
         return noteService.create(request);
     }
 
@@ -98,7 +99,7 @@ public class NoteController {
      * @return 更新后的笔记数据
      */
     @PutMapping("/{id}")
-    public Note update(@PathVariable Long id, @RequestBody NoteRequest request) {
+    public NoteDetailResponse update(@PathVariable Long id, @RequestBody NoteRequest request) {
         return noteService.update(id, request);
     }
 

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
+import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
@@ -52,6 +53,17 @@ class ProjectServiceTests {
 
         verify(noteMapper).clearProject(eq(1L), any(LocalDateTime.class));
         verify(projectMapper).delete(1L);
+    }
+
+    @Test
+    void createRejectsRepositoryUrlLongerThanDatabaseColumn() {
+        ProjectRequest request = new ProjectRequest(
+                "Workstation", null, ProjectStatus.ACTIVE, "x".repeat(501), null, null
+        );
+
+        assertThatThrownBy(() -> projectService.create(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("500");
     }
 
     private Project project() {

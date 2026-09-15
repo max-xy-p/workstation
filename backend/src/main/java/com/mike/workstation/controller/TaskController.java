@@ -1,9 +1,9 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.domain.Task;
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.TaskRequest;
+import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.dto.TaskStatusRequest;
 import com.mike.workstation.service.TaskService;
 import java.util.List;
@@ -44,7 +44,7 @@ public class TaskController {
      * @return 满足筛选条件的任务列表
      */
     @GetMapping
-    public List<Task> list(
+    public List<TaskResponse> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) TaskStatus status,
@@ -60,7 +60,7 @@ public class TaskController {
      * @return 任务详情
      */
     @GetMapping("/{id}")
-    public Task get(@PathVariable Long id) {
+    public TaskResponse get(@PathVariable Long id) {
         return taskService.get(id);
     }
 
@@ -72,7 +72,7 @@ public class TaskController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Task create(@RequestBody TaskRequest request) {
+    public TaskResponse create(@RequestBody TaskRequest request) {
         return taskService.create(request);
     }
 
@@ -84,7 +84,7 @@ public class TaskController {
      * @return 更新后的任务数据
      */
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @RequestBody TaskRequest request) {
+    public TaskResponse update(@PathVariable Long id, @RequestBody TaskRequest request) {
         return taskService.update(id, request);
     }
 
@@ -98,7 +98,7 @@ public class TaskController {
      * @return 更新后的任务数据
      */
     @PatchMapping("/{id}/status")
-    public Task updateStatus(@PathVariable Long id, @RequestBody TaskStatusRequest request) {
+    public TaskResponse updateStatus(@PathVariable Long id, @RequestBody TaskStatusRequest request) {
         return taskService.updateStatus(id, request.status());
     }
 

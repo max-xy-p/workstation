@@ -19,6 +19,12 @@ final class RequestChecks {
         }
     }
 
+    static void maxLength(String value, int maxLength, String fieldName) {
+        if (value != null && value.length() > maxLength) {
+            throw new BusinessException(fieldName + "不能超过 " + maxLength + " 个字符");
+        }
+    }
+
     /**
      * 校验必填对象。
      *

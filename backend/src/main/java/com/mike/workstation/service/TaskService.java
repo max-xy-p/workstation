@@ -1,9 +1,11 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.TaskResponseAssembler;
 import com.mike.workstation.domain.Task;
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.TaskRequest;
+import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
@@ -35,8 +37,10 @@ public class TaskService {
      * @param priority 优先级筛选，可为空
      * @return 任务列表
      */
-    public List<Task> list(String keyword, Long projectId, TaskStatus status, TaskPriority priority) {
-        return taskMapper.list(keyword, projectId, status, priority);
+    public List<TaskResponse> list(String keyword, Long projectId, TaskStatus status, TaskPriority priority) {
+        return taskMapper.list(keyword, projectId, status, priority).stream()
+                .map(TaskResponseAssembler::toResponse)
+                .toList();
     }
 
     /**
@@ -45,7 +49,11 @@ public class TaskService {
      * @param id 任务 ID
      * @return 任务实体
      */
-    public Task get(Long id) {
+    public TaskResponse get(Long id) {
+        return TaskResponseAssembler.toResponse(getEntity(id));
+    }
+
+    private Task getEntity(Long id) {
         Task task = taskMapper.findById(id);
         RequestChecks.requiredExisting(task, "任务不存在");
         return task;
@@ -58,7 +66,7 @@ public class TaskService {
      * @return 创建后的任务
      */
     @Transactional
-    public Task create(TaskRequest request) {
+    public TaskResponse create(TaskRequest request) {
         validate(request);
         Task task = new Task();
         applyRequest(task, request);
@@ -77,9 +85,9 @@ public class TaskService {
      * @return 更新后的任务
      */
     @Transactional
-    public Task update(Long id, TaskRequest request) {
+    public TaskResponse update(Long id, TaskRequest request) {
         validate(request);
-        get(id);
+        getEntity(id);
         Task task = new Task();
         task.setId(id);
         applyRequest(task, request);
@@ -96,9 +104,9 @@ public class TaskService {
      * @return 更新后的任务
      */
     @Transactional
-    public Task updateStatus(Long id, TaskStatus status) {
+    public TaskResponse updateStatus(Long id, TaskStatus status) {
         RequestChecks.requiredObject(status, "任务状态");
-        get(id);
+        getEntity(id);
         taskMapper.updateStatus(id, status, LocalDateTime.now());
         return get(id);
     }
@@ -110,7 +118,7 @@ public class TaskService {
      */
     @Transactional
     public void delete(Long id) {
-        get(id);
+        getEntity(id);
         taskMapper.delete(id);
     }
 
@@ -125,6 +133,7 @@ public class TaskService {
         RequestChecks.requiredObject(request.projectId(), "所属项目");
         RequestChecks.requiredObject(request.status(), "任务状态");
         RequestChecks.requiredObject(request.priority(), "任务优先级");
+        RequestChecks.maxLength(request.title().trim(), 200, "任务标题");
         RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "所属项目不存在");
     }
 
@@ -132,7 +141,7 @@ public class TaskService {
      * 把请求对象复制到任务实体。
      */
     private void applyRequest(Task task, TaskRequest request) {
-        task.setTitle(request.title());
+        task.setTitle(request.title().trim());
         task.setDescription(request.description());
         task.setProjectId(request.projectId());
         task.setStatus(request.status());

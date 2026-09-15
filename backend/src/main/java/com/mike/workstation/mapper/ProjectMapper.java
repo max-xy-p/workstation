@@ -23,7 +23,7 @@ public interface ProjectMapper {
      */
     @Select("""
             <script>
-            SELECT id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
+            SELECT id, name, description, status, repository_url, tech_stack, created_at, updated_at
             FROM projects
             <where>
                 <if test="keyword != null and keyword != ''">
@@ -104,7 +104,7 @@ public interface ProjectMapper {
      * 查询最近更新的项目，用于首页概览。
      */
     @Select("""
-            SELECT id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
+            SELECT id, name, description, status, repository_url, tech_stack, created_at, updated_at
             FROM projects
             ORDER BY updated_at DESC, id DESC
             LIMIT #{limit}

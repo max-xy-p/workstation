@@ -27,6 +27,15 @@ public interface TagMapper {
     @Select("SELECT id, name, created_at, updated_at FROM tags WHERE id = #{id}")
     Tag findById(Long id);
 
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM tags
+            WHERE name = #{name}
+            <if test="excludeId != null">AND id != #{excludeId}</if>
+            </script>
+            """)
+    long countByName(@Param("name") String name, @Param("excludeId") Long excludeId);
+
     /**
      * 根据 ID 集合查询标签，用于校验请求中传入的标签是否都存在。
      */

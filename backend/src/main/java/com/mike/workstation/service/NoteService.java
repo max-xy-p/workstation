@@ -1,7 +1,10 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.NoteResponseAssembler;
 import com.mike.workstation.domain.Note;
+import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
@@ -45,10 +48,10 @@ public class NoteService {
      * @param projectId 关联项目筛选，可为空
      * @return 笔记列表
      */
-    public List<Note> list(String keyword, Long folderId, Long tagId, Long projectId) {
-        List<Note> notes = noteMapper.list(keyword, folderId, tagId, projectId);
+    public List<NoteSummaryResponse> list(String keyword, Long folderId, Long tagId, Long projectId) {
+        List<Note> notes = noteMapper.listSummaries(keyword, folderId, tagId, projectId);
         notes.forEach(this::attachTags);
-        return notes;
+        return notes.stream().map(NoteResponseAssembler::toSummary).toList();
     }
 
     /**
@@ -57,8 +60,12 @@ public class NoteService {
      * @param id 笔记 ID
      * @return 笔记详情
      */
-    public Note get(Long id) {
-        Note note = noteMapper.findById(id);
+    public NoteDetailResponse get(Long id) {
+        return NoteResponseAssembler.toDetail(getEntity(id));
+    }
+
+    private Note getEntity(Long id) {
+        Note note = noteMapper.findDetailById(id);
         RequestChecks.requiredExisting(note, "笔记不存在");
         attachTags(note);
         return note;
@@ -71,7 +78,7 @@ public class NoteService {
      * @return 创建后的笔记
      */
     @Transactional
-    public Note create(NoteRequest request) {
+    public NoteDetailResponse create(NoteRequest request) {
         validate(request);
         Note note = new Note();
         applyRequest(note, request);
@@ -91,9 +98,9 @@ public class NoteService {
      * @return 更新后的笔记
      */
     @Transactional
-    public Note update(Long id, NoteRequest request) {
+    public NoteDetailResponse update(Long id, NoteRequest request) {
         validate(request);
-        get(id);
+        getEntity(id);
         Note note = new Note();
         note.setId(id);
         applyRequest(note, request);
@@ -112,7 +119,7 @@ public class NoteService {
      */
     @Transactional
     public void delete(Long id) {
-        get(id);
+        getEntity(id);
         tagMapper.deleteNoteTags(id);
         noteMapper.delete(id);
     }
@@ -126,6 +133,7 @@ public class NoteService {
         RequestChecks.requiredObject(request, "笔记请求");
         RequestChecks.requiredText(request.title(), "笔记标题");
         RequestChecks.requiredText(request.content(), "笔记内容");
+        RequestChecks.maxLength(request.title().trim(), 200, "笔记标题");
         if (request.folderId() != null) {
             RequestChecks.requiredExisting(folderMapper.findById(request.folderId()), "文件夹不存在");
         }
@@ -142,7 +150,7 @@ public class NoteService {
      * 把请求中的基础字段复制到笔记实体。
      */
     private void applyRequest(Note note, NoteRequest request) {
-        note.setTitle(request.title());
+        note.setTitle(request.title().trim());
         note.setContent(request.content());
         note.setFolderId(request.folderId());
         note.setProjectId(request.projectId());

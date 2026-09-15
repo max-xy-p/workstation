@@ -1,7 +1,7 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.domain.NoteFolder;
 import com.mike.workstation.dto.NoteFolderRequest;
+import com.mike.workstation.dto.NoteFolderResponse;
 import com.mike.workstation.service.NoteFolderService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -25,23 +25,23 @@ public class NoteFolderController {
     }
 
     @GetMapping
-    public List<NoteFolder> list() {
+    public List<NoteFolderResponse> list() {
         return folderService.list();
     }
 
     @GetMapping("/{id}")
-    public NoteFolder get(@PathVariable Long id) {
+    public NoteFolderResponse get(@PathVariable Long id) {
         return folderService.get(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NoteFolder create(@RequestBody NoteFolderRequest request) {
+    public NoteFolderResponse create(@RequestBody NoteFolderRequest request) {
         return folderService.create(request);
     }
 
     @PutMapping("/{id}")
-    public NoteFolder update(@PathVariable Long id, @RequestBody NoteFolderRequest request) {
+    public NoteFolderResponse update(@PathVariable Long id, @RequestBody NoteFolderRequest request) {
         return folderService.update(id, request);
     }
 

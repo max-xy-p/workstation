@@ -1,5 +1,7 @@
 package com.mike.workstation.service;
 
+import com.mike.workstation.assembler.NoteResponseAssembler;
+import com.mike.workstation.assembler.ProjectResponseAssembler;
 import com.mike.workstation.config.DashboardProperties;
 import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.domain.TaskStatus;
@@ -48,14 +50,16 @@ public class DashboardService {
             throw new BusinessException("首页最近记录数量未正确配置");
         }
 
-        var recentNotes = noteMapper.recent(dashboardProperties.recentLimit());
+        var recentNotes = noteMapper.recentSummaries(dashboardProperties.recentLimit());
         recentNotes.forEach(note -> note.setTags(tagMapper.findByNoteId(note.getId())));
         return new DashboardResponse(
                 projectMapper.countByStatus(ProjectStatus.ACTIVE),
                 taskMapper.countByStatus(TaskStatus.TODO),
                 taskMapper.countByStatus(TaskStatus.IN_PROGRESS),
-                projectMapper.recent(dashboardProperties.recentLimit()),
-                recentNotes
+                projectMapper.recent(dashboardProperties.recentLimit()).stream()
+                        .map(ProjectResponseAssembler::toSummary)
+                        .toList(),
+                recentNotes.stream().map(NoteResponseAssembler::toSummary).toList()
         );
     }
 }

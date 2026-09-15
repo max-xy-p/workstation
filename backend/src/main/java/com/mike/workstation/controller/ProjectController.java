@@ -1,9 +1,10 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.ProjectRequest;
+import com.mike.workstation.dto.ProjectResponse;
+import com.mike.workstation.dto.ProjectSummaryResponse;
 import com.mike.workstation.dto.ProjectStatusRequest;
 import com.mike.workstation.service.ProjectService;
 import java.util.List;
@@ -43,7 +44,7 @@ public class ProjectController {
      * @return 按更新时间倒序排列的项目列表
      */
     @GetMapping
-    public List<Project> list(
+    public List<ProjectSummaryResponse> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ProjectStatus status
     ) {
@@ -71,7 +72,7 @@ public class ProjectController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Project create(@RequestBody ProjectRequest request) {
+    public ProjectResponse create(@RequestBody ProjectRequest request) {
         return projectService.create(request);
     }
 
@@ -83,7 +84,7 @@ public class ProjectController {
      * @return 更新后的项目数据
      */
     @PutMapping("/{id}")
-    public Project update(@PathVariable Long id, @RequestBody ProjectRequest request) {
+    public ProjectResponse update(@PathVariable Long id, @RequestBody ProjectRequest request) {
         return projectService.update(id, request);
     }
 
@@ -97,7 +98,7 @@ public class ProjectController {
      * @return 更新后的项目数据
      */
     @PatchMapping("/{id}/status")
-    public Project updateStatus(@PathVariable Long id, @RequestBody ProjectStatusRequest request) {
+    public ProjectResponse updateStatus(@PathVariable Long id, @RequestBody ProjectStatusRequest request) {
         return projectService.updateStatus(id, request.status());
     }
 
