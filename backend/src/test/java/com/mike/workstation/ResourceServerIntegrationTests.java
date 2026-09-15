@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,14 +32,16 @@ class ResourceServerIntegrationTests {
     void protectedApiRejectsAnonymousRequests() throws Exception {
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.timestamp").isString());
     }
 
     @Test
     void protectedApiRejectsTokenWithoutOwnerRole() throws Exception {
         mockMvc.perform(get("/api/not-found").with(jwt()))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.timestamp").isString());
     }
 
     @Test
@@ -59,5 +63,16 @@ class ResourceServerIntegrationTests {
                         .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+    }
+
+    @Test
+    void requestBodyRejectsFieldsOutsideOpenApiContract() throws Exception {
+        mockMvc.perform(post("/api/tags")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OWNER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"architecture\",\"unexpected\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.timestamp").isString());
     }
 }

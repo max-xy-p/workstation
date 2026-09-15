@@ -1,0 +1,20 @@
+[project]
+name = "workstation-client-credentials"
+version = "1.0.0"
+description = "Workstation Python Client 的 Client Credentials 认证适配层"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.23.1,<0.29.0",
+    "workstation-api-client==1.0.0",
+]
+
+[tool.uv.sources]
+workstation-api-client = { path = "../python" }
+
+[tool.uv.build-backend]
+module-name = "workstation_auth"
+module-root = ""
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13.0"]
+build-backend = "uv_build"

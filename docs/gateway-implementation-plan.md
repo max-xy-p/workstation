@@ -1,5 +1,7 @@
 # Keycloak + Gateway/BFF 实施说明
 
+> 本文主要描述浏览器 BFF 链路。Python Client Credentials Bearer 链路已经补充到 Gateway，详见 [OpenAPI 使用说明](openapi.md)。
+
 ## 目标架构
 
 ```text

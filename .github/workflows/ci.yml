@@ -80,8 +80,72 @@ jobs:
       - name: Verify gateway
         run: mvn --batch-mode verify
 
+  openapi:
+    name: OpenAPI and Python client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate OpenAPI document
+        uses: oasdiff/oasdiff-action/validate@v0.1.10
+        with:
+          spec: openapi/workstation.yaml
+          fail-on: ERR
+
+      - name: Locate base OpenAPI document
+        if: github.event_name == 'pull_request'
+        id: base-openapi
+        shell: bash
+        run: |
+          if git cat-file -e "origin/${{ github.base_ref }}:openapi/workstation.yaml" 2>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Reject breaking OpenAPI changes
+        if: github.event_name == 'pull_request' && steps.base-openapi.outputs.exists == 'true'
+        uses: oasdiff/oasdiff-action/breaking@v0.1.10
+        with:
+          base: origin/${{ github.base_ref }}:openapi/workstation.yaml
+          revision: HEAD:openapi/workstation.yaml
+          fail-on: ERR
+          review: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Regenerate Python client
+        run: >-
+          uvx --from openapi-python-client==0.29.1 openapi-python-client generate
+          --path openapi/workstation.yaml
+          --config openapi/python-client-config.yaml
+          --meta uv
+          --output-path clients/python
+          --overwrite
+          --fail-on-warning
+
+      - name: Check generated client drift
+        shell: bash
+        run: |
+          git diff --exit-code -- clients/python
+          test -z "$(git status --short --untracked-files=all -- clients/python)"
+
+      - name: Install locked Python client dependencies
+        run: uv sync --project clients/python-auth --locked
+
+      - name: Test Client Credentials adapter
+        run: uv run --project clients/python-auth python -m unittest discover -s clients/python-auth/tests -v
+
   frontend:
-    name: Frontend build
+    name: TypeScript SDK and frontend
     runs-on: ubuntu-latest
 
     defaults:
@@ -97,10 +161,31 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: |
+            frontend/package-lock.json
+            clients/typescript/package-lock.json
+
+      - name: Install TypeScript SDK dependencies
+        run: npm --prefix ../clients/typescript ci
+
+      - name: Regenerate and build TypeScript SDK
+        run: |
+          npm --prefix ../clients/typescript run api:generate
+          npm --prefix ../clients/typescript run typecheck
+          npm --prefix ../clients/typescript run build
+          npm --prefix ../clients/typescript test
+
+      - name: Check generated TypeScript SDK drift
+        shell: bash
+        run: |
+          git diff --exit-code -- ../clients/typescript/src/generated/schema.ts ../clients/typescript/dist
+          test -z "$(git status --short --untracked-files=all -- ../clients/typescript/src/generated/schema.ts ../clients/typescript/dist)"
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Type-check frontend API contract
+        run: npm run typecheck
 
       - name: Build frontend
         run: npm run build
@@ -114,6 +199,7 @@ jobs:
       - configuration
       - backend
       - gateway
+      - openapi
       - frontend
 
     strategy:
@@ -127,7 +213,7 @@ jobs:
             context: ./gateway
             dockerfile: ./gateway/Dockerfile
           - name: web
-            context: ./frontend
+            context: .
             dockerfile: ./frontend/Dockerfile
 
     steps:

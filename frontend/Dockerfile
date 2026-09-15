@@ -2,10 +2,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /build
 
-COPY package.json package-lock.json ./
+COPY clients/typescript ./clients/typescript
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+
+WORKDIR /build/frontend
 RUN npm ci
 
-COPY . .
+COPY frontend/ ./
 
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
@@ -15,6 +18,6 @@ RUN npm run build
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /build/dist /usr/share/nginx/html
+COPY --from=builder /build/frontend/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -8,6 +8,7 @@ import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.domain.Tag;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -46,5 +47,18 @@ class ResponseAssemblerTests {
                 .extracting(component -> component.getName())
                 .doesNotContain("runGuide");
         assertThat(ProjectResponseAssembler.toResponse(project).runGuide()).isEqualTo("mvn spring-boot:run");
+    }
+
+    @Test
+    void responseTimeIncludesSystemOffset() {
+        Project project = new Project();
+        project.setCreatedAt(LocalDateTime.of(2026, 9, 15, 10, 30));
+        project.setUpdatedAt(LocalDateTime.of(2026, 9, 15, 11, 30));
+
+        var response = ProjectResponseAssembler.toSummary(project);
+
+        assertThat(response.createdAt()).isNotNull();
+        assertThat(response.createdAt().getOffset()).isNotNull();
+        assertThat(response.updatedAt().getOffset()).isNotNull();
     }
 }

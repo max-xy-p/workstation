@@ -10,7 +10,8 @@ public final class TaskResponseAssembler {
     public static TaskResponse toResponse(Task task) {
         return new TaskResponse(
                 task.getId(), task.getTitle(), task.getDescription(), task.getProjectId(), task.getProjectName(),
-                task.getStatus(), task.getPriority(), task.getDueDate(), task.getCreatedAt(), task.getUpdatedAt()
+                task.getStatus(), task.getPriority(), task.getDueDate(),
+                ApiTime.toOffset(task.getCreatedAt()), ApiTime.toOffset(task.getUpdatedAt())
         );
     }
 }

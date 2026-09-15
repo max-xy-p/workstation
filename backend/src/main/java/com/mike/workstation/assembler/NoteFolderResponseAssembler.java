@@ -9,7 +9,8 @@ public final class NoteFolderResponseAssembler {
 
     public static NoteFolderResponse toResponse(NoteFolder folder) {
         return new NoteFolderResponse(
-                folder.getId(), folder.getName(), folder.getParentId(), folder.getCreatedAt(), folder.getUpdatedAt()
+                folder.getId(), folder.getName(), folder.getParentId(),
+                ApiTime.toOffset(folder.getCreatedAt()), ApiTime.toOffset(folder.getUpdatedAt())
         );
     }
 }

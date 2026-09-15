@@ -66,6 +66,36 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "workstation-python",
+      "name": "Workstation Python Client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_PYTHON_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "roles",
+        "service_account"
+      ],
+      "protocolMappers": [
+        {
+          "name": "workstation-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "workstation-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -80,6 +110,14 @@
           "temporary": true
         }
       ],
+      "realmRoles": [
+        "OWNER"
+      ]
+    },
+    {
+      "username": "service-account-workstation-python",
+      "enabled": true,
+      "serviceAccountClientId": "workstation-python",
       "realmRoles": [
         "OWNER"
       ]

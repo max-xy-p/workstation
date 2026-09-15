@@ -9,7 +9,9 @@ public final class TagResponseAssembler {
     }
 
     public static TagResponse toResponse(Tag tag) {
-        return new TagResponse(tag.getId(), tag.getName(), tag.getCreatedAt(), tag.getUpdatedAt());
+        return new TagResponse(
+                tag.getId(), tag.getName(), ApiTime.toOffset(tag.getCreatedAt()), ApiTime.toOffset(tag.getUpdatedAt())
+        );
     }
 
     public static List<TagResponse> toResponses(List<Tag> tags) {

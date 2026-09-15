@@ -9,12 +9,17 @@
 .env.*
 !.env.example
 !.env.docker.example
-notes/
+/notes/
 node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/*.log
 backend-dev*.log
+/.uv-cache/
+/.uv-tools/
+**/.venv/
+**/__pycache__/
+*.py[cod]
 
 ### STS ###
 .apt_generated

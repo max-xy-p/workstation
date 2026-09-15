@@ -8,7 +8,8 @@ public record GatewaySsoProperties(
         String applicationBaseUrl,
         String publicKeycloakBaseUrl,
         String internalKeycloakBaseUrl,
-        String clientSecret) {
+        String clientSecret,
+        String audience) {
     public GatewaySsoProperties {
         applicationBaseUrl = stripTrailingSlash(applicationBaseUrl);
         publicKeycloakBaseUrl = stripTrailingSlash(publicKeycloakBaseUrl);
@@ -17,6 +18,7 @@ public record GatewaySsoProperties(
         requireValue(publicKeycloakBaseUrl, "KEYCLOAK_PUBLIC_BASE_URL");
         requireValue(internalKeycloakBaseUrl, "KEYCLOAK_INTERNAL_BASE_URL");
         requireValue(clientSecret, "KEYCLOAK_CLIENT_SECRET");
+        requireValue(audience, "OAUTH2_AUDIENCE");
     }
 
     private static String stripTrailingSlash(String value) {

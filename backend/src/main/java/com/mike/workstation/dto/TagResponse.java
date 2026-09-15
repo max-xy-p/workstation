@@ -1,6 +1,6 @@
 package com.mike.workstation.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
-public record TagResponse(Long id, String name, LocalDateTime createdAt, LocalDateTime updatedAt) {
+public record TagResponse(Long id, String name, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
 }

@@ -60,6 +60,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Set KEYCLOAK_ADMIN_USERNAME in .env.docker}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env.docker}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET in .env.docker}
+      KEYCLOAK_PYTHON_CLIENT_SECRET: ${KEYCLOAK_PYTHON_CLIENT_SECRET:?Set KEYCLOAK_PYTHON_CLIENT_SECRET in .env.docker}
       WORKSTATION_PUBLIC_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}
       WORKSTATION_DEV_URL: ${WORKSTATION_DEV_URL:-http://localhost:5173}
       WORKSTATION_OWNER_USERNAME: ${WORKSTATION_OWNER_USERNAME:-owner}
@@ -108,6 +109,7 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.docker}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET in .env.docker}
+      OAUTH2_AUDIENCE: workstation-api
       WORKSTATION_PUBLIC_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}
       KEYCLOAK_PUBLIC_BASE_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}/auth
       KEYCLOAK_INTERNAL_BASE_URL: http://keycloak:8080/auth
@@ -123,8 +125,8 @@ services:
 
   web:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_API_BASE_URL: /api
     restart: unless-stopped

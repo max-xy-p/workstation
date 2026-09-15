@@ -1,8 +1,8 @@
 package com.mike.workstation.exception;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
-public record ApiError(String code, String message, LocalDateTime timestamp) {
+public record ApiError(String code, String message, OffsetDateTime timestamp) {
     /**
      * 创建统一错误响应对象。
      *
@@ -11,6 +11,6 @@ public record ApiError(String code, String message, LocalDateTime timestamp) {
      * @return 错误响应
      */
     public static ApiError of(String code, String message) {
-        return new ApiError(code, message, LocalDateTime.now());
+        return new ApiError(code, message, OffsetDateTime.now());
     }
 }

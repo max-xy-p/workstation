@@ -12,7 +12,8 @@ public final class NoteResponseAssembler {
         return new NoteSummaryResponse(
                 note.getId(), note.getTitle(), note.getFolderId(), note.getFolderName(),
                 note.getProjectId(), note.getProjectName(), note.getVersion(),
-                TagResponseAssembler.toResponses(note.getTags()), note.getCreatedAt(), note.getUpdatedAt()
+                TagResponseAssembler.toResponses(note.getTags()),
+                ApiTime.toOffset(note.getCreatedAt()), ApiTime.toOffset(note.getUpdatedAt())
         );
     }
 
@@ -20,7 +21,8 @@ public final class NoteResponseAssembler {
         return new NoteDetailResponse(
                 note.getId(), note.getTitle(), note.getContent(), note.getFolderId(), note.getFolderName(),
                 note.getProjectId(), note.getProjectName(), note.getVersion(),
-                TagResponseAssembler.toResponses(note.getTags()), note.getCreatedAt(), note.getUpdatedAt()
+                TagResponseAssembler.toResponses(note.getTags()),
+                ApiTime.toOffset(note.getCreatedAt()), ApiTime.toOffset(note.getUpdatedAt())
         );
     }
 }

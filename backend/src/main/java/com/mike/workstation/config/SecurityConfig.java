@@ -21,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
@@ -95,6 +96,11 @@ public class SecurityConfig {
         response.setStatus(status);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().printf("{\"code\":\"%s\",\"message\":\"%s\"}", code, message);
+        response.getWriter().printf(
+                "{\"code\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
+                code,
+                message,
+                OffsetDateTime.now()
+        );
     }
 }

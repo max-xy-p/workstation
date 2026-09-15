@@ -6,7 +6,9 @@ CI 在 `master` 推送和 Pull Request 上执行：
 
 - Backend `mvn verify`
 - Gateway `mvn verify`
-- Frontend `npm ci` 与 `npm run build`
+- OpenAPI 规范校验、不兼容变更检查、Python Client 生成漂移检查和认证适配层测试
+- TypeScript SDK 生成漂移检查、类型检查、构建和 Node 测试
+- Frontend `npm ci`、`npm run typecheck` 与 `npm run build`
 - Backend、Gateway、Web 三个 Docker 镜像构建
 
 发布工作流由 `v*` 标签或手动触发，向 GHCR 发布：
@@ -21,6 +23,8 @@ MySQL、Redis 和 Keycloak 使用官方镜像，不由本仓库重新构建。My
 会按顺序执行 `01-schema.sql` 和 `02-keycloak.sh`，分别初始化业务表以及 Keycloak 数据库/专用账号。
 项目不再使用额外的数据库初始化容器。
 
+Web 镜像的构建上下文是仓库根目录，因为 `frontend` 通过本地 npm 依赖消费 `clients/typescript`。`frontend/Dockerfile` 只复制 TypeScript SDK 和前端所需文件；不要把 Web 构建上下文改回 `frontend/`，否则 Docker 无法解析 `file:../clients/typescript`。
+
 ## 本地 Compose
 
 复制并修改配置：
@@ -34,6 +38,7 @@ New-Item -ItemType Directory -Force notes
 
 - `WORKSTATION_PUBLIC_URL`：浏览器访问应用的完整地址，不带末尾斜杠。
 - `KEYCLOAK_CLIENT_SECRET`：Gateway confidential client secret。
+- `KEYCLOAK_PYTHON_CLIENT_SECRET`：Python Client Credentials confidential client secret，必须与 Gateway Secret 不同。
 - `WORKSTATION_OWNER_USERNAME` / `WORKSTATION_OWNER_INITIAL_PASSWORD`：首个业务 Owner；初始密码为临时密码。
 - `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD`：仅用于身份中心管理。
 - `KEYCLOAK_DB_USERNAME` / `KEYCLOAK_DB_PASSWORD`、`REDIS_PASSWORD`、MySQL 密码。
@@ -88,6 +93,7 @@ KEYCLOAK_ADMIN_PASSWORD=<secret>
 KEYCLOAK_DB_USERNAME=keycloak
 KEYCLOAK_DB_PASSWORD=<secret>
 KEYCLOAK_CLIENT_SECRET=<至少 32 个随机字符>
+KEYCLOAK_PYTHON_CLIENT_SECRET=<另一个至少 32 个随机字符>
 WORKSTATION_OWNER_USERNAME=owner
 WORKSTATION_OWNER_INITIAL_PASSWORD=<temporary-secret>
 REDIS_PASSWORD=<secret>
@@ -98,6 +104,8 @@ REDIS_PASSWORD=<secret>
 所以公网入口必须正确转发 `Host`、`X-Forwarded-Proto` 与 `X-Forwarded-Port`。
 
 Realm JSON 只会在数据库中不存在 `workstation` Realm 时自动导入。后续身份配置变更应使用 Keycloak Admin Console 或受控导入流程，不会靠重启覆盖现有 Realm。
+
+已有 Realm 启用 Python Client Credentials 时，需要按 `keycloak/workstation-realm.json` 手动或通过受控 Admin API 创建 `workstation-python` confidential client，启用 Service Account，为 Access Token 添加 `workstation-api` Audience，并把 `OWNER` Realm Role 授予该 Service Account。不要删除或重建现有 Realm 来应用这一变更。
 
 如果 GHCR 包是私有的，在 VPS 上用仅有 `read:packages` 权限的 Token 登录一次：
 
@@ -125,6 +133,7 @@ Keycloak 再通过 Compose 依赖等待 MySQL 健康。部署健康检查通过 
 - 同一 MySQL 实例中的 `workstation` 数据库保存业务数据，`keycloak` 数据库保存身份数据；两者使用独立账号。Redis 保存 Gateway Session。
 - 浏览器只持有 HttpOnly Session Cookie；OAuth2 Token 仅存在于 Gateway 服务端会话。
 - Gateway 对浏览器写请求执行 CSRF 校验；Backend 无状态校验 JWT 与 `OWNER` 角色。
+- Python 使用 Client Credentials Bearer Token 经 Gateway 调用 Backend，不使用浏览器 Session 或 CSRF；Gateway 与 Backend 都校验机器 Token。
 - `.env.docker`、真实 Secret 和初始密码不得提交到 Git。
 - `sample-data.sql` 会清空业务表，生产环境不得执行。
 - 应同时备份 MySQL 中的业务库、Keycloak 身份库以及必要的 Realm 配置。

@@ -1064,8 +1064,8 @@ Backend 和 Keycloak虽然可能仍在运行，但浏览器登录链路不可用
 | Backend JWT 校验 | `backend/src/main/java/com/mike/workstation/config/SecurityConfig.java` |
 | Backend Issuer/Audience 配置 | `backend/src/main/java/com/mike/workstation/config/ResourceServerProperties.java` |
 | Keycloak Realm/Client/Role | `keycloak/workstation-realm.json` |
-| 前端登录和退出 | `frontend/src/api/workstation.js` |
-| 前端 Cookie、CSRF、API Client | `frontend/src/api/client.js` |
+| 前端登录和退出 | `frontend/src/api/workstation.ts` |
+| 前端 Cookie、CSRF、API Client | `frontend/src/api/client.ts` |
 | Nginx 同源代理 | `frontend/nginx.conf` |
 | 容器组合 | `compose.yaml`、`compose.prod.yaml` |
 | Keycloak MySQL 初始化 | `backend/src/main/resources/db/init-keycloak-database.sh` |
@@ -1076,7 +1076,7 @@ Backend 和 Keycloak虽然可能仍在运行，但浏览器登录链路不可用
 
 不要先从完整 `SecurityConfig` 的每一个 API 开始。推荐顺序是：
 
-1. 阅读 `frontend/src/api/workstation.js`，确认登录和退出从哪里发起。
+1. 阅读 `frontend/src/api/workstation.ts`，确认登录和退出从哪里发起。
 2. 阅读 Gateway `AuthController`，理解前端真正直接使用的两个 BFF 接口。
 3. 阅读 `application.yaml` 的 `/api/**` 路由和 `TokenRelay`。
 4. 阅读 Gateway `SecurityConfig` 的 `authorizeExchange`。

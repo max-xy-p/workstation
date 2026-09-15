@@ -26,6 +26,10 @@
 - [x] 仪表盘统计和最近项目/笔记
 - [x] API Response DTO 与数据库 Entity 分层，笔记摘要/详情分离及请求长度校验
 - [x] 项目、任务和笔记统一分页响应，笔记列表标签批量加载
+- [x] OpenAPI 3.1 业务 API 契约、Python 生成客户端及 Client Credentials 认证薄层
+- [x] 独立 TypeScript/Node SDK、Vue Transport 接入、类型检查和生成漂移检测
+- [x] Gateway 浏览器 Session 与机器 Bearer Token 双认证链路
+- [x] API RFC 3339 Offset 时间、统一错误时间戳和未知请求字段拒绝策略
 - [x] Maven 后端测试、Vite 前端构建和 GitHub Actions CI
 - [x] 后端源码、Maven 配置和 Dockerfile 统一整理到 `backend/`
 
@@ -46,11 +50,14 @@
 - 编辑器和后端没有图片/附件上传能力。
 - Markdown 导入读取后端机器路径，不是浏览器文件上传。
 - `schema.sql` 只适合初始化，没有 Flyway/Liquibase 等自动迁移机制。
-- 前端没有自动化测试、lint 和 format 脚本。
+- 前端没有自动化测试、lint 和 format 脚本；已配置 OpenAPI DTO 生成和 TypeScript/Vue 静态类型检查。
 - Windows 下 `mvnw.cmd` 当前无法正常启动，本机需使用已安装的 `mvn.cmd`。
 
 ## Notes
 
+- 2026-09-15 验证：使用 `openapi-typescript 7.13.0` 建立独立的 `@workstation/api-client` SDK，包含 DTO、业务 endpoint、分页和 Fetch Transport；SDK 类型检查、构建及 2 项 Node 测试通过；Vue 通过本地 npm 包注入 Session/CSRF Transport，前端类型检查和构建通过。
+- 2026-09-15 验证：OpenAPI Python Client 使用 `openapi-python-client 0.29.1` 成功生成；Python Client Credentials 与生成契约共 4 项测试通过；Backend `mvn.cmd verify` 通过 29 项测试，Gateway `mvn.cmd verify` 通过 7 项测试，Frontend `npm.cmd run build` 成功，开发与生产 Compose 配置及 Keycloak Realm JSON 静态校验通过。
+- 已有 Keycloak 数据库不会因重启自动更新 Realm；启用 Python Client Credentials 前，需要在现有 Realm 中按 `keycloak/workstation-realm.json` 创建 `workstation-python` Client、Service Account、Audience Mapper 和 `OWNER` 角色映射。
 - 2026-09-15 验证：项目、任务和笔记列表统一为 `PageResponse`（页码从 0 开始、默认 20、最大 100）；笔记树、任务看板和项目选项通过分页汇总保持完整数据；笔记列表、Dashboard 和项目详情的标签改为按笔记 ID 批量加载；Backend `mvn.cmd verify` 通过 27 项测试，Frontend `npm.cmd run build` 成功。
 - 2026-09-14 验证：完成数据模型优化第一批，所有业务 Controller 改用 Response DTO；笔记列表、Dashboard 和项目详情中的笔记使用无正文摘要；项目列表不再读取 `run_guide`；Backend `mvn.cmd verify` 通过 21 项测试，Frontend `npm.cmd run build` 成功。
 - 2026-09-14 验证：移除额外的 `keycloak-db-init` 容器；Keycloak 数据库初始化已并入 MySQL `/docker-entrypoint-initdb.d`；已有数据卷需手动执行一次幂等脚本；发布恢复为单次全量 `compose up`，并增加失败状态/日志输出；开发与生产 Compose 配置静态校验通过。

@@ -29,7 +29,15 @@ spring:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:30s}
           routes:
-            - id: workstation-backend
+            # 机器客户端自带 Bearer Token，不经过浏览器 Session 或 Token Relay。
+            - id: workstation-backend-bearer
+              order: -1
+              uri: ${BACKEND_BASE_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/**
+                - Header=Authorization, '(?i)Bearer\s+.+'
+            # 浏览器请求由 Gateway Session 取得 Access Token，再转发给 Backend。
+            - id: workstation-backend-browser
               uri: ${BACKEND_BASE_URL:http://localhost:8080}
               predicates:
                 - Path=/api/**
@@ -54,3 +62,4 @@ workstation:
     public-keycloak-base-url: ${KEYCLOAK_PUBLIC_BASE_URL:http://localhost:8088/auth}
     internal-keycloak-base-url: ${KEYCLOAK_INTERNAL_BASE_URL:http://localhost:8090/auth}
     client-secret: ${KEYCLOAK_CLIENT_SECRET}
+    audience: ${OAUTH2_AUDIENCE:workstation-api}

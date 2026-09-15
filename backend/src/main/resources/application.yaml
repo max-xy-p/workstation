@@ -5,6 +5,9 @@ server:
 spring:
   application:
     name: workstation
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   config:
     import: optional:file:.env[.properties]
   datasource:

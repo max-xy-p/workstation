@@ -19,6 +19,10 @@ backend/src/main/resources/                  应用配置和数据库脚本
 backend/src/test/                            后端测试
 frontend/src/                        Vue 页面、组件、路由和 API Client
 frontend/                            前端构建及容器配置
+openapi/                             HTTP API 契约和生成器配置
+clients/python/                      OpenAPI 生成的 Python Client
+clients/python-auth/                 Python Client Credentials 认证薄层
+clients/typescript/                  独立 TypeScript/Node SDK
 .github/workflows/                   CI 和镜像发布流程
 nginx/                               可选的本机 Nginx 配置
 ```
@@ -39,8 +43,8 @@ nginx/                               可选的本机 Nginx 配置
 - 写操作在 Service 中使用 `@Transactional`；关联对象存在性通过 Mapper 查询后校验。
 - Java 领域对象使用 Lombok `@Data`，请求/组合响应主要使用 Java `record`。
 - API 位于 `/api`，使用 JSON；创建返回 `201`，删除返回 `204`，统一异常由 `GlobalExceptionHandler` 转换。
-- 所有业务 API 都受 Session 认证保护；前端写请求通过 `frontend/src/api/client.js` 自动携带 CSRF Token 和 Cookie。
-- 前端页面使用 Vue Composition API 与 `<script setup>`，通过 `frontend/src/api/workstation.js` 调用后端。
+- 所有业务 API 都受认证保护；浏览器使用 Gateway Session，Python 使用经 Gateway 转发的 Client Credentials Bearer Token。前端写请求通过 `frontend/src/api/client.ts` 自动携带 CSRF Token 和 Cookie。
+- 前端页面使用 Vue Composition API 与 `<script setup>`，通过 `frontend/src/api/workstation.ts` 调用后端；业务 Request/Response 和 endpoint 来自独立的 `clients/typescript` SDK，不得手工修改 SDK 的 OpenAPI 生成文件。
 - Tiptap 适配集中在 `frontend/src/components/MarkdownEditor.vue`；笔记正文保存为 Markdown，不保存 HTML。
 - IndexedDB 草稿访问集中在 `frontend/src/utils/noteDraftStore.js`；它只作待同步内容兜底，不能代替 MySQL。
 - `notes.version` 是简易持久化凭证；每次笔记更新必须递增，前端只有校验响应版本后才能清除待同步草稿。
@@ -48,6 +52,7 @@ nginx/                               可选的本机 Nginx 配置
 - 沿用现有全局样式和页面结构；修改编辑器样式时注意通用选择器可能影响 ProseMirror 节点。
 - 后端测试沿用 JUnit 5、Mockito 和 MockMvc。行为变化时补充对应 Service 或集成测试。
 - 不修改或回退与当前任务无关的未提交变更。
+- 项目维护的文档、手写代码注释、文档字符串和面向项目使用者的错误消息使用中文；类名、函数名、协议字段及第三方专有名词按代码约定保留。OpenAPI 生成目录中的固定模板文本不手工翻译，以免重新生成时丢失或产生漂移。
 
 ## Common Commands
 

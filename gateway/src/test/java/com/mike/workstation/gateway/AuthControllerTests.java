@@ -63,7 +63,8 @@ class AuthControllerTests {
                 "https://example.test",
                 "https://example.test/auth",
                 "http://keycloak:8080/auth",
-                "test-client-secret");
+                "test-client-secret",
+                "workstation-api");
         var handler = new SecurityConfig().keycloakLogoutSuccessHandler(properties);
         var idToken = new OidcIdToken(
                 "id-token-value",
@@ -91,7 +92,8 @@ class AuthControllerTests {
                 "https://workstation.example.test",
                 "https://workstation.example.test/auth",
                 "http://keycloak:8080/auth",
-                "test-client-secret");
+                "test-client-secret",
+                "workstation-api");
 
         var repository = new SecurityConfig().clientRegistrationRepository(properties);
         var registration = repository.findByRegistrationId("keycloak").block();
