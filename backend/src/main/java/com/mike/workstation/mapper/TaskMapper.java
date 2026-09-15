@@ -43,14 +43,45 @@ public interface TaskMapper {
                 </if>
             </where>
             ORDER BY t.updated_at DESC, t.id DESC
+            LIMIT #{size} OFFSET #{offset}
             </script>
             """)
-    List<Task> list(
+    List<Task> listPage(
+            @Param("keyword") String keyword,
+            @Param("projectId") Long projectId,
+            @Param("status") TaskStatus status,
+            @Param("priority") TaskPriority priority,
+            @Param("offset") long offset,
+            @Param("size") int size
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM tasks t
+            <where>
+                <if test="keyword != null and keyword != ''">t.title LIKE CONCAT('%', #{keyword}, '%')</if>
+                <if test="projectId != null">AND t.project_id = #{projectId}</if>
+                <if test="status != null">AND t.status = #{status}</if>
+                <if test="priority != null">AND t.priority = #{priority}</if>
+            </where>
+            </script>
+            """)
+    long count(
             @Param("keyword") String keyword,
             @Param("projectId") Long projectId,
             @Param("status") TaskStatus status,
             @Param("priority") TaskPriority priority
     );
+
+    @Select("""
+            SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
+                   t.status, t.priority, t.due_date, t.created_at, t.updated_at
+            FROM tasks t
+            JOIN projects p ON p.id = t.project_id
+            WHERE t.project_id = #{projectId}
+            ORDER BY t.updated_at DESC, t.id DESC
+            """)
+    List<Task> listByProjectId(Long projectId);
 
     /**
      * 根据主键查询任务详情。

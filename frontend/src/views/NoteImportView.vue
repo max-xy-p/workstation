@@ -98,7 +98,7 @@ onMounted(async () => {
   try {
     [folders.value, projects.value, tags.value] = await Promise.all([
       noteFolderApi.list(),
-      projectApi.list({}),
+      projectApi.listAll(),
       tagApi.list()
     ]);
   } catch (err) {

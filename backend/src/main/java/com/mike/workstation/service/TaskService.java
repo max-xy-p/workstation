@@ -6,6 +6,7 @@ import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
@@ -37,10 +38,14 @@ public class TaskService {
      * @param priority 优先级筛选，可为空
      * @return 任务列表
      */
-    public List<TaskResponse> list(String keyword, Long projectId, TaskStatus status, TaskPriority priority) {
-        return taskMapper.list(keyword, projectId, status, priority).stream()
+    public PageResponse<TaskResponse> list(
+            String keyword, Long projectId, TaskStatus status, TaskPriority priority, int page, int size
+    ) {
+        PageQuery query = PageQuery.of(page, size);
+        var items = taskMapper.listPage(keyword, projectId, status, priority, query.offset(), query.size()).stream()
                 .map(TaskResponseAssembler::toResponse)
                 .toList();
+        return PageResponse.of(items, page, size, taskMapper.count(keyword, projectId, status, priority));
     }
 
     /**

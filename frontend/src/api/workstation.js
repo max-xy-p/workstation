@@ -1,5 +1,17 @@
 import { api, resetCsrfToken, submitWithCsrf } from './client';
 
+async function listAllPages(path, params = {}) {
+  const items = [];
+  let page = 0;
+  let response;
+  do {
+    response = await api.get(path, { ...params, page, size: 100 });
+    items.push(...response.items);
+    page += 1;
+  } while (response.hasMore);
+  return items;
+}
+
 export const authApi = {
   currentUser: () => api.get('/auth/me', undefined, { suppressUnauthorized: true }),
   login() {
@@ -20,6 +32,7 @@ export const dashboardApi = {
 // 项目 API：对应后端 /api/projects。
 export const projectApi = {
   list: (params) => api.get('/projects', params),
+  listAll: (params) => listAllPages('/projects', params),
   detail: (id) => api.get(`/projects/${id}`),
   create: (payload) => api.post('/projects', payload),
   update: (id, payload) => api.put(`/projects/${id}`, payload),
@@ -30,6 +43,7 @@ export const projectApi = {
 // 任务 API：对应后端 /api/tasks，支持看板状态流转。
 export const taskApi = {
   list: (params) => api.get('/tasks', params),
+  listAll: (params) => listAllPages('/tasks', params),
   get: (id) => api.get(`/tasks/${id}`),
   create: (payload) => api.post('/tasks', payload),
   update: (id, payload) => api.put(`/tasks/${id}`, payload),
@@ -40,6 +54,7 @@ export const taskApi = {
 // 笔记 API：对应后端 /api/notes，包含 Markdown 导入入口。
 export const noteApi = {
   list: (params) => api.get('/notes', params),
+  listAll: (params) => listAllPages('/notes', params),
   get: (id) => api.get(`/notes/${id}`),
   create: (payload) => api.post('/notes', payload),
   update: (id, payload) => api.put(`/notes/${id}`, payload),

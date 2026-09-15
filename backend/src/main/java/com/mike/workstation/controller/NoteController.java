@@ -5,9 +5,9 @@ import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.service.NoteImportService;
 import com.mike.workstation.service.NoteService;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,13 +46,15 @@ public class NoteController {
      * @return 满足筛选条件的笔记列表，每条笔记会携带标签信息
      */
     @GetMapping
-    public List<NoteSummaryResponse> list(
+    public PageResponse<NoteSummaryResponse> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) Long tagId,
-            @RequestParam(required = false) Long projectId
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return noteService.list(keyword, folderId, tagId, projectId);
+        return noteService.list(keyword, folderId, tagId, projectId, page, size);
     }
 
     /**

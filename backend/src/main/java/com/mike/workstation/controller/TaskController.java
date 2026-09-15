@@ -4,9 +4,9 @@ import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.TaskStatusRequest;
 import com.mike.workstation.service.TaskService;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,13 +44,15 @@ public class TaskController {
      * @return 满足筛选条件的任务列表
      */
     @GetMapping
-    public List<TaskResponse> list(
+    public PageResponse<TaskResponse> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) TaskStatus status,
-            @RequestParam(required = false) TaskPriority priority
+            @RequestParam(required = false) TaskPriority priority,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return taskService.list(keyword, projectId, status, priority);
+        return taskService.list(keyword, projectId, status, priority, page, size);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.mike.workstation.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,7 +13,6 @@ import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
-import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class ProjectServiceTests {
     @Mock
     private NoteMapper noteMapper;
     @Mock
-    private TagMapper tagMapper;
+    private NoteTagLoader noteTagLoader;
     @InjectMocks
     private ProjectService projectService;
 
@@ -64,6 +64,18 @@ class ProjectServiceTests {
         assertThatThrownBy(() -> projectService.create(request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("500");
+    }
+
+    @Test
+    void listUsesStablePageOffsetAndTotal() {
+        when(projectMapper.listPage(null, ProjectStatus.ACTIVE, 40L, 20)).thenReturn(java.util.List.of(project()));
+        when(projectMapper.count(null, ProjectStatus.ACTIVE)).thenReturn(41L);
+
+        var result = projectService.list(null, ProjectStatus.ACTIVE, 2, 20);
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.total()).isEqualTo(41L);
+        assertThat(result.hasMore()).isFalse();
     }
 
     private Project project() {

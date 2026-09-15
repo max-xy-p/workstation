@@ -5,6 +5,7 @@ import com.mike.workstation.domain.Note;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
@@ -26,17 +27,20 @@ public class NoteService {
     private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
+    private final NoteTagLoader noteTagLoader;
 
     public NoteService(
             NoteMapper noteMapper,
             NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
-            TagMapper tagMapper
+            TagMapper tagMapper,
+            NoteTagLoader noteTagLoader
     ) {
         this.noteMapper = noteMapper;
         this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
+        this.noteTagLoader = noteTagLoader;
     }
 
     /**
@@ -48,10 +52,16 @@ public class NoteService {
      * @param projectId 关联项目筛选，可为空
      * @return 笔记列表
      */
-    public List<NoteSummaryResponse> list(String keyword, Long folderId, Long tagId, Long projectId) {
-        List<Note> notes = noteMapper.listSummaries(keyword, folderId, tagId, projectId);
-        notes.forEach(this::attachTags);
-        return notes.stream().map(NoteResponseAssembler::toSummary).toList();
+    public PageResponse<NoteSummaryResponse> list(
+            String keyword, Long folderId, Long tagId, Long projectId, int page, int size
+    ) {
+        PageQuery query = PageQuery.of(page, size);
+        List<Note> notes = noteMapper.listSummariesPage(
+                keyword, folderId, tagId, projectId, query.offset(), query.size()
+        );
+        noteTagLoader.attachTags(notes);
+        long total = noteMapper.count(keyword, folderId, tagId, projectId);
+        return PageResponse.of(notes.stream().map(NoteResponseAssembler::toSummary).toList(), page, size, total);
     }
 
     /**

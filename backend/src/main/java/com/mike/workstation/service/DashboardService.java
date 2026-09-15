@@ -9,7 +9,6 @@ import com.mike.workstation.dto.DashboardResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
-import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import org.springframework.stereotype.Service;
 
@@ -23,20 +22,20 @@ public class DashboardService {
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
-    private final TagMapper tagMapper;
+    private final NoteTagLoader noteTagLoader;
     private final DashboardProperties dashboardProperties;
 
     public DashboardService(
             ProjectMapper projectMapper,
             TaskMapper taskMapper,
             NoteMapper noteMapper,
-            TagMapper tagMapper,
+            NoteTagLoader noteTagLoader,
             DashboardProperties dashboardProperties
     ) {
         this.projectMapper = projectMapper;
         this.taskMapper = taskMapper;
         this.noteMapper = noteMapper;
-        this.tagMapper = tagMapper;
+        this.noteTagLoader = noteTagLoader;
         this.dashboardProperties = dashboardProperties;
     }
 
@@ -51,7 +50,7 @@ public class DashboardService {
         }
 
         var recentNotes = noteMapper.recentSummaries(dashboardProperties.recentLimit());
-        recentNotes.forEach(note -> note.setTags(tagMapper.findByNoteId(note.getId())));
+        noteTagLoader.attachTags(recentNotes);
         return new DashboardResponse(
                 projectMapper.countByStatus(ProjectStatus.ACTIVE),
                 taskMapper.countByStatus(TaskStatus.TODO),

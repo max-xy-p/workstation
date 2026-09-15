@@ -47,4 +47,17 @@ class ResourceServerIntegrationTests {
                         .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void invalidPaginationReturnsUnifiedBadRequest() throws Exception {
+        mockMvc.perform(get("/api/projects").param("size", "101").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+
+        mockMvc.perform(get("/api/projects").param("page", "not-a-number").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+    }
 }

@@ -3149,6 +3149,16 @@ textarea:focus {
   background: #f8fafc;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .note-editor {
   padding-left: 52px;
   color: #263447;

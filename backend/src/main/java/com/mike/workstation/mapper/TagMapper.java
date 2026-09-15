@@ -1,5 +1,6 @@
 package com.mike.workstation.mapper;
 
+import com.mike.workstation.domain.NoteTagRow;
 import com.mike.workstation.domain.Tag;
 import java.util.List;
 import org.apache.ibatis.annotations.Delete;
@@ -63,6 +64,20 @@ public interface TagMapper {
             ORDER BY t.name
             """)
     List<Tag> findByNoteId(Long noteId);
+
+    @Select("""
+            <script>
+            SELECT nt.note_id, t.id, t.name, t.created_at, t.updated_at
+            FROM note_tag nt
+            JOIN tags t ON t.id = nt.tag_id
+            WHERE nt.note_id IN
+            <foreach collection="noteIds" item="noteId" open="(" separator="," close=")">
+                #{noteId}
+            </foreach>
+            ORDER BY nt.note_id, t.name
+            </script>
+            """)
+    List<NoteTagRow> findByNoteIds(@Param("noteIds") List<Long> noteIds);
 
     /**
      * 插入标签，并回填自增主键到 tag.id。

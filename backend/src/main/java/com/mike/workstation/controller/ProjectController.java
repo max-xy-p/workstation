@@ -5,9 +5,9 @@ import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.dto.ProjectResponse;
 import com.mike.workstation.dto.ProjectSummaryResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.ProjectStatusRequest;
 import com.mike.workstation.service.ProjectService;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,11 +44,13 @@ public class ProjectController {
      * @return 按更新时间倒序排列的项目列表
      */
     @GetMapping
-    public List<ProjectSummaryResponse> list(
+    public PageResponse<ProjectSummaryResponse> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) ProjectStatus status
+            @RequestParam(required = false) ProjectStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        return projectService.list(keyword, status);
+        return projectService.list(keyword, status, page, size);
     }
 
     /**

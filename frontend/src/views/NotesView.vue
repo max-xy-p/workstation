@@ -137,7 +137,7 @@ async function loadFolders() {
 async function loadNotes() {
   try {
     error.value = '';
-    notes.value = await noteApi.list({ keyword: filters.keyword, tagId: filters.tagId });
+    notes.value = await noteApi.listAll({ keyword: filters.keyword, tagId: filters.tagId });
     if (filters.keyword || filters.tagId) folders.value.forEach((folder) => expandedIds.add(folder.id));
   } catch (err) {
     error.value = err.message;

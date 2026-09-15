@@ -48,14 +48,53 @@ public interface NoteMapper {
                 </if>
             </where>
             ORDER BY n.updated_at DESC, n.id DESC
+            LIMIT #{size} OFFSET #{offset}
             </script>
             """)
-    List<Note> listSummaries(
+    List<Note> listSummariesPage(
+            @Param("keyword") String keyword,
+            @Param("folderId") Long folderId,
+            @Param("tagId") Long tagId,
+            @Param("projectId") Long projectId,
+            @Param("offset") long offset,
+            @Param("size") int size
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM notes n
+            <where>
+                <if test="keyword != null and keyword != ''">
+                    (n.title LIKE CONCAT('%', #{keyword}, '%') OR n.content LIKE CONCAT('%', #{keyword}, '%'))
+                </if>
+                <if test="folderId != null">AND n.folder_id = #{folderId}</if>
+                <if test="projectId != null">AND n.project_id = #{projectId}</if>
+                <if test="tagId != null">
+                    AND EXISTS (
+                        SELECT 1 FROM note_tag nt
+                        WHERE nt.note_id = n.id AND nt.tag_id = #{tagId}
+                    )
+                </if>
+            </where>
+            </script>
+            """)
+    long count(
             @Param("keyword") String keyword,
             @Param("folderId") Long folderId,
             @Param("tagId") Long tagId,
             @Param("projectId") Long projectId
     );
+
+    @Select("""
+            SELECT n.id, n.title, n.folder_id, f.name AS folder_name, n.version,
+                   n.project_id, p.name AS project_name, n.created_at, n.updated_at
+            FROM notes n
+            LEFT JOIN note_folders f ON f.id = n.folder_id
+            LEFT JOIN projects p ON p.id = n.project_id
+            WHERE n.project_id = #{projectId}
+            ORDER BY n.updated_at DESC, n.id DESC
+            """)
+    List<Note> listSummariesByProjectId(Long projectId);
 
     /**
      * 根据主键查询笔记详情。

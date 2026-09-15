@@ -153,14 +153,14 @@ function payload() {
 
 // 加载项目选项，任务必须关联到一个项目。
 async function loadProjects() {
-  projects.value = await projectApi.list({});
+  projects.value = await projectApi.listAll();
 }
 
 // 根据筛选条件重新加载看板任务。
 async function load() {
   try {
     error.value = '';
-    tasks.value = await taskApi.list(filters);
+    tasks.value = await taskApi.listAll(filters);
   } catch (err) {
     error.value = err.message;
   }

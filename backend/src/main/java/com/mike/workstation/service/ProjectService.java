@@ -7,13 +7,13 @@ import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.dto.ProjectDetailResponse;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.dto.ProjectResponse;
 import com.mike.workstation.dto.ProjectSummaryResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
-import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,13 +30,18 @@ public class ProjectService {
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
-    private final TagMapper tagMapper;
+    private final NoteTagLoader noteTagLoader;
 
-    public ProjectService(ProjectMapper projectMapper, TaskMapper taskMapper, NoteMapper noteMapper, TagMapper tagMapper) {
+    public ProjectService(
+            ProjectMapper projectMapper,
+            TaskMapper taskMapper,
+            NoteMapper noteMapper,
+            NoteTagLoader noteTagLoader
+    ) {
         this.projectMapper = projectMapper;
         this.taskMapper = taskMapper;
         this.noteMapper = noteMapper;
-        this.tagMapper = tagMapper;
+        this.noteTagLoader = noteTagLoader;
     }
 
     /**
@@ -46,8 +51,12 @@ public class ProjectService {
      * @param status 项目状态，可为空
      * @return 项目列表
      */
-    public List<ProjectSummaryResponse> list(String keyword, ProjectStatus status) {
-        return projectMapper.list(keyword, status).stream().map(ProjectResponseAssembler::toSummary).toList();
+    public PageResponse<ProjectSummaryResponse> list(String keyword, ProjectStatus status, int page, int size) {
+        PageQuery query = PageQuery.of(page, size);
+        var items = projectMapper.listPage(keyword, status, query.offset(), query.size()).stream()
+                .map(ProjectResponseAssembler::toSummary)
+                .toList();
+        return PageResponse.of(items, page, size, projectMapper.count(keyword, status));
     }
 
     /**
@@ -77,11 +86,11 @@ public class ProjectService {
      */
     public ProjectDetailResponse detail(Long id) {
         Project project = getEntity(id);
-        List<Note> notes = noteMapper.listSummaries(null, null, null, id);
-        notes.forEach(note -> note.setTags(tagMapper.findByNoteId(note.getId())));
+        List<Note> notes = noteMapper.listSummariesByProjectId(id);
+        noteTagLoader.attachTags(notes);
         return new ProjectDetailResponse(
                 ProjectResponseAssembler.toResponse(project),
-                taskMapper.list(null, id, null, null).stream().map(TaskResponseAssembler::toResponse).toList(),
+                taskMapper.listByProjectId(id).stream().map(TaskResponseAssembler::toResponse).toList(),
                 notes.stream().map(NoteResponseAssembler::toSummary).toList()
         );
     }

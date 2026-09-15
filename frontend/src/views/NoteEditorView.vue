@@ -112,7 +112,7 @@ function payload() {
 async function loadOptions() {
   const [folderList, projectList, tagList] = await Promise.all([
     noteFolderApi.list(),
-    projectApi.list({}),
+    projectApi.listAll(),
     tagApi.list()
   ]);
   folders.value = folderList;

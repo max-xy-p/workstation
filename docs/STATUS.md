@@ -1,6 +1,6 @@
 # Project Status
 
-> 核对日期：2026-09-13。
+> 核对日期：2026-09-15。
 
 ## Current State
 
@@ -25,6 +25,7 @@
 - [x] 任务 CRUD、优先级、截止日期和状态看板
 - [x] 仪表盘统计和最近项目/笔记
 - [x] API Response DTO 与数据库 Entity 分层，笔记摘要/详情分离及请求长度校验
+- [x] 项目、任务和笔记统一分页响应，笔记列表标签批量加载
 - [x] Maven 后端测试、Vite 前端构建和 GitHub Actions CI
 - [x] 后端源码、Maven 配置和 Dockerfile 统一整理到 `backend/`
 
@@ -39,8 +40,6 @@
 
 ## Known Issues
 
-- 笔记、项目和任务列表没有分页；笔记列表已改用摘要响应，不再读取或返回 `MEDIUMTEXT` 正文。
-- 笔记列表和项目详情逐篇查询标签，存在 N+1 查询。
 - 笔记搜索使用 `%keyword%` SQL `LIKE`，没有全文索引、相关度或命中高亮。
 - 自动保存更新完整笔记并删除后重建标签；版本目前只作持久化凭证，尚未用于乐观锁和多标签页冲突检测。
 - 笔记删除是物理删除；没有回收站、版本历史或恢复功能。
@@ -52,6 +51,7 @@
 
 ## Notes
 
+- 2026-09-15 验证：项目、任务和笔记列表统一为 `PageResponse`（页码从 0 开始、默认 20、最大 100）；笔记树、任务看板和项目选项通过分页汇总保持完整数据；笔记列表、Dashboard 和项目详情的标签改为按笔记 ID 批量加载；Backend `mvn.cmd verify` 通过 27 项测试，Frontend `npm.cmd run build` 成功。
 - 2026-09-14 验证：完成数据模型优化第一批，所有业务 Controller 改用 Response DTO；笔记列表、Dashboard 和项目详情中的笔记使用无正文摘要；项目列表不再读取 `run_guide`；Backend `mvn.cmd verify` 通过 21 项测试，Frontend `npm.cmd run build` 成功。
 - 2026-09-14 验证：移除额外的 `keycloak-db-init` 容器；Keycloak 数据库初始化已并入 MySQL `/docker-entrypoint-initdb.d`；已有数据卷需手动执行一次幂等脚本；发布恢复为单次全量 `compose up`，并增加失败状态/日志输出；开发与生产 Compose 配置静态校验通过。
 - 2026-09-13 验证：Backend `mvn verify` 通过 14 项测试，Gateway `mvn verify` 通过 4 项测试，Frontend `npm run build` 成功；开发与生产 Compose 配置和 Keycloak Realm JSON 静态校验通过。

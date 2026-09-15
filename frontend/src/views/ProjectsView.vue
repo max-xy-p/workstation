@@ -8,15 +8,15 @@
             <span class="eyebrow">项目列表</span>
             <h2>正在维护的项目</h2>
           </div>
-          <span class="section-count">{{ projects.length }} 个</span>
+          <span class="section-count">{{ pagination.total }} 个</span>
         </div>
         <div class="toolbar">
-          <input v-model="filters.keyword" aria-label="搜索项目" placeholder="搜索项目名称…" @keyup.enter="load" />
+          <input v-model="filters.keyword" aria-label="搜索项目" placeholder="搜索项目名称…" @keyup.enter="load(0)" />
           <select v-model="filters.status">
             <option value="">全部状态</option>
             <option v-for="status in PROJECT_STATUSES" :key="status.value" :value="status.value">{{ status.label }}</option>
           </select>
-          <button @click="load">筛选</button>
+          <button @click="load(0)">筛选</button>
           <button class="secondary" @click="resetFilters">重置</button>
         </div>
 
@@ -36,6 +36,11 @@
           </article>
         </div>
         <p v-else class="empty">暂无项目</p>
+        <nav v-if="pagination.total > pagination.size" class="pagination" aria-label="项目分页">
+          <button class="secondary" :disabled="pagination.page === 0" @click="load(pagination.page - 1)">上一页</button>
+          <span>第 {{ pagination.page + 1 }} 页，共 {{ Math.ceil(pagination.total / pagination.size) }} 页</span>
+          <button class="secondary" :disabled="!pagination.hasMore" @click="load(pagination.page + 1)">下一页</button>
+        </nav>
       </section>
 
       <section class="panel form-panel sticky-panel">
@@ -76,6 +81,7 @@ import { PROJECT_STATUSES, optionLabel } from '../constants/options';
 const route = useRoute();
 const error = ref('');
 const projects = ref([]);
+const pagination = reactive({ page: 0, size: 20, total: 0, hasMore: false });
 const filters = reactive({ keyword: route.query.keyword || '', status: '' });
 const form = reactive(emptyForm());
 
@@ -105,7 +111,15 @@ function resetFilters() {
 }
 
 // 把项目卡片数据填入表单，进入编辑状态。
-function edit(project) {
+async function edit(project) {
+  try {
+    error.value = '';
+    const detail = await projectApi.detail(project.id);
+    project = detail.project;
+  } catch (err) {
+    error.value = err.message;
+    return;
+  }
   Object.assign(form, {
     id: project.id,
     name: project.name,
@@ -130,10 +144,21 @@ function payload() {
 }
 
 // 根据筛选条件加载项目列表。
-async function load() {
+async function load(page = 0) {
   try {
     error.value = '';
-    projects.value = await projectApi.list(filters);
+    const result = await projectApi.list({ ...filters, page, size: pagination.size });
+    if (!result.items.length && result.total > 0 && page > 0) {
+      await load(page - 1);
+      return;
+    }
+    projects.value = result.items;
+    Object.assign(pagination, {
+      page: result.page,
+      size: result.size,
+      total: result.total,
+      hasMore: result.hasMore
+    });
   } catch (err) {
     error.value = err.message;
   }
@@ -167,5 +192,5 @@ async function remove(id) {
   }
 }
 
-onMounted(load);
+onMounted(() => load(0));
 </script>

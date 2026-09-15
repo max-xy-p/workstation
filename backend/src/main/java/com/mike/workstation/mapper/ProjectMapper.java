@@ -34,9 +34,26 @@ public interface ProjectMapper {
                 </if>
             </where>
             ORDER BY updated_at DESC, id DESC
+            LIMIT #{size} OFFSET #{offset}
             </script>
             """)
-    List<Project> list(@Param("keyword") String keyword, @Param("status") ProjectStatus status);
+    List<Project> listPage(
+            @Param("keyword") String keyword,
+            @Param("status") ProjectStatus status,
+            @Param("offset") long offset,
+            @Param("size") int size
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM projects
+            <where>
+                <if test="keyword != null and keyword != ''">name LIKE CONCAT('%', #{keyword}, '%')</if>
+                <if test="status != null">AND status = #{status}</if>
+            </where>
+            </script>
+            """)
+    long count(@Param("keyword") String keyword, @Param("status") ProjectStatus status);
 
     /**
      * 根据主键查询项目。
