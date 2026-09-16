@@ -1,4 +1,4 @@
-# Architecture
+# 系统架构
 
 ## 总览
 
@@ -42,6 +42,8 @@ Python -> Keycloak Token Endpoint -> Bearer Access Token
 ```
 
 Gateway 中的认证状态用于浏览器会话，Backend 中保留的是资源访问校验，不是重复实现登录。即使内部网络绕过 Gateway，Backend 仍会拒绝无效 Token 或缺少 `OWNER` 角色的请求。
+
+认证设计、两类调用方的区别及完整流程见 [`docs/authentication.md`](docs/authentication.md)。
 
 ## 业务模块
 
@@ -92,4 +94,4 @@ NotesView / NoteEditorView
 - 本机文件系统：受 `NOTE_IMPORT_ALLOWED_ROOTS` 限制的 Markdown 导入源。
 - Nginx：唯一公开入口和同源反向代理。
 
-CI 验证 Backend、Gateway、Frontend 和三个应用镜像；发布流程把 Backend、Gateway、Web 镜像推送到 GHCR，并在 VPS 上通过生产 Compose 运行它们以及 MySQL、Redis、Keycloak。
+CI、GHCR 镜像发布和 VPS 部署流程见 [`docs/ci-cd.md`](docs/ci-cd.md)，本文不重复维护操作步骤。

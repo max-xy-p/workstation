@@ -1,226 +1,75 @@
-# SDK 分发与 Python 服务部署
+# SDK 与服务分发说明
 
-## 1. 当前方案
+## SDK、认证层和镜像的区别
 
-Workstation 不运行私有 PyPI 或 npm Registry。SDK 与服务镜像采用两条相互独立的分发链路：
+这三者解决不同问题：
 
-```text
-SDK 源码：Git Tag -> uv Git 依赖 -> 消费服务的构建流程
-服务程序：GitHub Actions -> GHCR 容器镜像 -> VPS
-```
+- **SDK**：把 OpenAPI 契约变成某种语言可调用的 DTO 和 endpoint。
+- **认证层**：帮助机器服务获取和缓存 Access Token，再创建可用的 SDK Client。
+- **服务镜像**：包含业务服务代码、SDK、认证层及全部运行依赖，是 VPS 实际部署的产物。
 
-SDK 只在开发和镜像构建阶段使用。VPS 不下载 SDK 源码，只拉取已经包含全部依赖的 GHCR 镜像。
+SDK 本身不会运行，也不会主动寻找需要它的服务。哪个服务需要 SDK，由该服务在依赖配置中明确声明。
 
-## 2. SDK 版本和标签
+## 当前为什么使用 Git Tag
 
-以下位置必须使用同一个语义化版本：
-
-- `openapi/workstation.yaml` 的 `info.version`
-- `openapi/python-client-config.yaml` 的 `package_version_override`
-- `clients/python/pyproject.toml`
-- `clients/python-auth/pyproject.toml`
-- `clients/typescript/package.json`
-
-使用下面的命令检查：
-
-```powershell
-python scripts/check_sdk_versions.py
-python scripts/check_sdk_versions.py --tag sdk-v1.0.0
-```
-
-SDK 标签格式固定为 `sdk-v<版本>`，例如：
-
-```powershell
-git tag -a sdk-v1.0.0 -m "发布 Workstation SDK 1.0.0"
-git push origin sdk-v1.0.0
-```
-
-不要移动或覆盖已经发布的 SDK 标签。内容变化时必须发布新版本。
-
-## 3. SDK 发布工作流
-
-`.github/workflows/sdk-release.yml` 在推送 `sdk-v*` 标签时执行：
-
-1. 运行仓库完整 CI。
-2. 校验标签与全部 SDK 版本一致。
-3. 构建 `workstation-api-client` 的 wheel 和 sdist。
-4. 构建 `workstation-client-credentials` 的 wheel 和 sdist。
-5. 在隔离环境中安装两个 wheel 并验证导入。
-6. 构建和测试 `@workstation/api-client` npm 包。
-7. 计算全部制品的 SHA-256。
-8. 创建 GitHub Release 并上传制品。
-
-GitHub Release 是审计和手工下载入口。Python 服务的常规依赖仍锁定 Git Tag 和 Commit，不依赖 Release 下载地址。
-
-应用发布使用 `v*` 标签，SDK 发布使用 `sdk-v*` 标签，两者不会互相触发：
+当前规模下，单独维护私有 PyPI 和 npm Registry 会增加仓库权限、制品清理和运维成本。Git Tag 已经能够提供可审计、可锁定的源码版本，因此当前采用：
 
 ```text
-v1.2.0      -> 发布 Workstation Backend/Gateway/Web 镜像并部署 VPS
-sdk-v1.1.0  -> 发布 SDK 源码版本和 GitHub Release 制品
+OpenAPI -> 生成 SDK -> sdk-v* Tag -> 消费服务锁定 Tag 和 Commit
 ```
 
-## 4. 新 Python 服务引用 SDK
+GitHub Release 同时保存构建后的 Python 和 TypeScript 制品，便于审计和人工下载。常规 Python 服务仍通过锁文件记录 Git Tag 对应的具体 Commit，避免依赖可移动分支。
 
-新服务的 `pyproject.toml` 同时声明生成客户端和认证层。将仓库地址替换为实际地址：
+如果未来服务数量明显增加、需要依赖搜索或精细包权限，可以再迁移到正式的 Python/npm Package Registry；这不会改变 OpenAPI 作为契约真源的设计。
 
-```toml
-[project]
-name = "workstation-sync-service"
-version = "0.1.0"
-requires-python = ">=3.11"
-dependencies = [
-    "workstation-api-client==1.0.0",
-    "workstation-client-credentials==1.0.0",
-]
+## 为什么服务镜像使用 GHCR
 
-[tool.uv.sources]
-workstation-api-client = {
-    git = "https://github.com/<owner>/workstation.git",
-    tag = "sdk-v1.0.0",
-    subdirectory = "clients/python"
-}
-workstation-client-credentials = {
-    git = "https://github.com/<owner>/workstation.git",
-    tag = "sdk-v1.0.0",
-    subdirectory = "clients/python-auth"
-}
-```
+SDK 是构建输入，镜像才是部署产物。消费服务在 CI 中取得 SDK、完成测试并构建镜像，然后把完整镜像发布到 GHCR。VPS 只需要拉取镜像，不需要访问 SDK 仓库或准备 Python 构建环境。
 
-随后生成并提交锁文件：
+这样可以保证同一个镜像在 CI 和 VPS 上包含完全相同的依赖，也避免在生产服务器上临时解析 SDK 版本。
 
-```powershell
-uv lock
-uv sync --locked
-```
+## SDK 发布流程
 
-`uv.lock` 会记录标签解析出的 Commit。不要依赖 `master` 分支，也不要在依赖 URL 中写入 GitHub Token。
+1. 修改 OpenAPI、Backend 和相关 SDK 封装。
+2. 根据兼容性确定新的语义化版本。
+3. 同步所有 SDK 版本并重新生成客户端。
+4. 完整 CI 验证契约、生成漂移、测试和构建。
+5. 创建与版本一致的 `sdk-v*` 标签。
+6. 发布 Python、TypeScript 制品和校验信息。
 
-## 5. 私有仓库读取凭证
+已经发布并被消费的标签保持不可变。任何内容变化都发布新版本，不能移动原标签。
 
-如果 Workstation 是私有仓库，在消费服务仓库中创建 `WORKSTATION_SDK_PAT` Secret。它应使用只读的 Fine-grained PAT，并且只授予 Workstation 仓库 `Contents: Read` 权限。
+## Python 服务消费流程
 
-普通 GitHub Actions 步骤可以这样配置 Git Credential Helper：
+1. 服务声明生成 SDK 和认证层依赖。
+2. 两个依赖指向同一个 `sdk-v*` 标签。
+3. 锁文件记录实际 Commit，并随服务仓库提交。
+4. 服务 CI 安装锁定依赖并运行自身测试。
+5. CI 构建包含 SDK 的服务镜像并发布到 GHCR。
+6. VPS 拉取固定镜像标签并运行。
 
-```yaml
-- name: 配置 SDK 仓库读取凭证
-  env:
-    GH_TOKEN: ${{ secrets.WORKSTATION_SDK_PAT }}
-  run: |
-    printf '%s' "$GH_TOKEN" | gh auth login --with-token
-    gh auth setup-git
+服务通过自己的依赖声明表明“我需要这个 SDK”，不需要 Workstation 维护一份中央服务名单，也不存在认证后由 Workstation 主动把 SDK 推送给服务的过程。
 
-- name: 安装锁定依赖
-  run: uv sync --locked
-```
+## TypeScript SDK 的消费
 
-凭证不能写入 `pyproject.toml`、`uv.lock`、Dockerfile、镜像层或构建日志。
+当前 Frontend 在同一仓库中使用本地 TypeScript SDK。外部 Node 服务可以使用发布制品，但 SDK 仍不绑定认证方式：浏览器由 Gateway Session 适配，机器服务自行获取 Bearer Token 并注入 Transport。
 
-## 6. Python 服务 Dockerfile
+## 四类凭证
 
-下面的模板使用 BuildKit Secret，只在执行 `uv sync` 的构建步骤中临时提供 GitHub Token：
+| 凭证 | 获取的资源 | 所在阶段 |
+| --- | --- | --- |
+| SDK 仓库读取凭证 | 私有 Git 仓库中的 SDK 源码 | 构建阶段 |
+| GitHub Actions Token | 向 GHCR 发布服务镜像 | 构建阶段 |
+| GHCR 只读凭证 | 从 GHCR 拉取私有镜像 | 部署阶段 |
+| Keycloak Client Credentials | 调用 Workstation 业务 API | 运行阶段 |
 
-```dockerfile
-# syntax=docker/dockerfile:1.7
-FROM python:3.12-slim AS builder
+它们虽然都是“先认证再访问资源”，但权限对象完全不同，不能共用。构建 SDK 的凭证不应进入运行镜像，VPS 也不需要 SDK 仓库凭证。
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
-WORKDIR /app
-COPY . .
+## 版本关系
 
-RUN --mount=type=secret,id=github_token \
-    token="$(cat /run/secrets/github_token)" && \
-    git config --global url."https://x-access-token:${token}@github.com/".insteadOf "https://github.com/" && \
-    uv sync --locked --no-dev --no-editable && \
-    rm -f ~/.gitconfig
+- OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 版本一致。
+- `sdk-v*` 表示 SDK 版本，`v*` 表示 Workstation 应用版本。
+- SDK 标签不会触发应用发布，应用标签也不会改变 SDK 版本。
+- 消费服务有自己的版本和镜像标签，可以独立于 Workstation 发布。
 
-FROM python:3.12-slim
-WORKDIR /app
-COPY --from=builder /app /app
-ENV PATH="/app/.venv/bin:${PATH}"
-CMD ["python", "-m", "workstation_sync_service"]
-```
-
-公开仓库可以删除 Secret 挂载和 Git 凭证配置，只保留 `uv sync`。
-
-## 7. 消费服务发布到 GHCR
-
-新服务可以使用下面的 GitHub Actions 工作流：
-
-```yaml
-name: 发布服务镜像
-
-on:
-  push:
-    tags:
-      - "v*"
-
-permissions:
-  contents: read
-  packages: write
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: docker/setup-buildx-action@v4
-
-      - name: 登录 GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 生成镜像元数据
-        id: metadata
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/workstation-sync-service
-          tags: |
-            type=ref,event=tag
-            type=sha,format=long
-
-      - name: 构建并发布镜像
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          secrets: |
-            github_token=${{ secrets.WORKSTATION_SDK_PAT }}
-```
-
-`WORKSTATION_SDK_PAT` 只用于构建阶段读取 SDK 源码；服务运行时使用的是独立的 Keycloak Client ID 和 Secret。
-
-## 8. VPS 部署
-
-VPS 只需要登录 GHCR 并运行服务镜像。公开镜像可以直接拉取；私有镜像需要创建仅含 `read:packages` 权限的 GitHub Personal Access Token (classic)，登录时把 Token 通过标准输入传入，不能把它写入 Compose 文件：
-
-```bash
-printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
-docker compose pull
-docker compose up -d --remove-orphans
-```
-
-生产 Compose 应固定到服务发布标签，不使用 `latest`：
-
-```yaml
-services:
-  workstation-sync-service:
-    image: ghcr.io/<owner>/workstation-sync-service:v0.1.0
-    restart: unless-stopped
-```
-
-服务运行时配置示例：
-
-```properties
-WORKSTATION_BASE_URL=https://workstation.example.com
-WORKSTATION_TOKEN_URL=https://workstation.example.com/auth/realms/workstation/protocol/openid-connect/token
-WORKSTATION_CLIENT_ID=workstation-sync-service
-WORKSTATION_CLIENT_SECRET=<独立密钥>
-```
-
-每个机器服务应使用独立 Keycloak Client，以便单独审计、轮换和吊销凭证。SDK 版本可以共享，运行时身份不能共享。
+契约版本判断见 [`openapi.md`](openapi.md)，镜像发布和部署见 [`ci-cd.md`](ci-cd.md)，当前完成情况见 [`STATUS.md`](STATUS.md)。

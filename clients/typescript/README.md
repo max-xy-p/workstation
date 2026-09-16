@@ -2,15 +2,7 @@
 
 该包从 `openapi/workstation.yaml` 生成 TypeScript DTO，并提供与认证方式无关的业务 API。Vue 注入自己的 Session/CSRF Transport；Node.js 可以使用内置 Fetch Transport 并注入 Bearer Token。
 
-```powershell
-cd clients/typescript
-npm.cmd ci
-npm.cmd run api:generate
-npm.cmd run typecheck
-npm.cmd run build
-```
-
-`src/generated/schema.ts` 和 `dist/` 是生成内容，不要手工修改。业务接口变更应先修改 OpenAPI，再重新生成和构建本包。
+`src/generated/schema.ts` 和 `dist/` 是生成内容，不要手工修改。业务接口变更、生成和验证命令统一参见 [`../../docs/openapi.md`](../../docs/openapi.md)。
 
 Node.js 示例：
 

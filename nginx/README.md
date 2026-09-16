@@ -9,22 +9,10 @@ Nginx 是浏览器的同源入口，默认监听 `http://localhost:8088`：
 
 ## 开发模式
 
-先启动 MySQL、Redis 和 Keycloak：
+先按 [`../README.md`](../README.md) 的“本地源码调试”启动基础设施、Backend 和 Gateway。启动 Vite 时额外固定监听地址：
 
 ```powershell
-docker compose --env-file .env.docker up -d db redis keycloak
-```
-
-再分别启动 Backend、Gateway 和 Vite：
-
-```powershell
-cd backend
-mvn.cmd spring-boot:run
-
-cd ../gateway
-mvn.cmd spring-boot:run
-
-cd ../frontend
+cd frontend
 npm.cmd run dev -- --host 127.0.0.1
 ```
 
@@ -38,12 +26,7 @@ include D:/dev/project/workstation/nginx/workstation.dev.conf;
 
 ## 构建产物模式
 
-```powershell
-cd frontend
-npm.cmd run build
-```
-
-把 `nginx/workstation.prod.conf` 包含到 Nginx 的 `http {}` 中：
+先按 [`../README.md`](../README.md) 的前端构建命令生成 `frontend/dist`，再把 `nginx/workstation.prod.conf` 包含到 Nginx 的 `http {}` 中：
 
 ```nginx
 include D:/dev/project/workstation/nginx/workstation.prod.conf;

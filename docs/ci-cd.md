@@ -1,151 +1,80 @@
-# Docker 与 GitHub Actions
+# CI/CD 与部署说明
 
-## 交付结构
+## CI/CD 解决什么问题
 
-CI 在 `master` 推送和 Pull Request 上执行：
+CI 负责回答“这次修改是否仍然满足项目约束”，CD 负责回答“通过验证的产物如何被发布和部署”。两者共享验证结果，但不等同：CI 成功不会自动改变生产环境，只有明确的发布触发才会产生和部署版本化镜像。
 
-- Backend `mvn verify`
-- Gateway `mvn verify`
-- OpenAPI 规范校验、不兼容变更检查、Python Client 生成漂移检查和认证适配层测试
-- TypeScript SDK 生成漂移检查、类型检查、构建和 Node 测试
-- Frontend `npm ci`、`npm run typecheck` 与 `npm run build`
-- Backend、Gateway、Web 三个 Docker 镜像构建
+## 交付物
 
-发布工作流由 `v*` 标签或手动触发，向 GHCR 发布：
+Workstation 的应用交付物是三个容器镜像：
+
+- Backend：业务 API 和数据访问
+- Gateway：浏览器 BFF、机器 Token 入口和请求转发
+- Web：Frontend 静态资源和统一反向代理入口
+
+MySQL、Redis 和 Keycloak 使用官方镜像，它们属于运行环境，不由本项目重复构建。
+
+SDK 是开发制品，不是 Workstation 应用容器。它使用独立标签和发布流程，详见 [`sdk-distribution.md`](sdk-distribution.md)。
+
+## CI 验证范围
 
 ```text
-ghcr.io/<namespace>/workstation-backend:<tag>
-ghcr.io/<namespace>/workstation-gateway:<tag>
-ghcr.io/<namespace>/workstation-web:<tag>
+代码与配置
+  -> Backend 测试
+  -> Gateway 测试
+  -> OpenAPI 合法性、兼容性和生成漂移
+  -> Python 认证层测试
+  -> TypeScript SDK 类型检查、构建和测试
+  -> Frontend 类型检查和构建
+  -> 三个应用镜像构建
 ```
 
-SDK 使用独立的 `sdk-v*` 标签。该标签会运行完整 CI、校验版本一致性、构建 Python wheel/sdist 和 npm 包，并把带 SHA-256 校验和的制品上传到 GitHub Release。其他 Python 服务通过 Git Tag 和 `uv.lock` 获取 SDK，在自己的 GitHub Actions 中构建 GHCR 镜像；VPS 不直接下载 SDK。详细流程见 [`sdk-distribution.md`](sdk-distribution.md)。
+CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某一种语言中更新。镜像构建也属于验证范围，因为本地源码构建成功不代表 Docker 构建上下文和复制路径一定正确。
 
-MySQL、Redis 和 Keycloak 使用官方镜像，不由本仓库重新构建。MySQL 首次创建数据卷时，
-会按顺序执行 `01-schema.sql` 和 `02-keycloak.sh`，分别初始化业务表以及 Keycloak 数据库/专用账号。
-项目不再使用额外的数据库初始化容器。
+## 标签的含义
 
-Web 镜像的构建上下文是仓库根目录，因为 `frontend` 通过本地 npm 依赖消费 `clients/typescript`。`frontend/Dockerfile` 只复制 TypeScript SDK 和前端所需文件；不要把 Web 构建上下文改回 `frontend/`，否则 Docker 无法解析 `file:../clients/typescript`。
+| 标签 | 含义 | 结果 |
+| --- | --- | --- |
+| `v*` | Workstation 应用版本 | 发布三个应用镜像并部署 VPS |
+| `sdk-v*` | SDK 契约版本 | 发布 SDK 制品，不部署 Workstation |
 
-## 本地 Compose
+标签是明确的发布意图，而不是普通提交的别名。已经发布的版本应保持不可变，后续修复使用新版本。
 
-复制并修改配置：
+## 应用发布流程
 
-```powershell
-Copy-Item .env.docker.example .env.docker
-New-Item -ItemType Directory -Force notes
-```
+1. 创建应用版本标签。
+2. 发布流程复用完整 CI，失败则停止。
+3. 构建 Backend、Gateway 和 Web 镜像。
+4. 镜像以版本和 Commit 标识发布到 GHCR。
+5. 部署流程连接 VPS，并同步运行所需的部署描述。
+6. VPS 拉取本次版本镜像并更新容器。
+7. 通过统一 Web 入口执行健康检查。
+8. 失败时保留诊断信息，不把失败发布伪装成成功。
 
-必须替换所有 `replace-with-...` 值。重点配置包括：
+## 环境边界
 
-- `WORKSTATION_PUBLIC_URL`：浏览器访问应用的完整地址，不带末尾斜杠。
-- `KEYCLOAK_CLIENT_SECRET`：Gateway confidential client secret。
-- `KEYCLOAK_PYTHON_CLIENT_SECRET`：Python Client Credentials confidential client secret，必须与 Gateway Secret 不同。
-- `WORKSTATION_OWNER_USERNAME` / `WORKSTATION_OWNER_INITIAL_PASSWORD`：首个业务 Owner；初始密码为临时密码。
-- `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD`：仅用于身份中心管理。
-- `KEYCLOAK_DB_USERNAME` / `KEYCLOAK_DB_PASSWORD`、`REDIS_PASSWORD`、MySQL 密码。
+- 本地开发可以运行源码或完整 Compose 环境。
+- CI 环境只进行验证和制品构建，不保存业务数据。
+- GHCR 保存版本化镜像，不保存运行时 Secret。
+- VPS 保存生产配置和持久化数据，只拉取已经构建完成的镜像。
+- Web/Nginx 是唯一公网入口，Gateway、Backend、数据库和 Redis 不直接暴露公网。
 
-启动与检查：
+这种分离可以避免“在服务器上现场构建”的不可重复问题，也让回滚针对确定的镜像版本进行。
 
-```powershell
-docker compose --env-file .env.docker up -d --build
-docker compose --env-file .env.docker ps
-docker compose --env-file .env.docker logs -f gateway keycloak backend
-```
+## 数据和身份配置
 
-`db` 的健康检查会实际执行 `SELECT 1`，不只检查 MySQL 进程是否存活。
-对于已有 `mysql_data` 的环境，MySQL 不会再自动执行 `/docker-entrypoint-initdb.d`。
-首次升级到 Keycloak 架构时，必须在现有 MySQL 容器内手动执行一次同一个幂等脚本：
+容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境由初始化脚本创建结构；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 
-```powershell
-docker compose --env-file .env.docker up -d db
-docker compose --env-file .env.docker exec -T db bash /docker-entrypoint-initdb.d/02-keycloak.sh
-docker compose --env-file .env.docker up -d
-```
+Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience、角色和用户变化需要受控更新，不能假设重启会覆盖数据库中的现有配置。
 
-这些命令不会删除或重建数据卷。这是已有数据卷升级到 Keycloak 架构时的一次性操作；
-新数据卷会在 MySQL 首次启动时自动完成初始化。
+任何生产数据或身份配置变更都应先备份，并明确其与应用版本的兼容关系。
 
-访问 `http://localhost:8088`。停止但保留数据：
+## 回滚含义
 
-```powershell
-docker compose --env-file .env.docker down
-```
+镜像回滚是让应用重新运行一个已经验证过的旧版本。它不会自动撤销数据库迁移、Realm 变更或外部数据变化。
 
-不要在需要保留数据时执行 `docker compose down -v`，它会删除业务库、身份库和 Session 数据卷。
+因此发布前需要判断本次变化是否只涉及可回滚的应用代码，还是同时包含数据结构变化。后一种情况必须准备对应的数据恢复方案，而不能只依赖旧镜像。
 
-## 生产服务器准备
+## 当前状态
 
-服务器需要 Docker Engine、Docker Compose 插件和一个可执行 Docker 的非 root 部署用户。初始化目录：
-
-```bash
-sudo mkdir -p /opt/workstation/notes /opt/workstation/keycloak
-sudo chown -R deploy:deploy /opt/workstation
-```
-
-在 `/opt/workstation/.env.docker` 保存运行时配置，至少设置：
-
-```properties
-GHCR_NAMESPACE=<小写 GitHub 用户名或组织名>
-WORKSTATION_PUBLIC_URL=https://workstation.example.com
-MYSQL_PASSWORD=<secret>
-MYSQL_ROOT_PASSWORD=<secret>
-KEYCLOAK_ADMIN_USERNAME=<admin>
-KEYCLOAK_ADMIN_PASSWORD=<secret>
-KEYCLOAK_DB_USERNAME=keycloak
-KEYCLOAK_DB_PASSWORD=<secret>
-KEYCLOAK_CLIENT_SECRET=<至少 32 个随机字符>
-KEYCLOAK_PYTHON_CLIENT_SECRET=<另一个至少 32 个随机字符>
-WORKSTATION_OWNER_USERNAME=owner
-WORKSTATION_OWNER_INITIAL_PASSWORD=<temporary-secret>
-REDIS_PASSWORD=<secret>
-```
-
-生产 Compose 只将 Web 入口绑定到宿主机 `127.0.0.1:${APP_PORT:-8088}`，由宿主机 Nginx 对外提供 HTTPS，
-不应将该端口直接开放到 VPS 公网。生产 Compose 固定启用 Secure Session Cookie，
-所以公网入口必须正确转发 `Host`、`X-Forwarded-Proto` 与 `X-Forwarded-Port`。
-
-Realm JSON 只会在数据库中不存在 `workstation` Realm 时自动导入。后续身份配置变更应使用 Keycloak Admin Console 或受控导入流程，不会靠重启覆盖现有 Realm。
-
-已有 Realm 启用 Python Client Credentials 时，需要按 `keycloak/workstation-realm.json` 手动或通过受控 Admin API 创建 `workstation-python` confidential client，启用 Service Account，为 Access Token 添加 `workstation-api` Audience，并把 `OWNER` Realm Role 授予该 Service Account。不要删除或重建现有 Realm 来应用这一变更。
-
-如果 GHCR 包是私有的，在 VPS 上用仅有 `read:packages` 权限的 Token 登录一次：
-
-```bash
-docker login ghcr.io -u <username>
-```
-
-## GitHub Actions Secrets
-
-| Secret | 用途 |
-| --- | --- |
-| `VPS_HOST` | VPS 域名或 IP |
-| `VPS_PORT` | SSH 端口，可省略，默认 22 |
-| `VPS_USER` | 非 root 部署用户 |
-| `VPS_SSH_PRIVATE_KEY` | 无口令、仅用于部署的私钥 |
-| `VPS_SSH_KNOWN_HOSTS` | 已人工核验指纹的主机公钥记录 |
-
-发布流程会上传 `compose.prod.yaml`、MySQL schema、Keycloak 数据库初始化脚本和 Realm 模板。
-拉取镜像后会用一次 `docker compose up -d --remove-orphans` 创建或更新全部服务；
-Keycloak 再通过 Compose 依赖等待 MySQL 健康。部署健康检查通过 Web 入口请求 Gateway 的 `/api/auth/csrf`；
-失败时输出 Backend、Gateway、Keycloak、Redis 和 Web 日志。
-
-## 数据与安全
-
-- 同一 MySQL 实例中的 `workstation` 数据库保存业务数据，`keycloak` 数据库保存身份数据；两者使用独立账号。Redis 保存 Gateway Session。
-- 浏览器只持有 HttpOnly Session Cookie；OAuth2 Token 仅存在于 Gateway 服务端会话。
-- Gateway 对浏览器写请求执行 CSRF 校验；Backend 无状态校验 JWT 与 `OWNER` 角色。
-- Python 使用 Client Credentials Bearer Token 经 Gateway 调用 Backend，不使用浏览器 Session 或 CSRF；Gateway 与 Backend 都校验机器 Token。
-- `.env.docker`、真实 Secret 和初始密码不得提交到 Git。
-- `sample-data.sql` 会清空业务表，生产环境不得执行。
-- 应同时备份 MySQL 中的业务库、Keycloak 身份库以及必要的 Realm 配置。
-
-## 回滚
-
-```bash
-cd /opt/workstation
-IMAGE_TAG=v0.1.0 docker compose --env-file .env.docker -f compose.prod.yaml pull
-IMAGE_TAG=v0.1.0 docker compose --env-file .env.docker -f compose.prod.yaml up -d --remove-orphans
-```
-
-应用镜像可以按标签回滚；数据库或 Realm 结构发生不兼容变更时，必须配套执行已验证的恢复方案。
+项目已经具备完整 CI、应用镜像发布、GHCR 存储和 VPS 部署流程。尚未完成或需要真实环境验证的事项统一记录在 [`STATUS.md`](STATUS.md)。
