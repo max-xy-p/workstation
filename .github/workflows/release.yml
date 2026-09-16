@@ -39,7 +39,7 @@ jobs:
             dockerfile: ./gateway/Dockerfile
             image: workstation-gateway
           - name: web
-            context: ./frontend
+            context: .
             dockerfile: ./frontend/Dockerfile
             image: workstation-web
 
