@@ -19,6 +19,8 @@ ghcr.io/<namespace>/workstation-gateway:<tag>
 ghcr.io/<namespace>/workstation-web:<tag>
 ```
 
+SDK 使用独立的 `sdk-v*` 标签。该标签会运行完整 CI、校验版本一致性、构建 Python wheel/sdist 和 npm 包，并把带 SHA-256 校验和的制品上传到 GitHub Release。其他 Python 服务通过 Git Tag 和 `uv.lock` 获取 SDK，在自己的 GitHub Actions 中构建 GHCR 镜像；VPS 不直接下载 SDK。详细流程见 [`sdk-distribution.md`](sdk-distribution.md)。
+
 MySQL、Redis 和 Keycloak 使用官方镜像，不由本仓库重新构建。MySQL 首次创建数据卷时，
 会按顺序执行 `01-schema.sql` 和 `02-keycloak.sh`，分别初始化业务表以及 Keycloak 数据库/专用账号。
 项目不再使用额外的数据库初始化容器。

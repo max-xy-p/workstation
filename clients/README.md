@@ -20,3 +20,7 @@
 - 本文件：不同客户端及认证方式的关系。
 
 手写 Python 代码的模块说明、文档字符串、必要注释和项目错误消息使用中文；类名、函数名、协议字段名以及第三方 API 名称保留其代码约定。
+
+## 远程服务使用
+
+当前仓库内部继续使用本地路径依赖。其他仓库中的 Python 服务通过不可变的 `sdk-v*` Git Tag 和 `uv.lock` 获取 SDK，在 GitHub Actions 中构建为 GHCR 镜像；VPS 只拉取镜像。完整流程见 [`../docs/sdk-distribution.md`](../docs/sdk-distribution.md)。

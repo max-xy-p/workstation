@@ -32,6 +32,7 @@ nginx/                               可选的本机 Nginx 配置
 - 项目运行与配置：`README.md`
 - 整体架构和数据流：`ARCHITECTURE.md`
 - 已完成功能、进行中事项和已知问题：`docs/STATUS.md`
+- SDK 分发与 Python 服务部署：`docs/sdk-distribution.md`
 - CI/CD 与容器部署流程：`docs/ci-cd.md`
 - 可选 Nginx 本机代理流程：`nginx/README.md`
 

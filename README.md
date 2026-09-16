@@ -165,6 +165,7 @@ uv run --project clients/python-auth python -m unittest discover -s clients/pyth
 - [当前状态](docs/STATUS.md)
 - [OpenAPI 使用说明](docs/openapi.md)
 - [Python 与 TypeScript 客户端说明](clients/README.md)
+- [SDK 分发与 Python 服务部署](docs/sdk-distribution.md)
 - [CI/CD 与容器部署](docs/ci-cd.md)
 - [Keycloak + Gateway/BFF 实施说明](docs/gateway-implementation-plan.md)
 - [可选 Nginx 本机代理](nginx/README.md)

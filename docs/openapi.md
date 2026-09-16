@@ -598,6 +598,7 @@ OpenAPI 相关 CI 按以下顺序执行：
 
 - [系统架构](../ARCHITECTURE.md)：整个 Browser、Gateway、Backend、Keycloak 和数据流架构。
 - [OpenAPI 与 Python 客户端实施方案](openapi-python-client-plan.md)：选型背景、范围和分阶段计划。
+- [SDK 分发与 Python 服务部署](sdk-distribution.md)：SDK 版本标签、Git 依赖、GitHub Release、GHCR 和 VPS 部署流程。
 - [当前状态](STATUS.md)：已完成功能、进行中事项和已知问题。
 - [Keycloak + Gateway/BFF 实施说明](gateway-implementation-plan.md)：现有浏览器认证和 Gateway 设计。
 - [SSO 登录流程](sso-login-flow.md)：Authorization Code、PKCE、Session、Token Relay 和 CSRF 的详细解释。

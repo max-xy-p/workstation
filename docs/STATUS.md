@@ -1,6 +1,6 @@
 # Project Status
 
-> 核对日期：2026-09-15。
+> 核对日期：2026-09-16。
 
 ## Current State
 
@@ -28,6 +28,7 @@
 - [x] 项目、任务和笔记统一分页响应，笔记列表标签批量加载
 - [x] OpenAPI 3.1 业务 API 契约、Python 生成客户端及 Client Credentials 认证薄层
 - [x] 独立 TypeScript/Node SDK、Vue Transport 接入、类型检查和生成漂移检测
+- [x] SDK 版本一致性校验、`sdk-v*` 发布制品和外部 Python 服务 GHCR 分发流程
 - [x] Gateway 浏览器 Session 与机器 Bearer Token 双认证链路
 - [x] API RFC 3339 Offset 时间、统一错误时间戳和未知请求字段拒绝策略
 - [x] Maven 后端测试、Vite 前端构建和 GitHub Actions CI
@@ -55,6 +56,7 @@
 
 ## Notes
 
+- 2026-09-16 验证：SDK 版本一致性检查通过；`workstation-api-client` 和 `workstation-client-credentials` 均成功构建 wheel 与 sdist，并在隔离虚拟环境中共同安装、导入成功。
 - 2026-09-15 验证：使用 `openapi-typescript 7.13.0` 建立独立的 `@workstation/api-client` SDK，包含 DTO、业务 endpoint、分页和 Fetch Transport；SDK 类型检查、构建及 2 项 Node 测试通过；Vue 通过本地 npm 包注入 Session/CSRF Transport，前端类型检查和构建通过。
 - 2026-09-15 验证：OpenAPI Python Client 使用 `openapi-python-client 0.29.1` 成功生成；Python Client Credentials 与生成契约共 4 项测试通过；Backend `mvn.cmd verify` 通过 29 项测试，Gateway `mvn.cmd verify` 通过 7 项测试，Frontend `npm.cmd run build` 成功，开发与生产 Compose 配置及 Keycloak Realm JSON 静态校验通过。
 - 已有 Keycloak 数据库不会因重启自动更新 Realm；启用 Python Client Credentials 前，需要在现有 Realm 中按 `keycloak/workstation-realm.json` 创建 `workstation-python` Client、Service Account、Audience Mapper 和 `OWNER` 角色映射。
