@@ -34,6 +34,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理已经进入工作空间但缺少目标 Permission 的错误。
+     */
+    @ExceptionHandler(WorkspaceAccessDeniedException.class)
+    public ResponseEntity<ApiError> handleWorkspaceAccessDenied(WorkspaceAccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiError.of("WORKSPACE_ACCESS_DENIED", ex.getMessage()));
+    }
+
+    /**
      * 处理请求体格式错误或枚举值无法解析等参数问题。
      */
     @ExceptionHandler({

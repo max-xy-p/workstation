@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api/workspaces/{workspaceId}/tasks")
 /**
  * 任务接口控制器。
  *
@@ -45,6 +45,7 @@ public class TaskController {
      */
     @GetMapping
     public PageResponse<TaskResponse> list(
+            @PathVariable Long workspaceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) TaskStatus status,
@@ -52,7 +53,7 @@ public class TaskController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return taskService.list(keyword, projectId, status, priority, page, size);
+        return taskService.list(workspaceId, keyword, projectId, status, priority, page, size);
     }
 
     /**
@@ -62,8 +63,8 @@ public class TaskController {
      * @return 任务详情
      */
     @GetMapping("/{id}")
-    public TaskResponse get(@PathVariable Long id) {
-        return taskService.get(id);
+    public TaskResponse get(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return taskService.get(workspaceId, id);
     }
 
     /**
@@ -74,8 +75,8 @@ public class TaskController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TaskResponse create(@RequestBody TaskRequest request) {
-        return taskService.create(request);
+    public TaskResponse create(@PathVariable Long workspaceId, @RequestBody TaskRequest request) {
+        return taskService.create(workspaceId, request);
     }
 
     /**
@@ -86,8 +87,10 @@ public class TaskController {
      * @return 更新后的任务数据
      */
     @PutMapping("/{id}")
-    public TaskResponse update(@PathVariable Long id, @RequestBody TaskRequest request) {
-        return taskService.update(id, request);
+    public TaskResponse update(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TaskRequest request
+    ) {
+        return taskService.update(workspaceId, id, request);
     }
 
     /**
@@ -100,8 +103,10 @@ public class TaskController {
      * @return 更新后的任务数据
      */
     @PatchMapping("/{id}/status")
-    public TaskResponse updateStatus(@PathVariable Long id, @RequestBody TaskStatusRequest request) {
-        return taskService.updateStatus(id, request.status());
+    public TaskResponse updateStatus(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TaskStatusRequest request
+    ) {
+        return taskService.updateStatus(workspaceId, id, request.status());
     }
 
     /**
@@ -113,7 +118,7 @@ public class TaskController {
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        taskService.delete(id);
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        taskService.delete(workspaceId, id);
     }
 }

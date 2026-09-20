@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,18 +30,32 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
 
+        String subjectId = authentication.getName();
         String username = authentication.getName();
+        String displayName = null;
         if (authentication.getPrincipal() instanceof OidcUser user) {
+            subjectId = user.getSubject();
             username = user.getPreferredUsername();
+            displayName = user.getFullName();
         }
-        boolean owner = authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_OWNER"));
-        return new CurrentUserResponse(username, owner);
+        List<String> systemRoles = authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.startsWith("ROLE_WORKSTATION_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .sorted()
+                .toList();
+        return new CurrentUserResponse(subjectId, username, displayName, "USER", systemRoles);
     }
 
     public record CsrfResponse(String headerName, String parameterName, String token) {
     }
 
-    public record CurrentUserResponse(String username, boolean owner) {
+    public record CurrentUserResponse(
+            String subjectId,
+            String username,
+            String displayName,
+            String principalType,
+            List<String> systemRoles
+    ) {
     }
 }

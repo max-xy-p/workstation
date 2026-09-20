@@ -16,26 +16,32 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class TagServiceTests {
+    private static final long WORKSPACE_ID = 9L;
+
     @Mock
     private TagMapper tagMapper;
+    @Mock
+    private WorkspaceAuthorizationService authorization;
+    @Mock
+    private AuditService auditService;
     @InjectMocks
     private TagService tagService;
 
     @Test
     void deleteClearsNoteLinksBeforeDeletingTag() {
-        when(tagMapper.findById(1L)).thenReturn(tag());
+        when(tagMapper.findById(WORKSPACE_ID, 1L)).thenReturn(tag());
 
-        tagService.delete(1L);
+        tagService.delete(WORKSPACE_ID, 1L);
 
-        verify(tagMapper).deleteTagLinks(1L);
-        verify(tagMapper).delete(1L);
+        verify(tagMapper).deleteTagLinks(WORKSPACE_ID, 1L);
+        verify(tagMapper).delete(WORKSPACE_ID, 1L);
     }
 
     @Test
     void createRejectsDuplicateNormalizedName() {
-        when(tagMapper.countByName("Spring", null)).thenReturn(1L);
+        when(tagMapper.countByName(WORKSPACE_ID, "Spring", null)).thenReturn(1L);
 
-        assertThatThrownBy(() -> tagService.create(new TagRequest("  Spring  ")))
+        assertThatThrownBy(() -> tagService.create(WORKSPACE_ID, new TagRequest("  Spring  ")))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("已存在");
     }

@@ -7,7 +7,7 @@
         <h2>导入 Markdown</h2>
         <p>将已有文档加入知识库。</p>
       </div>
-      <RouterLink class="button secondary" :to="{ name: 'notes' }">返回笔记</RouterLink>
+      <RouterLink class="button secondary" :to="{ name: 'notes', params: workspaceParams }">返回笔记</RouterLink>
     </div>
 
     <section class="import-workspace">
@@ -63,9 +63,14 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { noteApi, noteFolderApi, projectApi, tagApi } from '../api/workstation';
 import { flattenFolderOptions } from '../utils/noteFolders';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
+
+const route = useRoute();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
+const workspaceParams = workspaceRouteParams(route);
 
 const error = ref('');
 const importing = ref(false);
@@ -80,7 +85,7 @@ async function importNotes() {
   try {
     error.value = '';
     importing.value = true;
-    result.value = await noteApi.importMarkdown({
+    result.value = await noteApi.importMarkdown(workspaceId.value, {
       sourcePath: form.sourcePath,
       folderId: form.folderId ? Number(form.folderId) : null,
       projectId: form.projectId ? Number(form.projectId) : null,
@@ -97,9 +102,9 @@ async function importNotes() {
 onMounted(async () => {
   try {
     [folders.value, projects.value, tags.value] = await Promise.all([
-      noteFolderApi.list(),
-      projectApi.listAll(),
-      tagApi.list()
+      noteFolderApi.list(workspaceId.value),
+      projectApi.listAll(workspaceId.value),
+      tagApi.list(workspaceId.value)
     ]);
   } catch (err) {
     error.value = err.message;

@@ -11,6 +11,7 @@ import lombok.Data;
  */
 public class Note {
     private Long id;
+    private Long workspaceId;
     private String title;
     private String content;
     private Long folderId;

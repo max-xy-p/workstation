@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/projects")
+@RequestMapping("/api/workspaces/{workspaceId}/projects")
 /**
  * 项目接口控制器。
  *
@@ -45,12 +45,13 @@ public class ProjectController {
      */
     @GetMapping
     public PageResponse<ProjectSummaryResponse> list(
+            @PathVariable Long workspaceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return projectService.list(keyword, status, page, size);
+        return projectService.list(workspaceId, keyword, status, page, size);
     }
 
     /**
@@ -62,8 +63,8 @@ public class ProjectController {
      * @return 项目详情聚合数据
      */
     @GetMapping("/{id}")
-    public ProjectDetailResponse detail(@PathVariable Long id) {
-        return projectService.detail(id);
+    public ProjectDetailResponse detail(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return projectService.detail(workspaceId, id);
     }
 
     /**
@@ -74,8 +75,8 @@ public class ProjectController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProjectResponse create(@RequestBody ProjectRequest request) {
-        return projectService.create(request);
+    public ProjectResponse create(@PathVariable Long workspaceId, @RequestBody ProjectRequest request) {
+        return projectService.create(workspaceId, request);
     }
 
     /**
@@ -86,8 +87,10 @@ public class ProjectController {
      * @return 更新后的项目数据
      */
     @PutMapping("/{id}")
-    public ProjectResponse update(@PathVariable Long id, @RequestBody ProjectRequest request) {
-        return projectService.update(id, request);
+    public ProjectResponse update(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody ProjectRequest request
+    ) {
+        return projectService.update(workspaceId, id, request);
     }
 
     /**
@@ -100,8 +103,10 @@ public class ProjectController {
      * @return 更新后的项目数据
      */
     @PatchMapping("/{id}/status")
-    public ProjectResponse updateStatus(@PathVariable Long id, @RequestBody ProjectStatusRequest request) {
-        return projectService.updateStatus(id, request.status());
+    public ProjectResponse updateStatus(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody ProjectStatusRequest request
+    ) {
+        return projectService.updateStatus(workspaceId, id, request.status());
     }
 
     /**
@@ -113,7 +118,7 @@ public class ProjectController {
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        projectService.delete(id);
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        projectService.delete(workspaceId, id);
     }
 }

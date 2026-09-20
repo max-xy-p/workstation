@@ -23,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectServiceTests {
+    private static final long WORKSPACE_ID = 9L;
+
     @Mock
     private ProjectMapper projectMapper;
     @Mock
@@ -31,28 +33,32 @@ class ProjectServiceTests {
     private NoteMapper noteMapper;
     @Mock
     private NoteTagLoader noteTagLoader;
+    @Mock
+    private WorkspaceAuthorizationService authorization;
+    @Mock
+    private AuditService auditService;
     @InjectMocks
     private ProjectService projectService;
 
     @Test
     void deleteRejectsProjectWithTasks() {
-        when(projectMapper.findById(1L)).thenReturn(project());
-        when(taskMapper.countByProjectId(1L)).thenReturn(1L);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(project());
+        when(taskMapper.countByProjectId(WORKSPACE_ID, 1L)).thenReturn(1L);
 
-        assertThatThrownBy(() -> projectService.delete(1L))
+        assertThatThrownBy(() -> projectService.delete(WORKSPACE_ID, 1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("存在任务");
     }
 
     @Test
     void deleteClearsNoteProjectLinksBeforeProjectDelete() {
-        when(projectMapper.findById(1L)).thenReturn(project());
-        when(taskMapper.countByProjectId(1L)).thenReturn(0L);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(project());
+        when(taskMapper.countByProjectId(WORKSPACE_ID, 1L)).thenReturn(0L);
 
-        projectService.delete(1L);
+        projectService.delete(WORKSPACE_ID, 1L);
 
-        verify(noteMapper).clearProject(eq(1L), any(LocalDateTime.class));
-        verify(projectMapper).delete(1L);
+        verify(noteMapper).clearProject(eq(WORKSPACE_ID), eq(1L), any(LocalDateTime.class));
+        verify(projectMapper).delete(WORKSPACE_ID, 1L);
     }
 
     @Test
@@ -61,17 +67,18 @@ class ProjectServiceTests {
                 "Workstation", null, ProjectStatus.ACTIVE, "x".repeat(501), null, null
         );
 
-        assertThatThrownBy(() -> projectService.create(request))
+        assertThatThrownBy(() -> projectService.create(WORKSPACE_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("500");
     }
 
     @Test
     void listUsesStablePageOffsetAndTotal() {
-        when(projectMapper.listPage(null, ProjectStatus.ACTIVE, 40L, 20)).thenReturn(java.util.List.of(project()));
-        when(projectMapper.count(null, ProjectStatus.ACTIVE)).thenReturn(41L);
+        when(projectMapper.listPage(WORKSPACE_ID, null, ProjectStatus.ACTIVE, 40L, 20))
+                .thenReturn(java.util.List.of(project()));
+        when(projectMapper.count(WORKSPACE_ID, null, ProjectStatus.ACTIVE)).thenReturn(41L);
 
-        var result = projectService.list(null, ProjectStatus.ACTIVE, 2, 20);
+        var result = projectService.list(WORKSPACE_ID, null, ProjectStatus.ACTIVE, 2, 20);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.total()).isEqualTo(41L);

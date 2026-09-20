@@ -1,5 +1,5 @@
 const DATABASE_NAME = 'workstation-cache';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const DRAFT_STORE = 'note-drafts';
 
 let databasePromise;
@@ -14,10 +14,15 @@ function openDatabase() {
     const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
+      let store;
       if (!database.objectStoreNames.contains(DRAFT_STORE)) {
-        const store = database.createObjectStore(DRAFT_STORE, { keyPath: 'key' });
+        store = database.createObjectStore(DRAFT_STORE, { keyPath: 'key' });
         store.createIndex('updatedAt', 'updatedAt');
+      } else {
+        store = request.transaction.objectStore(DRAFT_STORE);
       }
+      if (!store.indexNames.contains('subjectId')) store.createIndex('subjectId', 'subjectId');
+      if (!store.indexNames.contains('workspaceId')) store.createIndex('workspaceId', 'workspaceId');
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('无法打开 IndexedDB'));

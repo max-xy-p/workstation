@@ -9,6 +9,7 @@ import lombok.Data;
  */
 public class NoteFolder {
     private Long id;
+    private Long workspaceId;
     private String name;
     private Long parentId;
     private LocalDateTime createdAt;

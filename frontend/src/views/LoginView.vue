@@ -26,7 +26,7 @@
 
       <section class="login-sheet" aria-label="登录">
         <div class="sheet-binding" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span class="sheet-tab">OWNER ACCESS</span>
+        <span class="sheet-tab">WORKSTATION ACCESS</span>
         <div class="login-form">
           <div class="login-form-heading">
             <span class="section-kicker">欢迎回来</span>

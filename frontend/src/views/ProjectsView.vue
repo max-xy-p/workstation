@@ -23,14 +23,14 @@
         <div v-if="projects.length" class="list">
           <article v-for="project in projects" :key="project.id" class="card entity-card">
             <div class="card-title">
-              <RouterLink :to="`/projects/${project.id}`"><h3>{{ project.name }}</h3></RouterLink>
+              <RouterLink :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }"><h3>{{ project.name }}</h3></RouterLink>
               <span class="badge">{{ statusLabel(project.status) }}</span>
             </div>
             <p class="card-description">{{ project.description || '还没有补充项目描述。' }}</p>
             <p class="meta">{{ project.techStack || '未填写技术栈' }} · {{ formatDate(project.updatedAt) }}</p>
             <div class="actions">
               <button class="secondary" @click="edit(project)">编辑</button>
-              <RouterLink :to="`/projects/${project.id}`"><button class="secondary">详情</button></RouterLink>
+              <RouterLink :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }"><button class="secondary">详情</button></RouterLink>
               <button class="danger" @click="remove(project.id)">删除</button>
             </div>
           </article>
@@ -73,12 +73,15 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { projectApi } from '../api/workstation';
 import { PROJECT_STATUSES, optionLabel } from '../constants/options';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 
 const route = useRoute();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
+const workspaceParams = workspaceRouteParams(route);
 const error = ref('');
 const projects = ref([]);
 const pagination = reactive({ page: 0, size: 20, total: 0, hasMore: false });
@@ -114,7 +117,7 @@ function resetFilters() {
 async function edit(project) {
   try {
     error.value = '';
-    const detail = await projectApi.detail(project.id);
+    const detail = await projectApi.detail(workspaceId.value, project.id);
     project = detail.project;
   } catch (err) {
     error.value = err.message;
@@ -147,7 +150,10 @@ function payload() {
 async function load(page = 0) {
   try {
     error.value = '';
-    const result = await projectApi.list({ ...filters, page, size: pagination.size });
+    const result = await projectApi.list(
+      workspaceId.value,
+      { ...filters, page, size: pagination.size }
+    );
     if (!result.items.length && result.total > 0 && page > 0) {
       await load(page - 1);
       return;
@@ -169,9 +175,9 @@ async function save() {
   try {
     error.value = '';
     if (form.id) {
-      await projectApi.update(form.id, payload());
+      await projectApi.update(workspaceId.value, form.id, payload());
     } else {
-      await projectApi.create(payload());
+      await projectApi.create(workspaceId.value, payload());
     }
     resetForm();
     await load();
@@ -185,7 +191,7 @@ async function remove(id) {
   if (!window.confirm('确认删除项目？')) return;
   try {
     error.value = '';
-    await projectApi.delete(id);
+    await projectApi.delete(workspaceId.value, id);
     await load();
   } catch (err) {
     error.value = err.message;

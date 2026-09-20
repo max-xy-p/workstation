@@ -15,8 +15,16 @@
   "roles": {
     "realm": [
       {
-        "name": "OWNER",
-        "description": "Workstation owner"
+        "name": "WORKSTATION_USER",
+        "description": "允许用户进入 Workstation"
+      },
+      {
+        "name": "WORKSTATION_ADMIN",
+        "description": "Workstation 平台管理员，不自动获得工作空间内容权限"
+      },
+      {
+        "name": "WORKSTATION_SERVICE",
+        "description": "允许机器客户端进入 Workstation API"
       }
     ]
   },
@@ -100,18 +108,19 @@
   ],
   "users": [
     {
-      "username": "${WORKSTATION_OWNER_USERNAME}",
+      "username": "${WORKSTATION_INITIAL_USERNAME}",
       "enabled": true,
       "emailVerified": true,
       "credentials": [
         {
           "type": "password",
-          "value": "${WORKSTATION_OWNER_INITIAL_PASSWORD}",
+          "value": "${WORKSTATION_INITIAL_PASSWORD}",
           "temporary": true
         }
       ],
       "realmRoles": [
-        "OWNER"
+        "WORKSTATION_USER",
+        "WORKSTATION_ADMIN"
       ]
     },
     {
@@ -119,7 +128,7 @@
       "enabled": true,
       "serviceAccountClientId": "workstation-python",
       "realmRoles": [
-        "OWNER"
+        "WORKSTATION_SERVICE"
       ]
     }
   ]

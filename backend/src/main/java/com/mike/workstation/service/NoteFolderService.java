@@ -2,6 +2,7 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.assembler.NoteFolderResponseAssembler;
 import com.mike.workstation.domain.NoteFolder;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteFolderRequest;
 import com.mike.workstation.dto.NoteFolderResponse;
 import com.mike.workstation.exception.BusinessException;
@@ -18,82 +19,101 @@ import org.springframework.transaction.annotation.Transactional;
 public class NoteFolderService {
     private final NoteFolderMapper folderMapper;
     private final NoteMapper noteMapper;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
-    public NoteFolderService(NoteFolderMapper folderMapper, NoteMapper noteMapper) {
+    public NoteFolderService(
+            NoteFolderMapper folderMapper,
+            NoteMapper noteMapper,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
+    ) {
         this.folderMapper = folderMapper;
         this.noteMapper = noteMapper;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
-    public List<NoteFolderResponse> list() {
-        return folderMapper.list().stream().map(NoteFolderResponseAssembler::toResponse).toList();
+    public List<NoteFolderResponse> list(Long workspaceId) {
+        authorization.require(workspaceId, WorkspacePermission.FOLDER_READ);
+        return folderMapper.list(workspaceId).stream().map(NoteFolderResponseAssembler::toResponse).toList();
     }
 
-    public NoteFolderResponse get(Long id) {
-        return NoteFolderResponseAssembler.toResponse(getEntity(id));
+    public NoteFolderResponse get(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.FOLDER_READ);
+        return NoteFolderResponseAssembler.toResponse(getEntity(workspaceId, id));
     }
 
-    private NoteFolder getEntity(Long id) {
-        NoteFolder folder = folderMapper.findById(id);
+    private NoteFolder getEntity(Long workspaceId, Long id) {
+        NoteFolder folder = folderMapper.findById(workspaceId, id);
         RequestChecks.requiredExisting(folder, "文件夹不存在");
         return folder;
     }
 
     @Transactional
-    public NoteFolderResponse create(NoteFolderRequest request) {
-        validateRequest(request, null);
+    public NoteFolderResponse create(Long workspaceId, NoteFolderRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.FOLDER_WRITE);
+        validateRequest(workspaceId, request, null);
         NoteFolder folder = new NoteFolder();
+        folder.setWorkspaceId(workspaceId);
         folder.setName(request.name().trim());
         folder.setParentId(request.parentId());
         LocalDateTime now = LocalDateTime.now();
         folder.setCreatedAt(now);
         folder.setUpdatedAt(now);
         folderMapper.insert(folder);
-        return get(folder.getId());
+        auditService.success(workspaceId, "FOLDER_CREATE", "NOTE_FOLDER", folder.getId());
+        return get(workspaceId, folder.getId());
     }
 
     @Transactional
-    public NoteFolderResponse update(Long id, NoteFolderRequest request) {
-        getEntity(id);
-        validateRequest(request, id);
-        ensureAcyclic(id, request.parentId());
+    public NoteFolderResponse update(Long workspaceId, Long id, NoteFolderRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.FOLDER_WRITE);
+        getEntity(workspaceId, id);
+        validateRequest(workspaceId, request, id);
+        ensureAcyclic(workspaceId, id, request.parentId());
 
         NoteFolder folder = new NoteFolder();
         folder.setId(id);
+        folder.setWorkspaceId(workspaceId);
         folder.setName(request.name().trim());
         folder.setParentId(request.parentId());
         folder.setUpdatedAt(LocalDateTime.now());
         folderMapper.update(folder);
-        return get(id);
+        auditService.success(workspaceId, "FOLDER_UPDATE", "NOTE_FOLDER", id);
+        return get(workspaceId, id);
     }
 
     @Transactional
-    public void delete(Long id) {
-        getEntity(id);
-        if (folderMapper.countChildren(id) > 0) {
+    public void delete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.FOLDER_WRITE);
+        getEntity(workspaceId, id);
+        if (folderMapper.countChildren(workspaceId, id) > 0) {
             throw new BusinessException("文件夹下存在子文件夹，不能直接删除");
         }
-        if (noteMapper.countByFolderId(id) > 0) {
+        if (noteMapper.countByFolderId(workspaceId, id) > 0) {
             throw new BusinessException("文件夹下存在笔记，不能直接删除");
         }
-        folderMapper.delete(id);
+        folderMapper.delete(workspaceId, id);
+        auditService.success(workspaceId, "FOLDER_DELETE", "NOTE_FOLDER", id);
     }
 
-    private void validateRequest(NoteFolderRequest request, Long excludeId) {
+    private void validateRequest(Long workspaceId, NoteFolderRequest request, Long excludeId) {
         RequestChecks.requiredObject(request, "文件夹请求");
         RequestChecks.requiredText(request.name(), "文件夹名称");
         if (request.parentId() != null) {
-            getEntity(request.parentId());
+            getEntity(workspaceId, request.parentId());
         }
         String name = request.name().trim();
         if (name.length() > 120) {
             throw new BusinessException("文件夹名称不能超过 120 个字符");
         }
-        if (folderMapper.countSiblingName(name, request.parentId(), excludeId) > 0) {
+        if (folderMapper.countSiblingName(workspaceId, name, request.parentId(), excludeId) > 0) {
             throw new BusinessException("同级目录下已存在同名文件夹");
         }
     }
 
-    private void ensureAcyclic(Long folderId, Long parentId) {
+    private void ensureAcyclic(Long workspaceId, Long folderId, Long parentId) {
         Set<Long> visited = new HashSet<>();
         Long currentId = parentId;
         while (currentId != null) {
@@ -103,7 +123,7 @@ public class NoteFolderService {
             if (!visited.add(currentId)) {
                 throw new BusinessException("文件夹层级存在循环");
             }
-            currentId = getEntity(currentId).getParentId();
+            currentId = getEntity(workspaceId, currentId).getParentId();
         }
     }
 }

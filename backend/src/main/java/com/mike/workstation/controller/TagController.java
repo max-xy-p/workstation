@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tags")
+@RequestMapping("/api/workspaces/{workspaceId}/tags")
 /**
  * 标签接口控制器。
  *
@@ -35,8 +35,8 @@ public class TagController {
      * @return 按名称排序的标签列表
      */
     @GetMapping
-    public List<TagResponse> list() {
-        return tagService.list();
+    public List<TagResponse> list(@PathVariable Long workspaceId) {
+        return tagService.list(workspaceId);
     }
 
     /**
@@ -46,8 +46,8 @@ public class TagController {
      * @return 标签详情
      */
     @GetMapping("/{id}")
-    public TagResponse get(@PathVariable Long id) {
-        return tagService.get(id);
+    public TagResponse get(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return tagService.get(workspaceId, id);
     }
 
     /**
@@ -58,8 +58,8 @@ public class TagController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TagResponse create(@RequestBody TagRequest request) {
-        return tagService.create(request);
+    public TagResponse create(@PathVariable Long workspaceId, @RequestBody TagRequest request) {
+        return tagService.create(workspaceId, request);
     }
 
     /**
@@ -70,8 +70,10 @@ public class TagController {
      * @return 更新后的标签数据
      */
     @PutMapping("/{id}")
-    public TagResponse update(@PathVariable Long id, @RequestBody TagRequest request) {
-        return tagService.update(id, request);
+    public TagResponse update(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TagRequest request
+    ) {
+        return tagService.update(workspaceId, id, request);
     }
 
     /**
@@ -83,7 +85,7 @@ public class TagController {
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        tagService.delete(id);
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        tagService.delete(workspaceId, id);
     }
 }

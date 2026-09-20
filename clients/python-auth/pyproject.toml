@@ -1,11 +1,11 @@
 [project]
 name = "workstation-client-credentials"
-version = "1.0.0"
+version = "2.0.0"
 description = "Workstation Python Client 的 Client Credentials 认证适配层"
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.23.1,<0.29.0",
-    "workstation-api-client==1.0.0",
+    "workstation-api-client==2.0.0",
 ]
 
 [tool.uv.sources]

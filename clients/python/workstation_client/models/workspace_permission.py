@@ -1,0 +1,24 @@
+from enum import StrEnum
+
+
+class WorkspacePermission(StrEnum):
+    AUDIT_READ = "AUDIT_READ"
+    DASHBOARD_READ = "DASHBOARD_READ"
+    FOLDER_READ = "FOLDER_READ"
+    FOLDER_WRITE = "FOLDER_WRITE"
+    MEMBER_MANAGE = "MEMBER_MANAGE"
+    MEMBER_READ = "MEMBER_READ"
+    NOTE_IMPORT = "NOTE_IMPORT"
+    NOTE_READ = "NOTE_READ"
+    NOTE_WRITE = "NOTE_WRITE"
+    PROJECT_READ = "PROJECT_READ"
+    PROJECT_WRITE = "PROJECT_WRITE"
+    TAG_READ = "TAG_READ"
+    TAG_WRITE = "TAG_WRITE"
+    TASK_READ = "TASK_READ"
+    TASK_WRITE = "TASK_WRITE"
+    WORKSPACE_READ = "WORKSPACE_READ"
+    WORKSPACE_WRITE = "WORKSPACE_WRITE"
+
+    def __str__(self) -> str:
+        return str(self.value)

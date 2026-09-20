@@ -22,6 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NoteServiceTests {
+    private static final long WORKSPACE_ID = 9L;
+
     @Mock
     private NoteMapper noteMapper;
     @Mock
@@ -32,6 +34,10 @@ class NoteServiceTests {
     private TagMapper tagMapper;
     @Mock
     private NoteTagLoader noteTagLoader;
+    @Mock
+    private WorkspaceAuthorizationService authorization;
+    @Mock
+    private AuditService auditService;
     @InjectMocks
     private NoteService noteService;
 
@@ -39,10 +45,11 @@ class NoteServiceTests {
     void updateReturnsThePersistedVersionReceipt() {
         Note existing = note(1L, 3L);
         Note persisted = note(1L, 4L);
-        when(noteMapper.findDetailById(1L)).thenReturn(existing, persisted);
-        when(tagMapper.findByNoteId(1L)).thenReturn(List.of());
+        when(noteMapper.findDetailById(WORKSPACE_ID, 1L)).thenReturn(existing, persisted);
+        when(tagMapper.findByNoteId(WORKSPACE_ID, 1L)).thenReturn(List.of());
 
         NoteDetailResponse result = noteService.update(
+                WORKSPACE_ID,
                 1L,
                 new NoteRequest("Title", "Content", null, null, List.of())
         );
@@ -52,7 +59,7 @@ class NoteServiceTests {
 
     @Test
     void createRejectsTitleLongerThanDatabaseColumn() {
-        assertThatThrownBy(() -> noteService.create(
+        assertThatThrownBy(() -> noteService.create(WORKSPACE_ID,
                 new NoteRequest("x".repeat(201), "Content", null, null, List.of())
         )).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("200");
@@ -61,17 +68,17 @@ class NoteServiceTests {
     @Test
     void listReturnsPageMetadataAndBatchLoadsTags() {
         Note item = note(7L, 1L);
-        when(noteMapper.listSummariesPage("spring", null, null, null, 20L, 20))
+        when(noteMapper.listSummariesPage(WORKSPACE_ID, "spring", null, null, null, 20L, 20))
                 .thenReturn(List.of(item));
-        when(noteMapper.count("spring", null, null, null)).thenReturn(42L);
+        when(noteMapper.count(WORKSPACE_ID, "spring", null, null, null)).thenReturn(42L);
 
-        var result = noteService.list("spring", null, null, null, 1, 20);
+        var result = noteService.list(WORKSPACE_ID, "spring", null, null, null, 1, 20);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.page()).isEqualTo(1);
         assertThat(result.total()).isEqualTo(42L);
         assertThat(result.hasMore()).isTrue();
-        verify(noteTagLoader).attachTags(List.of(item));
+        verify(noteTagLoader).attachTags(WORKSPACE_ID, List.of(item));
     }
 
     private Note note(Long id, Long version) {

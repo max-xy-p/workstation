@@ -26,7 +26,7 @@
 
         <h3>关联笔记</h3>
         <div v-if="detail.notes.length" class="list">
-          <RouterLink v-for="note in detail.notes" :key="note.id" class="card" :to="`/notes/${note.id}/edit`">
+          <RouterLink v-for="note in detail.notes" :key="note.id" class="card" :to="{ name: 'note-edit', params: { ...workspaceParams, id: note.id } }">
             <h3>{{ note.title }}</h3>
             <p class="meta">{{ note.folderName || '未归档' }}</p>
           </RouterLink>
@@ -51,7 +51,7 @@
           <div class="actions wide">
             <button type="submit">保存</button>
             <button type="button" class="danger" @click="removeProject">删除</button>
-            <RouterLink :to="{ name: 'note-new', query: { projectId: detail.project.id } }"><button type="button" class="secondary">新建笔记</button></RouterLink>
+            <RouterLink :to="{ name: 'note-new', params: workspaceParams, query: { projectId: detail.project.id } }"><button type="button" class="secondary">新建笔记</button></RouterLink>
           </div>
         </form>
 
@@ -80,13 +80,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { projectApi, taskApi } from '../api/workstation';
 import { PROJECT_STATUSES, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 
 const route = useRoute();
 const router = useRouter();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
+const workspaceParams = workspaceRouteParams(route);
 const error = ref('');
 const detail = reactive({ project: null, tasks: [], notes: [] });
 const projectForm = reactive({});
@@ -124,7 +127,7 @@ function projectPayload() {
 async function load() {
   try {
     error.value = '';
-    Object.assign(detail, await projectApi.detail(route.params.id));
+    Object.assign(detail, await projectApi.detail(workspaceId.value, route.params.id));
     syncProjectForm(detail.project);
   } catch (err) {
     error.value = err.message;
@@ -135,7 +138,7 @@ async function load() {
 async function saveProject() {
   try {
     error.value = '';
-    await projectApi.update(detail.project.id, projectPayload());
+    await projectApi.update(workspaceId.value, detail.project.id, projectPayload());
     await load();
   } catch (err) {
     error.value = err.message;
@@ -146,7 +149,7 @@ async function saveProject() {
 async function createTask() {
   try {
     error.value = '';
-    await taskApi.create({
+    await taskApi.create(workspaceId.value, {
       title: taskForm.title,
       description: taskForm.description || null,
       projectId: detail.project.id,
@@ -166,8 +169,8 @@ async function removeProject() {
   if (!window.confirm('确认删除项目？')) return;
   try {
     error.value = '';
-    await projectApi.delete(detail.project.id);
-    router.push({ name: 'projects' });
+    await projectApi.delete(workspaceId.value, detail.project.id);
+    router.push({ name: 'projects', params: workspaceParams });
   } catch (err) {
     error.value = err.message;
   }

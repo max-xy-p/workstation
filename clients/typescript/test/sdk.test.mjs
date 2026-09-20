@@ -18,12 +18,12 @@ test('API wrapper uses typed endpoint paths and aggregates pages', async () => {
   };
 
   const api = createWorkstationApi(transport);
-  const projects = await api.projectApi.listAll({ status: 'ACTIVE' });
+  const projects = await api.projectApi.listAll(17, { status: 'ACTIVE' });
 
   assert.deepEqual(projects, [{ id: 1 }, { id: 2 }]);
   assert.deepEqual(calls, [
-    { method: 'GET', path: '/projects', params: { status: 'ACTIVE', page: 0, size: 100 } },
-    { method: 'GET', path: '/projects', params: { status: 'ACTIVE', page: 1, size: 100 } }
+    { method: 'GET', path: '/workspaces/17/projects', params: { status: 'ACTIVE', page: 0, size: 100 } },
+    { method: 'GET', path: '/workspaces/17/projects', params: { status: 'ACTIVE', page: 1, size: 100 } }
   ]);
 });
 
@@ -44,8 +44,8 @@ test('Fetch transport sends an injected Bearer token through the API base path',
   });
 
   const api = createWorkstationApi(transport);
-  await api.taskApi.list({ status: 'TODO' });
+  await api.taskApi.list(17, { status: 'TODO' });
 
-  assert.equal(capturedUrl.toString(), 'https://workstation.example/api/tasks?status=TODO');
+  assert.equal(capturedUrl.toString(), 'https://workstation.example/api/workspaces/17/tasks?status=TODO');
   assert.equal(new Headers(capturedInit.headers).get('Authorization'), 'Bearer machine-token');
 });

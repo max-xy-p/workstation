@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -12,6 +13,7 @@ from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
+    workspace_id: int,
     *,
     keyword: str | Unset = UNSET,
     status: ProjectStatus | Unset = UNSET,
@@ -37,7 +39,9 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/projects",
+        "url": "/api/workspaces/{workspace_id}/projects".format(
+            workspace_id=quote(str(workspace_id), safe=""),
+        ),
         "params": params,
     }
 
@@ -85,6 +89,7 @@ def _build_response(
 
 
 def sync_detailed(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -95,6 +100,7 @@ def sync_detailed(
     """分页查询项目
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         status (ProjectStatus | Unset):
         page (int | Unset):  Default: 0.
@@ -109,6 +115,7 @@ def sync_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         keyword=keyword,
         status=status,
         page=page,
@@ -123,6 +130,7 @@ def sync_detailed(
 
 
 def sync(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -133,6 +141,7 @@ def sync(
     """分页查询项目
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         status (ProjectStatus | Unset):
         page (int | Unset):  Default: 0.
@@ -147,6 +156,7 @@ def sync(
     """
 
     return sync_detailed(
+        workspace_id=workspace_id,
         client=client,
         keyword=keyword,
         status=status,
@@ -156,6 +166,7 @@ def sync(
 
 
 async def asyncio_detailed(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -166,6 +177,7 @@ async def asyncio_detailed(
     """分页查询项目
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         status (ProjectStatus | Unset):
         page (int | Unset):  Default: 0.
@@ -180,6 +192,7 @@ async def asyncio_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         keyword=keyword,
         status=status,
         page=page,
@@ -192,6 +205,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -202,6 +216,7 @@ async def asyncio(
     """分页查询项目
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         status (ProjectStatus | Unset):
         page (int | Unset):  Default: 0.
@@ -217,6 +232,7 @@ async def asyncio(
 
     return (
         await asyncio_detailed(
+            workspace_id=workspace_id,
             client=client,
             keyword=keyword,
             status=status,

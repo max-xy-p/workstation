@@ -17,41 +17,47 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NoteFolderServiceTests {
+    private static final long WORKSPACE_ID = 9L;
+
     @Mock
     private NoteFolderMapper folderMapper;
     @Mock
     private NoteMapper noteMapper;
+    @Mock
+    private WorkspaceAuthorizationService authorization;
+    @Mock
+    private AuditService auditService;
     @InjectMocks
     private NoteFolderService folderService;
 
     @Test
     void updateRejectsMovingFolderIntoItsDescendant() {
-        when(folderMapper.findById(1L)).thenReturn(folder(1L, null));
-        when(folderMapper.findById(2L)).thenReturn(folder(2L, 1L));
+        when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
+        when(folderMapper.findById(WORKSPACE_ID, 2L)).thenReturn(folder(2L, 1L));
 
-        assertThatThrownBy(() -> folderService.update(1L, new NoteFolderRequest("Root", 2L)))
+        assertThatThrownBy(() -> folderService.update(WORKSPACE_ID, 1L, new NoteFolderRequest("Root", 2L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("子文件夹");
     }
 
     @Test
     void deleteRejectsFolderWithNotes() {
-        when(folderMapper.findById(1L)).thenReturn(folder(1L, null));
-        when(folderMapper.countChildren(1L)).thenReturn(0L);
-        when(noteMapper.countByFolderId(1L)).thenReturn(1L);
+        when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
+        when(folderMapper.countChildren(WORKSPACE_ID, 1L)).thenReturn(0L);
+        when(noteMapper.countByFolderId(WORKSPACE_ID, 1L)).thenReturn(1L);
 
-        assertThatThrownBy(() -> folderService.delete(1L))
+        assertThatThrownBy(() -> folderService.delete(WORKSPACE_ID, 1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("存在笔记");
     }
 
     @Test
     void deleteRemovesEmptyFolder() {
-        when(folderMapper.findById(1L)).thenReturn(folder(1L, null));
+        when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
 
-        folderService.delete(1L);
+        folderService.delete(WORKSPACE_ID, 1L);
 
-        verify(folderMapper).delete(1L);
+        verify(folderMapper).delete(WORKSPACE_ID, 1L);
     }
 
     private NoteFolder folder(Long id, Long parentId) {

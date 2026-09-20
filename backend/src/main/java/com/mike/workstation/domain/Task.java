@@ -10,6 +10,7 @@ import lombok.Data;
  */
 public class Task {
     private Long id;
+    private Long workspaceId;
     private String title;
     private String description;
     private Long projectId;

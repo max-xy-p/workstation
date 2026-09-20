@@ -12,11 +12,16 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
       KEYCLOAK_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env.docker}
+      XXL_JOB_DB_USERNAME: ${XXL_JOB_DB_USERNAME:-xxl_job}
+      XXL_JOB_DB_PASSWORD: ${XXL_JOB_DB_PASSWORD:?Set XXL_JOB_DB_PASSWORD in .env.docker}
+      XXL_JOB_ADMIN_PASSWORD: ${XXL_JOB_ADMIN_PASSWORD:?Set XXL_JOB_ADMIN_PASSWORD in .env.docker}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
+      - ./xxl-job/tables_xxl_job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
+      - ./backend/src/main/resources/db/init-xxl-job-database.sh:/docker-entrypoint-initdb.d/04-xxl-job-user.sh:ro
     healthcheck:
       # mysqladmin ping 在鉴权失败时仍可能返回成功；执行 SQL 才能确认数据库真正可用。
       test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql --protocol=tcp --host=127.0.0.1 --user=root --silent --skip-column-names --execute='SELECT 1' | grep -qx 1"]
@@ -41,6 +46,44 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4.3.6-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-workstation}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env.docker}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  xxl-job-admin:
+    image: xuxueli/xxl-job-admin:3.4.2
+    restart: unless-stopped
+    environment:
+      PARAMS: >-
+        --spring.datasource.url=jdbc:mysql://db:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+        --spring.datasource.username=${XXL_JOB_DB_USERNAME:-xxl_job}
+        --spring.datasource.password=${XXL_JOB_DB_PASSWORD:?Set XXL_JOB_DB_PASSWORD in .env.docker}
+        --xxl.job.accessToken=${XXL_JOB_ACCESS_TOKEN:?Set XXL_JOB_ACCESS_TOKEN in .env.docker}
+        --xxl-sso.token.key=${XXL_JOB_SSO_TOKEN_KEY:?Set XXL_JOB_SSO_TOKEN_KEY in .env.docker}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - xxl_job_logs:/data/applogs
+    ports:
+      - "127.0.0.1:8089:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.3
     restart: unless-stopped
@@ -63,8 +106,8 @@ services:
       KEYCLOAK_PYTHON_CLIENT_SECRET: ${KEYCLOAK_PYTHON_CLIENT_SECRET:?Set KEYCLOAK_PYTHON_CLIENT_SECRET in .env.docker}
       WORKSTATION_PUBLIC_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}
       WORKSTATION_DEV_URL: ${WORKSTATION_DEV_URL:-http://localhost:5173}
-      WORKSTATION_OWNER_USERNAME: ${WORKSTATION_OWNER_USERNAME:-owner}
-      WORKSTATION_OWNER_INITIAL_PASSWORD: ${WORKSTATION_OWNER_INITIAL_PASSWORD:?Set WORKSTATION_OWNER_INITIAL_PASSWORD in .env.docker}
+      WORKSTATION_INITIAL_USERNAME: ${WORKSTATION_INITIAL_USERNAME:-owner}
+      WORKSTATION_INITIAL_PASSWORD: ${WORKSTATION_INITIAL_PASSWORD:?Set WORKSTATION_INITIAL_PASSWORD in .env.docker}
     volumes:
       - ./keycloak/workstation-realm.json:/opt/keycloak/data/import/workstation-realm.json:ro
     ports:
@@ -90,11 +133,25 @@ services:
       DASHBOARD_RECENT_LIMIT: ${DASHBOARD_RECENT_LIMIT:-5}
       NOTE_IMPORT_ALLOWED_ROOTS: /data/notes
       NOTE_IMPORT_MAX_FILE_BYTES: ${NOTE_IMPORT_MAX_FILE_BYTES:-1048576}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-workstation}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env.docker}
+      RABBITMQ_LISTENER_AUTO_STARTUP: "true"
+      XXL_JOB_ENABLED: "true"
+      XXL_JOB_ADMIN_ADDRESSES: http://xxl-job-admin:8080
+      XXL_JOB_ACCESS_TOKEN: ${XXL_JOB_ACCESS_TOKEN:?Set XXL_JOB_ACCESS_TOKEN in .env.docker}
+      XXL_JOB_EXECUTOR_ADDRESS: http://backend:9999
+      XXL_JOB_EXECUTOR_PORT: 9999
+      XXL_JOB_EXECUTOR_LOG_PATH: /data/applogs/xxl-job/jobhandler
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./notes:/data/notes
+      - xxl_executor_logs:/data/applogs
     depends_on:
       db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   gateway:
@@ -139,3 +196,6 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  rabbitmq_data:
+  xxl_job_logs:
+  xxl_executor_logs:

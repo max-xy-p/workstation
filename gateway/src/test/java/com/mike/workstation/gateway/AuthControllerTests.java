@@ -48,13 +48,16 @@ class AuthControllerTests {
     }
 
     @Test
-    void reportsOwnerFromGatewaySecurityContext() {
-        var authentication = new TestingAuthenticationToken("owner", null, "ROLE_OWNER");
+    void reportsSystemRolesFromGatewaySecurityContext() {
+        var authentication = new TestingAuthenticationToken(
+                "owner", null, "ROLE_WORKSTATION_USER", "ROLE_WORKSTATION_ADMIN");
 
         AuthController.CurrentUserResponse response = controller.me(authentication);
 
+        assertThat(response.subjectId()).isEqualTo("owner");
         assertThat(response.username()).isEqualTo("owner");
-        assertThat(response.owner()).isTrue();
+        assertThat(response.principalType()).isEqualTo("USER");
+        assertThat(response.systemRoles()).containsExactly("WORKSTATION_ADMIN", "WORKSTATION_USER");
     }
 
     @Test

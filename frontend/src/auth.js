@@ -1,6 +1,7 @@
 import { reactive, readonly } from 'vue';
 import { ApiError, resetCsrfToken } from './api/client';
 import { authApi } from './api/workstation';
+import { workspace } from './workspace';
 
 const state = reactive({
   user: null,
@@ -50,6 +51,7 @@ function clearSession() {
   state.user = null;
   state.initialized = true;
   resetCsrfToken();
+  workspace.clear();
 }
 
 export const auth = {

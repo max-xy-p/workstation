@@ -3,6 +3,8 @@ import { api, resetCsrfToken, submitWithCsrf } from './client';
 
 export type {
   ApiErrorResponse,
+  AuditEventListParams,
+  AuditEventPageResponse,
   DashboardResponse,
   NoteDetailResponse,
   NoteFolderRequest,
@@ -25,12 +27,19 @@ export type {
   TaskPageResponse,
   TaskRequest,
   TaskResponse,
-  TaskStatus
+  TaskStatus,
+  WorkspacePermission,
+  WorkspaceRequest,
+  WorkspaceResponse,
+  WorkspaceRole
 } from '@workstation/api-client';
 
 interface CurrentUserResponse {
+  subjectId: string;
   username: string;
-  owner: boolean;
+  displayName: string | null;
+  principalType: 'USER' | 'SERVICE';
+  systemRoles: string[];
 }
 
 // Gateway BFF 接口不属于业务 OpenAPI 契约，类型在浏览器适配层本地维护。
@@ -51,6 +60,8 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  workspaceApi,
+  auditApi,
   dashboardApi,
   projectApi,
   taskApi,

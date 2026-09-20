@@ -28,9 +28,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { tagApi } from '../api/workstation';
+import { workspaceIdFromRoute } from '../utils/workspaceRoute';
 
+const route = useRoute();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
 const error = ref('');
 const tags = ref([]);
 const tagForm = reactive({ id: null, name: '' });
@@ -44,15 +48,15 @@ function editTag(tag) {
 }
 
 async function load() {
-  tags.value = await tagApi.list();
+  tags.value = await tagApi.list(workspaceId.value);
 }
 
 async function saveTag() {
   try {
     error.value = '';
     const payload = { name: tagForm.name };
-    if (tagForm.id) await tagApi.update(tagForm.id, payload);
-    else await tagApi.create(payload);
+    if (tagForm.id) await tagApi.update(workspaceId.value, tagForm.id, payload);
+    else await tagApi.create(workspaceId.value, payload);
     resetTag();
     await load();
   } catch (err) {
@@ -64,7 +68,7 @@ async function removeTag(id) {
   if (!window.confirm('确认删除标签？')) return;
   try {
     error.value = '';
-    await tagApi.delete(id);
+    await tagApi.delete(workspaceId.value, id);
     await load();
   } catch (err) {
     error.value = err.message;

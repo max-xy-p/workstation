@@ -10,52 +10,65 @@ async function listAllPages(transport, path, params) {
     return items;
 }
 export function createWorkstationApi(transport) {
+    const workspacePath = (workspaceId) => `/workspaces/${workspaceId}`;
     return {
+        workspaceApi: {
+            list: () => transport.get('/workspaces'),
+            get: (workspaceId) => transport.get(workspacePath(workspaceId)),
+            update: (workspaceId, payload) => transport.put(workspacePath(workspaceId), payload),
+            listMembers: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/members`),
+            addMember: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/members`, payload),
+            updateMember: (workspaceId, subjectId, role) => transport.put(`${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`, { role }),
+            removeMember: (workspaceId, subjectId) => transport.delete(`${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`)
+        },
+        auditApi: {
+            list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/audit-events`, params)
+        },
         dashboardApi: {
-            summary: () => transport.get('/dashboard')
+            summary: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/dashboard`)
         },
         projectApi: {
-            list: (params) => transport.get('/projects', params),
-            listAll: (params) => listAllPages(transport, '/projects', params),
-            detail: (id) => transport.get(`/projects/${id}`),
-            create: (payload) => transport.post('/projects', payload),
-            update: (id, payload) => transport.put(`/projects/${id}`, payload),
-            updateStatus: (id, status) => transport.patch(`/projects/${id}/status`, { status }),
-            delete: (id) => transport.delete(`/projects/${id}`)
+            list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/projects`, params),
+            listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/projects`, params),
+            detail: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/projects/${id}`),
+            create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/projects`, payload),
+            update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/projects/${id}`, payload),
+            updateStatus: (workspaceId, id, status) => transport.patch(`${workspacePath(workspaceId)}/projects/${id}/status`, { status }),
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
         },
         taskApi: {
-            list: (params) => transport.get('/tasks', params),
-            listAll: (params) => listAllPages(transport, '/tasks', params),
-            get: (id) => transport.get(`/tasks/${id}`),
-            create: (payload) => transport.post('/tasks', payload),
-            update: (id, payload) => transport.put(`/tasks/${id}`, payload),
-            updateStatus: (id, status) => transport.patch(`/tasks/${id}/status`, {
+            list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/tasks`, params),
+            listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/tasks`, params),
+            get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/tasks/${id}`),
+            create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/tasks`, payload),
+            update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/tasks/${id}`, payload),
+            updateStatus: (workspaceId, id, status) => transport.patch(`${workspacePath(workspaceId)}/tasks/${id}/status`, {
                 status
             }),
-            delete: (id) => transport.delete(`/tasks/${id}`)
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
         },
         noteApi: {
-            list: (params) => transport.get('/notes', params),
-            listAll: (params) => listAllPages(transport, '/notes', params),
-            get: (id) => transport.get(`/notes/${id}`),
-            create: (payload) => transport.post('/notes', payload),
-            update: (id, payload) => transport.put(`/notes/${id}`, payload),
-            importMarkdown: (payload) => transport.post('/notes/import', payload),
-            delete: (id) => transport.delete(`/notes/${id}`)
+            list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/notes`, params),
+            listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/notes`, params),
+            get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/notes/${id}`),
+            create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/notes`, payload),
+            update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/notes/${id}`, payload),
+            importMarkdown: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/notes/import`, payload),
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/notes/${id}`)
         },
         noteFolderApi: {
-            list: () => transport.get('/note-folders'),
-            get: (id) => transport.get(`/note-folders/${id}`),
-            create: (payload) => transport.post('/note-folders', payload),
-            update: (id, payload) => transport.put(`/note-folders/${id}`, payload),
-            delete: (id) => transport.delete(`/note-folders/${id}`)
+            list: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/note-folders`),
+            get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/note-folders/${id}`),
+            create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/note-folders`, payload),
+            update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/note-folders/${id}`, payload),
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/note-folders/${id}`)
         },
         tagApi: {
-            list: () => transport.get('/tags'),
-            get: (id) => transport.get(`/tags/${id}`),
-            create: (payload) => transport.post('/tags', payload),
-            update: (id, payload) => transport.put(`/tags/${id}`, payload),
-            delete: (id) => transport.delete(`/tags/${id}`)
+            list: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/tags`),
+            get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/tags/${id}`),
+            create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/tags`, payload),
+            update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/tags/${id}`, payload),
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/tags/${id}`)
         }
     };
 }

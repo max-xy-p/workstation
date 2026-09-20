@@ -15,6 +15,24 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:workstation}
+    password: ${RABBITMQ_PASSWORD:}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        auto-startup: ${RABBITMQ_LISTENER_AUTO_STARTUP:false}
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 10s
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
@@ -30,3 +48,21 @@ workstation:
   note-import:
     allowed-roots: ${NOTE_IMPORT_ALLOWED_ROOTS}
     max-file-bytes: ${NOTE_IMPORT_MAX_FILE_BYTES}
+  audit:
+    outbox:
+      batch-size: ${AUDIT_OUTBOX_BATCH_SIZE:100}
+      lock-duration: ${AUDIT_OUTBOX_LOCK_DURATION:30s}
+      publish-confirm-timeout: ${AUDIT_PUBLISH_CONFIRM_TIMEOUT:5s}
+      max-attempts: ${AUDIT_OUTBOX_MAX_ATTEMPTS:10}
+      retry-base-delay: ${AUDIT_OUTBOX_RETRY_BASE_DELAY:5s}
+  xxl-job:
+    enabled: ${XXL_JOB_ENABLED:false}
+    admin-addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8089}
+    admin-timeout-seconds: ${XXL_JOB_ADMIN_TIMEOUT_SECONDS:3}
+    app-name: ${XXL_JOB_EXECUTOR_APP_NAME:workstation-backend}
+    access-token: ${XXL_JOB_ACCESS_TOKEN:}
+    address: ${XXL_JOB_EXECUTOR_ADDRESS:}
+    ip: ${XXL_JOB_EXECUTOR_IP:}
+    port: ${XXL_JOB_EXECUTOR_PORT:9999}
+    log-path: ${XXL_JOB_EXECUTOR_LOG_PATH:./logs/xxl-job}
+    log-retention-days: ${XXL_JOB_EXECUTOR_LOG_RETENTION_DAYS:30}

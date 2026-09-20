@@ -9,6 +9,7 @@ import lombok.Data;
  */
 public class Tag {
     private Long id;
+    private Long workspaceId;
     private String name;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

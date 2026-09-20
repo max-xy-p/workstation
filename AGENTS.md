@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-Workstation 是一个单用户个人工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。概览页是默认入口，笔记使用独立工作区。Backend 的 MySQL 数据是持久化真源；浏览器 IndexedDB 只保存尚未获得服务端确认的草稿。
+Workstation 是一个以 Workspace 为资源边界的多人知识与工作台，包含多级文件夹 Markdown 笔记、项目资料和任务看板。概览页是默认入口，笔记使用独立工作区。Backend 的 MySQL 数据是持久化真源；浏览器 IndexedDB 只保存尚未获得服务端确认的草稿。
 
 ## 技术栈
 
@@ -87,7 +87,7 @@ nginx/                                       可选的本机 Nginx 配置
 - 浏览器写请求由 `frontend/src/api/client.ts` 自动携带 Cookie 和 CSRF Token。
 - Python 服务使用独立 Keycloak Client Credentials，经 Gateway 携带 Bearer Token 调用 Backend。
 - Gateway 只有在 Bearer Token 已成功认证后才能豁免 CSRF，不能只检查 `Authorization` Header 是否存在。
-- Gateway 转发机器请求时保留原始 Bearer Token；Backend 始终独立校验签名、Issuer、Audience、有效期和 `OWNER` 角色。
+- Gateway 转发机器请求时保留原始 Bearer Token；Backend 始终独立校验签名、Issuer、Audience、有效期和 `WORKSTATION_*` 系统角色，并校验 Workspace 成员关系与 Permission。
 - 浏览器 Gateway Client、Python Client 和其他机器服务使用不同的 Client ID 与 Secret。
 - Secret、完整 Token、真实密码不得进入源码、OpenAPI、日志、镜像层或 GitHub Actions 输出。
 - 生产入口必须使用 HTTPS，并正确转发 Host、Proto 和 Port。

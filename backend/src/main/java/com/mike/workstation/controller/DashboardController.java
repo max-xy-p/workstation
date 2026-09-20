@@ -3,11 +3,12 @@ package com.mike.workstation.controller;
 import com.mike.workstation.dto.DashboardResponse;
 import com.mike.workstation.service.DashboardService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping("/api/workspaces/{workspaceId}/dashboard")
 /**
  * 工作台概览接口控制器。
  *
@@ -26,7 +27,7 @@ public class DashboardController {
      * @return 活跃项目数、待办任务数、进行中任务数、最近项目和最近笔记
      */
     @GetMapping
-    public DashboardResponse summary() {
-        return dashboardService.summary();
+    public DashboardResponse summary(@PathVariable Long workspaceId) {
+        return dashboardService.summary(workspaceId);
     }
 }

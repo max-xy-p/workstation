@@ -6,6 +6,7 @@ import com.mike.workstation.assembler.TaskResponseAssembler;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.ProjectRequest;
@@ -31,17 +32,23 @@ public class ProjectService {
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
     private final NoteTagLoader noteTagLoader;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
     public ProjectService(
             ProjectMapper projectMapper,
             TaskMapper taskMapper,
             NoteMapper noteMapper,
-            NoteTagLoader noteTagLoader
+            NoteTagLoader noteTagLoader,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
     ) {
         this.projectMapper = projectMapper;
         this.taskMapper = taskMapper;
         this.noteMapper = noteMapper;
         this.noteTagLoader = noteTagLoader;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
     /**
@@ -51,12 +58,15 @@ public class ProjectService {
      * @param status 项目状态，可为空
      * @return 项目列表
      */
-    public PageResponse<ProjectSummaryResponse> list(String keyword, ProjectStatus status, int page, int size) {
+    public PageResponse<ProjectSummaryResponse> list(
+            Long workspaceId, String keyword, ProjectStatus status, int page, int size
+    ) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_READ);
         PageQuery query = PageQuery.of(page, size);
-        var items = projectMapper.listPage(keyword, status, query.offset(), query.size()).stream()
+        var items = projectMapper.listPage(workspaceId, keyword, status, query.offset(), query.size()).stream()
                 .map(ProjectResponseAssembler::toSummary)
                 .toList();
-        return PageResponse.of(items, page, size, projectMapper.count(keyword, status));
+        return PageResponse.of(items, page, size, projectMapper.count(workspaceId, keyword, status));
     }
 
     /**
@@ -66,12 +76,13 @@ public class ProjectService {
      * @return 项目实体
      * @throws com.mike.workstation.exception.NotFoundException 项目不存在时抛出
      */
-    public ProjectResponse get(Long id) {
-        return ProjectResponseAssembler.toResponse(getEntity(id));
+    public ProjectResponse get(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_READ);
+        return ProjectResponseAssembler.toResponse(getEntity(workspaceId, id));
     }
 
-    private Project getEntity(Long id) {
-        Project project = projectMapper.findById(id);
+    private Project getEntity(Long workspaceId, Long id) {
+        Project project = projectMapper.findById(workspaceId, id);
         RequestChecks.requiredExisting(project, "项目不存在");
         return project;
     }
@@ -84,13 +95,14 @@ public class ProjectService {
      * @param id 项目 ID
      * @return 项目详情、关联任务和关联笔记
      */
-    public ProjectDetailResponse detail(Long id) {
-        Project project = getEntity(id);
-        List<Note> notes = noteMapper.listSummariesByProjectId(id);
-        noteTagLoader.attachTags(notes);
+    public ProjectDetailResponse detail(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_READ);
+        Project project = getEntity(workspaceId, id);
+        List<Note> notes = noteMapper.listSummariesByProjectId(workspaceId, id);
+        noteTagLoader.attachTags(workspaceId, notes);
         return new ProjectDetailResponse(
                 ProjectResponseAssembler.toResponse(project),
-                taskMapper.listByProjectId(id).stream().map(TaskResponseAssembler::toResponse).toList(),
+                taskMapper.listByProjectId(workspaceId, id).stream().map(TaskResponseAssembler::toResponse).toList(),
                 notes.stream().map(NoteResponseAssembler::toSummary).toList()
         );
     }
@@ -102,15 +114,18 @@ public class ProjectService {
      * @return 创建后的项目
      */
     @Transactional
-    public ProjectResponse create(ProjectRequest request) {
+    public ProjectResponse create(Long workspaceId, ProjectRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
         validate(request);
         Project project = new Project();
+        project.setWorkspaceId(workspaceId);
         applyRequest(project, request);
         LocalDateTime now = LocalDateTime.now();
         project.setCreatedAt(now);
         project.setUpdatedAt(now);
         projectMapper.insert(project);
-        return get(project.getId());
+        auditService.success(workspaceId, "PROJECT_CREATE", "PROJECT", project.getId());
+        return get(workspaceId, project.getId());
     }
 
     /**
@@ -121,15 +136,18 @@ public class ProjectService {
      * @return 更新后的项目
      */
     @Transactional
-    public ProjectResponse update(Long id, ProjectRequest request) {
+    public ProjectResponse update(Long workspaceId, Long id, ProjectRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
         validate(request);
-        getEntity(id);
+        getEntity(workspaceId, id);
         Project project = new Project();
         project.setId(id);
+        project.setWorkspaceId(workspaceId);
         applyRequest(project, request);
         project.setUpdatedAt(LocalDateTime.now());
         projectMapper.update(project);
-        return get(id);
+        auditService.success(workspaceId, "PROJECT_UPDATE", "PROJECT", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -140,11 +158,13 @@ public class ProjectService {
      * @return 更新后的项目
      */
     @Transactional
-    public ProjectResponse updateStatus(Long id, ProjectStatus status) {
+    public ProjectResponse updateStatus(Long workspaceId, Long id, ProjectStatus status) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
         RequestChecks.requiredObject(status, "项目状态");
-        getEntity(id);
-        projectMapper.updateStatus(id, status, LocalDateTime.now());
-        return get(id);
+        getEntity(workspaceId, id);
+        projectMapper.updateStatus(workspaceId, id, status, LocalDateTime.now());
+        auditService.success(workspaceId, "PROJECT_STATUS_UPDATE", "PROJECT", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -155,15 +175,17 @@ public class ProjectService {
      * @param id 项目 ID
      */
     @Transactional
-    public void delete(Long id) {
-        getEntity(id);
-        if (taskMapper.countByProjectId(id) > 0) {
+    public void delete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
+        getEntity(workspaceId, id);
+        if (taskMapper.countByProjectId(workspaceId, id) > 0) {
             throw new BusinessException("项目下存在任务，不能直接删除");
         }
 
         // 项目仅被笔记引用时允许删除，同时解除这些笔记的项目关联。
-        noteMapper.clearProject(id, LocalDateTime.now());
-        projectMapper.delete(id);
+        noteMapper.clearProject(workspaceId, id, LocalDateTime.now());
+        projectMapper.delete(workspaceId, id);
+        auditService.success(workspaceId, "PROJECT_DELETE", "PROJECT", id);
     }
 
     /**

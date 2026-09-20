@@ -6,7 +6,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import com.mike.workstation.service.WorkspaceAuthorizationService;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,17 +30,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ResourceServerIntegrationTests {
     @Autowired
     private MockMvc mockMvc;
+    @MockitoBean
+    private WorkspaceAuthorizationService authorizationService;
 
     @Test
     void protectedApiRejectsAnonymousRequests() throws Exception {
-        mockMvc.perform(get("/api/projects"))
+        mockMvc.perform(get("/api/workspaces/1/projects"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
                 .andExpect(jsonPath("$.timestamp").isString());
     }
 
     @Test
-    void protectedApiRejectsTokenWithoutOwnerRole() throws Exception {
+    void protectedApiRejectsTokenWithoutSystemRole() throws Exception {
         mockMvc.perform(get("/api/not-found").with(jwt()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
@@ -45,30 +50,30 @@ class ResourceServerIntegrationTests {
     }
 
     @Test
-    void ownerTokenPassesSecurityFilter() throws Exception {
+    void workstationUserTokenPassesSecurityFilter() throws Exception {
         mockMvc.perform(get("/api/not-found").with(jwt()
                         .jwt(token -> token.claim("preferred_username", "owner"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
+                        .authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void invalidPaginationReturnsUnifiedBadRequest() throws Exception {
-        mockMvc.perform(get("/api/projects").param("size", "101").with(jwt()
-                        .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
+        mockMvc.perform(get("/api/workspaces/1/projects").param("size", "101").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
 
-        mockMvc.perform(get("/api/projects").param("page", "not-a-number").with(jwt()
-                        .authorities(new SimpleGrantedAuthority("ROLE_OWNER"))))
+        mockMvc.perform(get("/api/workspaces/1/projects").param("page", "not-a-number").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
     }
 
     @Test
     void requestBodyRejectsFieldsOutsideOpenApiContract() throws Exception {
-        mockMvc.perform(post("/api/tags")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_OWNER")))
+        mockMvc.perform(post("/api/workspaces/1/tags")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"architecture\",\"unexpected\":true}"))
                 .andExpect(status().isBadRequest())

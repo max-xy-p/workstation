@@ -3,11 +3,110 @@
  * Do not make direct changes to the file.
  */
 export interface paths {
-    "/api/dashboard": {
+    "/api/workspaces": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        /** 查询当前主体可访问的工作空间 */
+        get: operations["listWorkspaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 查询工作空间 */
+        get: operations["getWorkspace"];
+        /** 更新工作空间 */
+        put: operations["updateWorkspace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 查询工作空间成员 */
+        get: operations["listWorkspaceMembers"];
+        put?: never;
+        /** 添加工作空间成员 */
+        post: operations["addWorkspaceMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/members/{subjectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                subjectId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** 更新成员角色 */
+        put: operations["updateWorkspaceMember"];
+        post?: never;
+        /** 移除工作空间成员 */
+        delete: operations["removeWorkspaceMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 分页查询工作空间审计事件 */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 查询工作台概览 */
@@ -20,11 +119,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notes": {
+    "/api/workspaces/{workspaceId}/notes": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 分页查询笔记 */
@@ -38,11 +139,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notes/{id}": {
+    "/api/workspaces/{workspaceId}/notes/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -59,11 +161,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notes/import": {
+    "/api/workspaces/{workspaceId}/notes/import": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         get?: never;
@@ -79,11 +183,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/note-folders": {
+    "/api/workspaces/{workspaceId}/note-folders": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 查询全部笔记文件夹 */
@@ -97,11 +203,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/note-folders/{id}": {
+    "/api/workspaces/{workspaceId}/note-folders/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -118,11 +225,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/projects": {
+    "/api/workspaces/{workspaceId}/projects": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 分页查询项目 */
@@ -136,11 +245,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/projects/{id}": {
+    "/api/workspaces/{workspaceId}/projects/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -157,11 +267,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/projects/{id}/status": {
+    "/api/workspaces/{workspaceId}/projects/{id}/status": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -176,11 +287,13 @@ export interface paths {
         patch: operations["updateProjectStatus"];
         trace?: never;
     };
-    "/api/tasks": {
+    "/api/workspaces/{workspaceId}/tasks": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 分页查询任务 */
@@ -194,11 +307,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tasks/{id}": {
+    "/api/workspaces/{workspaceId}/tasks/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -215,11 +329,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tasks/{id}/status": {
+    "/api/workspaces/{workspaceId}/tasks/{id}/status": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -234,11 +349,13 @@ export interface paths {
         patch: operations["updateTaskStatus"];
         trace?: never;
     };
-    "/api/tags": {
+    "/api/workspaces/{workspaceId}/tags": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         /** 查询全部标签 */
@@ -252,11 +369,12 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tags/{id}": {
+    "/api/workspaces/{workspaceId}/tags/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -282,6 +400,74 @@ export interface components {
             message: string;
             /** Format: date-time */
             timestamp: string;
+        };
+        /** @enum {string} */
+        PrincipalType: "USER" | "SERVICE";
+        /** @enum {string} */
+        WorkspaceType: "PERSONAL" | "SHARED";
+        /** @enum {string} */
+        WorkspaceRole: "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
+        /** @enum {string} */
+        WorkspacePermission: "WORKSPACE_READ" | "WORKSPACE_WRITE" | "MEMBER_READ" | "MEMBER_MANAGE" | "DASHBOARD_READ" | "NOTE_READ" | "NOTE_WRITE" | "NOTE_IMPORT" | "FOLDER_READ" | "FOLDER_WRITE" | "TAG_READ" | "TAG_WRITE" | "PROJECT_READ" | "PROJECT_WRITE" | "TASK_READ" | "TASK_WRITE" | "AUDIT_READ";
+        /** @enum {string} */
+        AuditResult: "SUCCESS" | "DENIED";
+        WorkspaceRequest: {
+            name: string;
+        };
+        WorkspaceResponse: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        WorkspaceMemberRequest: {
+            subjectId: string;
+            principalType: components["schemas"]["PrincipalType"];
+            username?: string | null;
+            displayName?: string | null;
+            role: components["schemas"]["WorkspaceRole"];
+        };
+        WorkspaceMemberRoleRequest: {
+            role: components["schemas"]["WorkspaceRole"];
+        };
+        WorkspaceMemberResponse: {
+            subjectId: string;
+            principalType: components["schemas"]["PrincipalType"];
+            username: string | null;
+            displayName: string | null;
+            role: components["schemas"]["WorkspaceRole"];
+            /** Format: date-time */
+            joinedAt: string;
+        };
+        AuditEventResponse: {
+            /** Format: int64 */
+            id: number;
+            actorSubject: string;
+            actorType: components["schemas"]["PrincipalType"];
+            action: string;
+            resourceType: string;
+            /** Format: int64 */
+            resourceId: number | null;
+            result: components["schemas"]["AuditResult"];
+            /** Format: date-time */
+            occurredAt: string;
+            traceId: string | null;
+        };
+        AuditEventPageResponse: {
+            items: components["schemas"]["AuditEventResponse"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
         };
         /** @enum {string} */
         ProjectStatus: "PLANNING" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED";
@@ -531,7 +717,7 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
-        /** @description Token 没有 OWNER 权限 */
+        /** @description 调用方没有系统访问资格或 Workspace Permission */
         Forbidden: {
             headers: {
                 [name: string]: unknown;
@@ -551,6 +737,7 @@ export interface components {
         };
     };
     parameters: {
+        WorkspaceId: number;
         ResourceId: number;
         /** @description 从 0 开始的页码 */
         Page: number;
@@ -563,11 +750,236 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getDashboard: {
+    listWorkspaces: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 工作空间列表；用户首次调用时会幂等创建个人工作空间 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceResponse"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 工作空间及当前主体权限 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的工作空间 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listWorkspaceMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 成员列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMemberResponse"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addWorkspaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description 新增的成员 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMemberResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWorkspaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                subjectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceMemberRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的成员 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMemberResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    removeWorkspaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                subjectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 移除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                actorSubject?: string;
+                action?: string;
+                resourceType?: string;
+                result?: components["schemas"]["AuditResult"];
+                /** @description 从 0 开始的页码 */
+                page?: components["parameters"]["Page"];
+                /** @description 每页数量 */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 审计事件分页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -599,7 +1011,9 @@ export interface operations {
                 size?: components["parameters"]["Size"];
             };
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -622,7 +1036,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -650,6 +1066,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -675,6 +1092,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -705,6 +1123,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -727,7 +1146,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -754,7 +1175,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -776,7 +1199,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -804,6 +1229,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -829,6 +1255,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -859,6 +1286,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -889,7 +1317,9 @@ export interface operations {
                 size?: components["parameters"]["Size"];
             };
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -912,7 +1342,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -940,6 +1372,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -965,6 +1398,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -995,6 +1429,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1019,6 +1454,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1057,7 +1493,9 @@ export interface operations {
                 size?: components["parameters"]["Size"];
             };
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1080,7 +1518,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1108,6 +1548,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1133,6 +1574,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1163,6 +1605,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1186,6 +1629,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1215,7 +1659,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1237,7 +1683,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1265,6 +1713,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1290,6 +1739,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;
@@ -1320,6 +1770,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
                 id: components["parameters"]["ResourceId"];
             };
             cookie?: never;

@@ -15,17 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BearerSecurityTests {
     @Test
     void bearerMatcherSeparatesMachineRequestsFromBrowserRequests() {
-        var bearerExchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/projects")
+        var bearerExchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/workspaces/9/projects")
                 .header("Authorization", "Bearer token-value")
                 .build());
-        var browserExchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/projects").build());
+        var browserExchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/workspaces/9/projects").build());
 
         assertThat(SecurityConfig.bearerRequestMatcher().matches(bearerExchange).block().isMatch()).isTrue();
         assertThat(SecurityConfig.bearerRequestMatcher().matches(browserExchange).block().isMatch()).isFalse();
     }
 
     @Test
-    void jwtConverterMapsOwnerRealmRole() {
+    void jwtConverterMapsServiceRealmRole() {
         Jwt jwt = new Jwt(
                 "token-value",
                 Instant.now(),
@@ -34,7 +35,7 @@ class BearerSecurityTests {
                 Map.of(
                         "sub", "service-account-workstation-python",
                         "preferred_username", "service-account-workstation-python",
-                        "realm_access", Map.of("roles", List.of("OWNER"))));
+                        "realm_access", Map.of("roles", List.of("WORKSTATION_SERVICE"))));
 
         var authentication = SecurityConfig.jwtAuthenticationConverter().convert(jwt).block();
 
@@ -42,12 +43,13 @@ class BearerSecurityTests {
         assertThat(authentication.getName()).isEqualTo("service-account-workstation-python");
         assertThat(authentication.getAuthorities())
                 .extracting(authority -> authority.getAuthority())
-                .contains("ROLE_OWNER");
+                .contains("ROLE_WORKSTATION_SERVICE");
     }
 
     @Test
     void securityErrorsUseUnifiedApiErrorShape() {
-        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/projects").build());
+        var exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/workspaces/9/projects").build());
 
         new SecurityConfig().writeError(
                 exchange,

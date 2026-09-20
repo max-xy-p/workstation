@@ -13,6 +13,7 @@ from ...types import Response
 
 
 def _get_kwargs(
+    workspace_id: int,
     id: int,
     *,
     body: TagRequest,
@@ -21,7 +22,8 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/api/tags/{id}".format(
+        "url": "/api/workspaces/{workspace_id}/tags/{id}".format(
+            workspace_id=quote(str(workspace_id), safe=""),
             id=quote(str(id), safe=""),
         ),
     }
@@ -78,6 +80,7 @@ def _build_response(
 
 
 def sync_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -86,6 +89,7 @@ def sync_detailed(
     """更新标签
 
     Args:
+        workspace_id (int):
         id (int):
         body (TagRequest):
 
@@ -98,6 +102,7 @@ def sync_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
         body=body,
     )
@@ -110,6 +115,7 @@ def sync_detailed(
 
 
 def sync(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -118,6 +124,7 @@ def sync(
     """更新标签
 
     Args:
+        workspace_id (int):
         id (int):
         body (TagRequest):
 
@@ -130,6 +137,7 @@ def sync(
     """
 
     return sync_detailed(
+        workspace_id=workspace_id,
         id=id,
         client=client,
         body=body,
@@ -137,6 +145,7 @@ def sync(
 
 
 async def asyncio_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -145,6 +154,7 @@ async def asyncio_detailed(
     """更新标签
 
     Args:
+        workspace_id (int):
         id (int):
         body (TagRequest):
 
@@ -157,6 +167,7 @@ async def asyncio_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
         body=body,
     )
@@ -167,6 +178,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -175,6 +187,7 @@ async def asyncio(
     """更新标签
 
     Args:
+        workspace_id (int):
         id (int):
         body (TagRequest):
 
@@ -188,6 +201,7 @@ async def asyncio(
 
     return (
         await asyncio_detailed(
+            workspace_id=workspace_id,
             id=id,
             client=client,
             body=body,

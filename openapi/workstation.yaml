@@ -1,14 +1,18 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 1.0.0
+  version: 2.0.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
-    Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。
+    Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
+    所有业务操作还必须通过 Backend 的 Workspace 成员与 Permission 校验。
 servers:
   - url: http://localhost:8088
     description: Local Docker Compose
 tags:
+  - name: workspaces
+  - name: workspace-members
+  - name: audit
   - name: dashboard
   - name: notes
   - name: note-folders
@@ -18,7 +22,169 @@ tags:
 security:
   - workstationOAuth: []
 paths:
-  /api/dashboard:
+  /api/workspaces:
+    get:
+      tags: [workspaces]
+      operationId: listWorkspaces
+      summary: 查询当前主体可访问的工作空间
+      responses:
+        "200":
+          description: 工作空间列表；用户首次调用时会幂等创建个人工作空间
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/workspaces/{workspaceId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [workspaces]
+      operationId: getWorkspace
+      summary: 查询工作空间
+      responses:
+        "200":
+          description: 工作空间及当前主体权限
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [workspaces]
+      operationId: updateWorkspace
+      summary: 更新工作空间
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceRequest" }
+      responses:
+        "200":
+          description: 更新后的工作空间
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [workspace-members]
+      operationId: listWorkspaceMembers
+      summary: 查询工作空间成员
+      responses:
+        "200":
+          description: 成员列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceMemberResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [workspace-members]
+      operationId: addWorkspaceMember
+      summary: 添加工作空间成员
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceMemberRequest" }
+      responses:
+        "201":
+          description: 新增的成员
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMemberResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/members/{subjectId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: subjectId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 255 }
+    put:
+      tags: [workspace-members]
+      operationId: updateWorkspaceMember
+      summary: 更新成员角色
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceMemberRoleRequest" }
+      responses:
+        "200":
+          description: 更新后的成员
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMemberResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [workspace-members]
+      operationId: removeWorkspaceMember
+      summary: 移除工作空间成员
+      responses:
+        "204": { description: 移除成功 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/audit-events:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [audit]
+      operationId: listAuditEvents
+      summary: 分页查询工作空间审计事件
+      parameters:
+        - name: actorSubject
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: resourceType
+          in: query
+          schema: { type: string }
+        - name: result
+          in: query
+          schema: { $ref: "#/components/schemas/AuditResult" }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: 审计事件分页
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEventPageResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/dashboard:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [dashboard]
       operationId: getDashboard
@@ -33,7 +199,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/notes:
+  /api/workspaces/{workspaceId}/notes:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [notes]
       operationId: listNotes
@@ -85,8 +253,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/notes/{id}:
+  /api/workspaces/{workspaceId}/notes/{id}:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     get:
       tags: [notes]
@@ -134,7 +303,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/notes/import:
+  /api/workspaces/{workspaceId}/notes/import:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     post:
       tags: [notes]
       operationId: importNotes
@@ -157,7 +328,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/note-folders:
+  /api/workspaces/{workspaceId}/note-folders:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [note-folders]
       operationId: listNoteFolders
@@ -191,8 +364,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/note-folders/{id}:
+  /api/workspaces/{workspaceId}/note-folders/{id}:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     get:
       tags: [note-folders]
@@ -237,7 +411,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/projects:
+  /api/workspaces/{workspaceId}/projects:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [projects]
       operationId: listProjects
@@ -279,8 +455,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/projects/{id}:
+  /api/workspaces/{workspaceId}/projects/{id}:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     get:
       tags: [projects]
@@ -325,8 +502,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/projects/{id}/status:
+  /api/workspaces/{workspaceId}/projects/{id}/status:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     patch:
       tags: [projects]
@@ -348,7 +526,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/tasks:
+  /api/workspaces/{workspaceId}/tasks:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [tasks]
       operationId: listTasks
@@ -396,8 +576,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/tasks/{id}:
+  /api/workspaces/{workspaceId}/tasks/{id}:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     get:
       tags: [tasks]
@@ -441,8 +622,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/tasks/{id}/status:
+  /api/workspaces/{workspaceId}/tasks/{id}/status:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     patch:
       tags: [tasks]
@@ -464,7 +646,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/tags:
+  /api/workspaces/{workspaceId}/tags:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [tags]
       operationId: listTags
@@ -498,8 +682,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
-  /api/tags/{id}:
+  /api/workspaces/{workspaceId}/tags/{id}:
     parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
       - $ref: "#/components/parameters/ResourceId"
     get:
       tags: [tags]
@@ -547,13 +732,21 @@ components:
   securitySchemes:
     workstationOAuth:
       type: oauth2
-      description: Keycloak Client Credentials；Access Token 必须包含 workstation-api Audience 和 OWNER Realm Role。
+      description: Keycloak Client Credentials；Access Token 必须包含 workstation-api Audience 和 WORKSTATION_SERVICE Realm Role。
       flows:
         clientCredentials:
           tokenUrl: /auth/realms/workstation/protocol/openid-connect/token
           scopes: {}
 
   parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
     ResourceId:
       name: id
       in: path
@@ -594,7 +787,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ApiError" }
     Forbidden:
-      description: Token 没有 OWNER 权限
+      description: 调用方没有系统访问资格或 Workspace Permission
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ApiError" }
@@ -613,6 +806,114 @@ components:
         code: { type: string }
         message: { type: string }
         timestamp: { type: string, format: date-time }
+
+    PrincipalType:
+      type: string
+      enum: [USER, SERVICE]
+    WorkspaceType:
+      type: string
+      enum: [PERSONAL, SHARED]
+    WorkspaceRole:
+      type: string
+      enum: [OWNER, ADMIN, EDITOR, VIEWER]
+    WorkspacePermission:
+      type: string
+      enum:
+        - WORKSPACE_READ
+        - WORKSPACE_WRITE
+        - MEMBER_READ
+        - MEMBER_MANAGE
+        - DASHBOARD_READ
+        - NOTE_READ
+        - NOTE_WRITE
+        - NOTE_IMPORT
+        - FOLDER_READ
+        - FOLDER_WRITE
+        - TAG_READ
+        - TAG_WRITE
+        - PROJECT_READ
+        - PROJECT_WRITE
+        - TASK_READ
+        - TASK_WRITE
+        - AUDIT_READ
+    AuditResult:
+      type: string
+      enum: [SUCCESS, DENIED]
+
+    WorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+    WorkspaceResponse:
+      type: object
+      additionalProperties: false
+      required: [id, name, type, role, permissions, createdAt, updatedAt]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { $ref: "#/components/schemas/WorkspaceType" }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+        permissions:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspacePermission" }
+          uniqueItems: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkspaceMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [subjectId, principalType, role]
+      properties:
+        subjectId: { type: string, minLength: 1, maxLength: 255 }
+        principalType: { $ref: "#/components/schemas/PrincipalType" }
+        username: { type: [string, "null"], maxLength: 255 }
+        displayName: { type: [string, "null"], maxLength: 255 }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+    WorkspaceMemberRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+    WorkspaceMemberResponse:
+      type: object
+      additionalProperties: false
+      required: [subjectId, principalType, username, displayName, role, joinedAt]
+      properties:
+        subjectId: { type: string }
+        principalType: { $ref: "#/components/schemas/PrincipalType" }
+        username: { type: [string, "null"] }
+        displayName: { type: [string, "null"] }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+        joinedAt: { type: string, format: date-time }
+    AuditEventResponse:
+      type: object
+      additionalProperties: false
+      required: [id, actorSubject, actorType, action, resourceType, resourceId, result, occurredAt, traceId]
+      properties:
+        id: { type: integer, format: int64 }
+        actorSubject: { type: string }
+        actorType: { $ref: "#/components/schemas/PrincipalType" }
+        action: { type: string }
+        resourceType: { type: string }
+        resourceId: { type: [integer, "null"], format: int64 }
+        result: { $ref: "#/components/schemas/AuditResult" }
+        occurredAt: { type: string, format: date-time }
+        traceId: { type: [string, "null"] }
+    AuditEventPageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, total, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEventResponse" }
+        page: { type: integer, format: int32, minimum: 0 }
+        size: { type: integer, format: int32, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+        hasMore: { type: boolean }
 
     ProjectStatus:
       type: string

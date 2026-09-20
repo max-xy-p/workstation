@@ -4,6 +4,7 @@ import com.mike.workstation.assembler.TaskResponseAssembler;
 import com.mike.workstation.domain.Task;
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.dto.PageResponse;
@@ -23,10 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
-    public TaskService(TaskMapper taskMapper, ProjectMapper projectMapper) {
+    public TaskService(
+            TaskMapper taskMapper,
+            ProjectMapper projectMapper,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
+    ) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
     /**
@@ -39,13 +49,17 @@ public class TaskService {
      * @return 任务列表
      */
     public PageResponse<TaskResponse> list(
-            String keyword, Long projectId, TaskStatus status, TaskPriority priority, int page, int size
+            Long workspaceId, String keyword, Long projectId, TaskStatus status, TaskPriority priority,
+            int page, int size
     ) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_READ);
         PageQuery query = PageQuery.of(page, size);
-        var items = taskMapper.listPage(keyword, projectId, status, priority, query.offset(), query.size()).stream()
+        var items = taskMapper.listPage(
+                        workspaceId, keyword, projectId, status, priority, query.offset(), query.size()).stream()
                 .map(TaskResponseAssembler::toResponse)
                 .toList();
-        return PageResponse.of(items, page, size, taskMapper.count(keyword, projectId, status, priority));
+        return PageResponse.of(
+                items, page, size, taskMapper.count(workspaceId, keyword, projectId, status, priority));
     }
 
     /**
@@ -54,12 +68,13 @@ public class TaskService {
      * @param id 任务 ID
      * @return 任务实体
      */
-    public TaskResponse get(Long id) {
-        return TaskResponseAssembler.toResponse(getEntity(id));
+    public TaskResponse get(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_READ);
+        return TaskResponseAssembler.toResponse(getEntity(workspaceId, id));
     }
 
-    private Task getEntity(Long id) {
-        Task task = taskMapper.findById(id);
+    private Task getEntity(Long workspaceId, Long id) {
+        Task task = taskMapper.findById(workspaceId, id);
         RequestChecks.requiredExisting(task, "任务不存在");
         return task;
     }
@@ -71,15 +86,18 @@ public class TaskService {
      * @return 创建后的任务
      */
     @Transactional
-    public TaskResponse create(TaskRequest request) {
-        validate(request);
+    public TaskResponse create(Long workspaceId, TaskRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
+        validate(workspaceId, request);
         Task task = new Task();
+        task.setWorkspaceId(workspaceId);
         applyRequest(task, request);
         LocalDateTime now = LocalDateTime.now();
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         taskMapper.insert(task);
-        return get(task.getId());
+        auditService.success(workspaceId, "TASK_CREATE", "TASK", task.getId());
+        return get(workspaceId, task.getId());
     }
 
     /**
@@ -90,15 +108,18 @@ public class TaskService {
      * @return 更新后的任务
      */
     @Transactional
-    public TaskResponse update(Long id, TaskRequest request) {
-        validate(request);
-        getEntity(id);
+    public TaskResponse update(Long workspaceId, Long id, TaskRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
+        validate(workspaceId, request);
+        getEntity(workspaceId, id);
         Task task = new Task();
         task.setId(id);
+        task.setWorkspaceId(workspaceId);
         applyRequest(task, request);
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.update(task);
-        return get(id);
+        auditService.success(workspaceId, "TASK_UPDATE", "TASK", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -109,11 +130,13 @@ public class TaskService {
      * @return 更新后的任务
      */
     @Transactional
-    public TaskResponse updateStatus(Long id, TaskStatus status) {
+    public TaskResponse updateStatus(Long workspaceId, Long id, TaskStatus status) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
         RequestChecks.requiredObject(status, "任务状态");
-        getEntity(id);
-        taskMapper.updateStatus(id, status, LocalDateTime.now());
-        return get(id);
+        getEntity(workspaceId, id);
+        taskMapper.updateStatus(workspaceId, id, status, LocalDateTime.now());
+        auditService.success(workspaceId, "TASK_STATUS_UPDATE", "TASK", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -122,9 +145,11 @@ public class TaskService {
      * @param id 任务 ID
      */
     @Transactional
-    public void delete(Long id) {
-        getEntity(id);
-        taskMapper.delete(id);
+    public void delete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
+        getEntity(workspaceId, id);
+        taskMapper.delete(workspaceId, id);
+        auditService.success(workspaceId, "TASK_DELETE", "TASK", id);
     }
 
     /**
@@ -132,14 +157,14 @@ public class TaskService {
      *
      * <p>所属项目必须存在；状态和优先级由前端显式选择，不在后端填默认值。</p>
      */
-    private void validate(TaskRequest request) {
+    private void validate(Long workspaceId, TaskRequest request) {
         RequestChecks.requiredObject(request, "任务请求");
         RequestChecks.requiredText(request.title(), "任务标题");
         RequestChecks.requiredObject(request.projectId(), "所属项目");
         RequestChecks.requiredObject(request.status(), "任务状态");
         RequestChecks.requiredObject(request.priority(), "任务优先级");
         RequestChecks.maxLength(request.title().trim(), 200, "任务标题");
-        RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "所属项目不存在");
+        RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "所属项目不存在");
     }
 
     /**

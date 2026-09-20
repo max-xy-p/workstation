@@ -92,12 +92,14 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { projectApi, taskApi } from '../api/workstation';
 import { KANBAN_COLUMNS, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
+import { workspaceIdFromRoute } from '../utils/workspaceRoute';
 
 const route = useRoute();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
 const error = ref('');
 const tasks = ref([]);
 const projects = ref([]);
@@ -153,14 +155,14 @@ function payload() {
 
 // 加载项目选项，任务必须关联到一个项目。
 async function loadProjects() {
-  projects.value = await projectApi.listAll();
+  projects.value = await projectApi.listAll(workspaceId.value);
 }
 
 // 根据筛选条件重新加载看板任务。
 async function load() {
   try {
     error.value = '';
-    tasks.value = await taskApi.listAll(filters);
+    tasks.value = await taskApi.listAll(workspaceId.value, filters);
   } catch (err) {
     error.value = err.message;
   }
@@ -171,9 +173,9 @@ async function save() {
   try {
     error.value = '';
     if (form.id) {
-      await taskApi.update(form.id, payload());
+      await taskApi.update(workspaceId.value, form.id, payload());
     } else {
-      await taskApi.create(payload());
+      await taskApi.create(workspaceId.value, payload());
     }
     resetForm();
     await load();
@@ -186,7 +188,7 @@ async function save() {
 async function move(task, status) {
   try {
     error.value = '';
-    await taskApi.updateStatus(task.id, status);
+    await taskApi.updateStatus(workspaceId.value, task.id, status);
     await load();
   } catch (err) {
     error.value = err.message;
@@ -198,7 +200,7 @@ async function remove(id) {
   if (!window.confirm('确认删除任务？')) return;
   try {
     error.value = '';
-    await taskApi.delete(id);
+    await taskApi.delete(workspaceId.value, id);
     await load();
   } catch (err) {
     error.value = err.message;

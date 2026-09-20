@@ -13,6 +13,7 @@ from ...types import Response
 
 
 def _get_kwargs(
+    workspace_id: int,
     id: int,
     *,
     body: NoteRequest,
@@ -21,7 +22,8 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "put",
-        "url": "/api/notes/{id}".format(
+        "url": "/api/workspaces/{workspace_id}/notes/{id}".format(
+            workspace_id=quote(str(workspace_id), safe=""),
             id=quote(str(id), safe=""),
         ),
     }
@@ -80,6 +82,7 @@ def _build_response(
 
 
 def sync_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -88,6 +91,7 @@ def sync_detailed(
     """完整更新笔记
 
     Args:
+        workspace_id (int):
         id (int):
         body (NoteRequest):
 
@@ -100,6 +104,7 @@ def sync_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
         body=body,
     )
@@ -112,6 +117,7 @@ def sync_detailed(
 
 
 def sync(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -120,6 +126,7 @@ def sync(
     """完整更新笔记
 
     Args:
+        workspace_id (int):
         id (int):
         body (NoteRequest):
 
@@ -132,6 +139,7 @@ def sync(
     """
 
     return sync_detailed(
+        workspace_id=workspace_id,
         id=id,
         client=client,
         body=body,
@@ -139,6 +147,7 @@ def sync(
 
 
 async def asyncio_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -147,6 +156,7 @@ async def asyncio_detailed(
     """完整更新笔记
 
     Args:
+        workspace_id (int):
         id (int):
         body (NoteRequest):
 
@@ -159,6 +169,7 @@ async def asyncio_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
         body=body,
     )
@@ -169,6 +180,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -177,6 +189,7 @@ async def asyncio(
     """完整更新笔记
 
     Args:
+        workspace_id (int):
         id (int):
         body (NoteRequest):
 
@@ -190,6 +203,7 @@ async def asyncio(
 
     return (
         await asyncio_detailed(
+            workspace_id=workspace_id,
             id=id,
             client=client,
             body=body,

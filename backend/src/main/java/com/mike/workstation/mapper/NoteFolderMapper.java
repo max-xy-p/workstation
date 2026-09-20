@@ -12,17 +12,24 @@ import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface NoteFolderMapper {
-    @Select("SELECT id, name, parent_id, created_at, updated_at FROM note_folders ORDER BY name, id")
-    List<NoteFolder> list();
+    @Select("""
+            SELECT id, workspace_id, name, parent_id, created_at, updated_at
+            FROM note_folders WHERE workspace_id = #{workspaceId} ORDER BY name, id
+            """)
+    List<NoteFolder> list(Long workspaceId);
 
-    @Select("SELECT id, name, parent_id, created_at, updated_at FROM note_folders WHERE id = #{id}")
-    NoteFolder findById(Long id);
+    @Select("""
+            SELECT id, workspace_id, name, parent_id, created_at, updated_at
+            FROM note_folders WHERE workspace_id = #{workspaceId} AND id = #{id}
+            """)
+    NoteFolder findById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
     @Select("""
             <script>
             SELECT COUNT(*)
             FROM note_folders
-            WHERE name = #{name}
+            WHERE workspace_id = #{workspaceId}
+              AND name = #{name}
               AND
               <choose>
                 <when test="parentId == null">parent_id IS NULL</when>
@@ -32,14 +39,15 @@ public interface NoteFolderMapper {
             </script>
             """)
     long countSiblingName(
+            @Param("workspaceId") Long workspaceId,
             @Param("name") String name,
             @Param("parentId") Long parentId,
             @Param("excludeId") Long excludeId
     );
 
     @Insert("""
-            INSERT INTO note_folders (name, parent_id, created_at, updated_at)
-            VALUES (#{name}, #{parentId}, #{createdAt}, #{updatedAt})
+            INSERT INTO note_folders (workspace_id, name, parent_id, created_at, updated_at)
+            VALUES (#{workspaceId}, #{name}, #{parentId}, #{createdAt}, #{updatedAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(NoteFolder folder);
@@ -47,13 +55,16 @@ public interface NoteFolderMapper {
     @Update("""
             UPDATE note_folders
             SET name = #{name}, parent_id = #{parentId}, updated_at = #{updatedAt}
-            WHERE id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
     int update(NoteFolder folder);
 
-    @Select("SELECT COUNT(*) FROM note_folders WHERE parent_id = #{parentId}")
-    long countChildren(Long parentId);
+    @Select("""
+            SELECT COUNT(*) FROM note_folders
+            WHERE workspace_id = #{workspaceId} AND parent_id = #{parentId}
+            """)
+    long countChildren(@Param("workspaceId") Long workspaceId, @Param("parentId") Long parentId);
 
-    @Delete("DELETE FROM note_folders WHERE id = #{id}")
-    int delete(Long id);
+    @Delete("DELETE FROM note_folders WHERE workspace_id = #{workspaceId} AND id = #{id}")
+    int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 }

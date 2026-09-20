@@ -24,13 +24,14 @@ public interface TaskMapper {
      */
     @Select("""
             <script>
-            SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
+            SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.created_at, t.updated_at
             FROM tasks t
-            JOIN projects p ON p.id = t.project_id
+            JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
             <where>
+                t.workspace_id = #{workspaceId}
                 <if test="keyword != null and keyword != ''">
-                    t.title LIKE CONCAT('%', #{keyword}, '%')
+                    AND t.title LIKE CONCAT('%', #{keyword}, '%')
                 </if>
                 <if test="projectId != null">
                     AND t.project_id = #{projectId}
@@ -47,6 +48,7 @@ public interface TaskMapper {
             </script>
             """)
     List<Task> listPage(
+            @Param("workspaceId") Long workspaceId,
             @Param("keyword") String keyword,
             @Param("projectId") Long projectId,
             @Param("status") TaskStatus status,
@@ -59,7 +61,8 @@ public interface TaskMapper {
             <script>
             SELECT COUNT(*) FROM tasks t
             <where>
-                <if test="keyword != null and keyword != ''">t.title LIKE CONCAT('%', #{keyword}, '%')</if>
+                t.workspace_id = #{workspaceId}
+                <if test="keyword != null and keyword != ''">AND t.title LIKE CONCAT('%', #{keyword}, '%')</if>
                 <if test="projectId != null">AND t.project_id = #{projectId}</if>
                 <if test="status != null">AND t.status = #{status}</if>
                 <if test="priority != null">AND t.priority = #{priority}</if>
@@ -67,6 +70,7 @@ public interface TaskMapper {
             </script>
             """)
     long count(
+            @Param("workspaceId") Long workspaceId,
             @Param("keyword") String keyword,
             @Param("projectId") Long projectId,
             @Param("status") TaskStatus status,
@@ -74,33 +78,35 @@ public interface TaskMapper {
     );
 
     @Select("""
-            SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
+            SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.created_at, t.updated_at
             FROM tasks t
-            JOIN projects p ON p.id = t.project_id
-            WHERE t.project_id = #{projectId}
+            JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            WHERE t.workspace_id = #{workspaceId} AND t.project_id = #{projectId}
             ORDER BY t.updated_at DESC, t.id DESC
             """)
-    List<Task> listByProjectId(Long projectId);
+    List<Task> listByProjectId(@Param("workspaceId") Long workspaceId, @Param("projectId") Long projectId);
 
     /**
      * 根据主键查询任务详情。
      */
     @Select("""
-            SELECT t.id, t.title, t.description, t.project_id, p.name AS project_name,
+            SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.created_at, t.updated_at
             FROM tasks t
-            JOIN projects p ON p.id = t.project_id
-            WHERE t.id = #{id}
+            JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            WHERE t.workspace_id = #{workspaceId} AND t.id = #{id}
             """)
-    Task findById(Long id);
+    Task findById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
     /**
      * 插入任务，并回填自增主键到 task.id。
      */
     @Insert("""
-            INSERT INTO tasks (title, description, project_id, status, priority, due_date, created_at, updated_at)
-            VALUES (#{title}, #{description}, #{projectId}, #{status}, #{priority}, #{dueDate}, #{createdAt}, #{updatedAt})
+            INSERT INTO tasks
+                (workspace_id, title, description, project_id, status, priority, due_date, created_at, updated_at)
+            VALUES
+                (#{workspaceId}, #{title}, #{description}, #{projectId}, #{status}, #{priority}, #{dueDate}, #{createdAt}, #{updatedAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Task task);
@@ -117,7 +123,7 @@ public interface TaskMapper {
                 priority = #{priority},
                 due_date = #{dueDate},
                 updated_at = #{updatedAt}
-            WHERE id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
     int update(Task task);
 
@@ -127,9 +133,10 @@ public interface TaskMapper {
     @Update("""
             UPDATE tasks
             SET status = #{status}, updated_at = #{updatedAt}
-            WHERE id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
     int updateStatus(
+            @Param("workspaceId") Long workspaceId,
             @Param("id") Long id,
             @Param("status") TaskStatus status,
             @Param("updatedAt") java.time.LocalDateTime updatedAt
@@ -138,18 +145,18 @@ public interface TaskMapper {
     /**
      * 根据主键删除任务。
      */
-    @Delete("DELETE FROM tasks WHERE id = #{id}")
-    int delete(Long id);
+    @Delete("DELETE FROM tasks WHERE workspace_id = #{workspaceId} AND id = #{id}")
+    int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
     /**
      * 统计某项目下的任务数量，用于项目删除前校验。
      */
-    @Select("SELECT COUNT(*) FROM tasks WHERE project_id = #{projectId}")
-    long countByProjectId(Long projectId);
+    @Select("SELECT COUNT(*) FROM tasks WHERE workspace_id = #{workspaceId} AND project_id = #{projectId}")
+    long countByProjectId(@Param("workspaceId") Long workspaceId, @Param("projectId") Long projectId);
 
     /**
      * 按任务状态统计数量，用于首页概览。
      */
-    @Select("SELECT COUNT(*) FROM tasks WHERE status = #{status}")
-    long countByStatus(TaskStatus status);
+    @Select("SELECT COUNT(*) FROM tasks WHERE workspace_id = #{workspaceId} AND status = #{status}")
+    long countByStatus(@Param("workspaceId") Long workspaceId, @Param("status") TaskStatus status);
 }

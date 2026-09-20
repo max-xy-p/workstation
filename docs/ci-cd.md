@@ -12,7 +12,7 @@ Workstation 的应用交付物是三个容器镜像：
 - Gateway：浏览器 BFF、机器 Token 入口和请求转发
 - Web：Frontend 静态资源和统一反向代理入口
 
-MySQL、Redis 和 Keycloak 使用官方镜像，它们属于运行环境，不由本项目重复构建。
+MySQL、Redis、RabbitMQ、Keycloak 和 XXL-JOB Admin 使用上游镜像，它们属于运行环境，不由本项目重复构建。
 
 SDK 是开发制品，不是 Workstation 应用容器。它使用独立标签和发布流程，详见 [`sdk-distribution.md`](sdk-distribution.md)。
 
@@ -57,7 +57,7 @@ CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某�
 - CI 环境只进行验证和制品构建，不保存业务数据。
 - GHCR 保存版本化镜像，不保存运行时 Secret。
 - VPS 保存生产配置和持久化数据，只拉取已经构建完成的镜像。
-- Web/Nginx 是唯一公网入口，Gateway、Backend、数据库和 Redis 不直接暴露公网。
+- Web/Nginx 是唯一公网入口，Gateway、Backend、数据库、Redis、RabbitMQ、XXL-JOB Admin 和执行器端口不直接暴露公网。
 
 这种分离可以避免“在服务器上现场构建”的不可重复问题，也让回滚针对确定的镜像版本进行。
 

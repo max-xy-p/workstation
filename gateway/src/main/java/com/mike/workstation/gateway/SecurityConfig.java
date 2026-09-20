@@ -51,7 +51,7 @@ import java.util.Map;
 public class SecurityConfig {
     /**
      * Python 等机器客户端携带自己的 Bearer Token。该链不读取浏览器 Session，
-     * 也不执行 CSRF；只有通过 JWT、Audience 和 OWNER 角色校验后才能访问业务 API。
+     * 也不执行 CSRF；只有通过 JWT、Audience 和 WORKSTATION_SERVICE 角色校验后才能访问业务 API。
      */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -61,7 +61,7 @@ public class SecurityConfig {
         return http
                 .securityMatcher(bearerRequestMatcher())
                 .authorizeExchange(authorize -> authorize
-                        .pathMatchers("/api/**").hasRole("OWNER")
+                        .pathMatchers("/api/**").hasRole("WORKSTATION_SERVICE")
                         .anyExchange().denyAll())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
@@ -103,7 +103,7 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .pathMatchers("/api/auth/csrf").permitAll()
                         .pathMatchers("/oauth2/**", "/login/**").permitAll()
-                        .pathMatchers("/api/**").authenticated()
+                        .pathMatchers("/api/**").hasAnyRole("WORKSTATION_USER", "WORKSTATION_ADMIN")
                         .anyExchange().permitAll())
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository))
                 .oauth2Login(oauth2 -> oauth2

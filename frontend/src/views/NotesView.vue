@@ -3,18 +3,18 @@
     <aside class="note-explorer">
       <header class="note-explorer-header">
         <div class="note-workspace-identity">
-          <RouterLink class="workspace-home-link" :to="{ name: 'dashboard' }" title="返回工作台" aria-label="返回工作台">知</RouterLink>
+          <RouterLink class="workspace-home-link" :to="{ name: 'dashboard', params: workspaceParams }" title="返回工作台" aria-label="返回工作台">知</RouterLink>
           <span class="workspace-identity-divider">/</span>
           <h1>笔记</h1>
           <span>{{ notes.length }} 篇</span>
         </div>
         <div class="note-explorer-actions">
-          <RouterLink :to="{ name: 'note-new' }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
+          <RouterLink :to="{ name: 'note-new', params: workspaceParams }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
           <details class="explorer-action-menu" @focusout="closeExplorerMenu">
             <summary title="更多笔记操作" aria-label="更多笔记操作"><Ellipsis /></summary>
             <div class="explorer-action-popover">
               <button type="button" @click="openFolderFromMenu"><FolderPlus /><span>新建文件夹</span></button>
-              <RouterLink :to="{ name: 'note-import' }"><Import /><span>导入 Markdown</span></RouterLink>
+              <RouterLink :to="{ name: 'note-import', params: workspaceParams }"><Import /><span>导入 Markdown</span></RouterLink>
             </div>
           </details>
         </div>
@@ -76,7 +76,7 @@
             :key="note.id"
             class="note-tree-note-row"
             :class="{ selected: selectedNoteId === note.id }"
-            :to="{ name: 'note-edit', params: { id: note.id } }"
+            :to="{ name: 'note-edit', params: { ...workspaceParams, id: note.id } }"
           ><FileText /><span>{{ note.title }}</span></RouterLink>
         </div>
         <p v-if="!loading && !folders.length && !unfiledNotes.length" class="tree-empty">暂无文件夹或笔记</p>
@@ -90,7 +90,7 @@
         <FileText />
         <h2>选择一篇笔记</h2>
         <p>从左侧文件夹中打开笔记，或新建一篇。</p>
-        <RouterLink class="button" :to="{ name: 'note-new' }">新建笔记</RouterLink>
+        <RouterLink class="button" :to="{ name: 'note-new', params: workspaceParams }">新建笔记</RouterLink>
       </div>
     </main>
   </section>
@@ -103,11 +103,14 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
 import NoteTreeItem from '../components/NoteTreeItem.vue';
 import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../utils/noteFolders';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 import NoteEditorView from './NoteEditorView.vue';
 import NoteImportView from './NoteImportView.vue';
 
 const route = useRoute();
 const router = useRouter();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
+const workspaceParams = workspaceRouteParams(route);
 const error = ref('');
 const loading = ref(true);
 const notes = ref([]);
@@ -129,7 +132,7 @@ const availableParents = computed(() => flattenFolderOptions(folders.value).filt
 let keywordSearchTimer;
 
 async function loadFolders() {
-  folders.value = await noteFolderApi.list();
+  folders.value = await noteFolderApi.list(workspaceId.value);
   if (filters.keyword || filters.tagId) folders.value.forEach((folder) => expandedIds.add(folder.id));
   else if (!expandedIds.size) folders.value.filter((folder) => folder.parentId === null).forEach((folder) => expandedIds.add(folder.id));
 }
@@ -137,7 +140,10 @@ async function loadFolders() {
 async function loadNotes() {
   try {
     error.value = '';
-    notes.value = await noteApi.listAll({ keyword: filters.keyword, tagId: filters.tagId });
+    notes.value = await noteApi.listAll(
+      workspaceId.value,
+      { keyword: filters.keyword, tagId: filters.tagId }
+    );
     if (filters.keyword || filters.tagId) folders.value.forEach((folder) => expandedIds.add(folder.id));
   } catch (err) {
     error.value = err.message;
@@ -167,7 +173,7 @@ function toggleFolder(id) {
 
 function newNoteInFolder(folderId) {
   expandedIds.add(folderId);
-  router.push({ name: 'note-new', query: { folderId } });
+  router.push({ name: 'note-new', params: workspaceParams, query: { folderId } });
 }
 
 async function openFolderForm(folder = null, parentId = null) {
@@ -199,7 +205,9 @@ async function saveFolder() {
   try {
     error.value = '';
     const payload = { name: folderForm.name, parentId: folderForm.parentId ? Number(folderForm.parentId) : null };
-    const saved = folderForm.id ? await noteFolderApi.update(folderForm.id, payload) : await noteFolderApi.create(payload);
+    const saved = folderForm.id
+      ? await noteFolderApi.update(workspaceId.value, folderForm.id, payload)
+      : await noteFolderApi.create(workspaceId.value, payload);
     if (saved.parentId) expandedIds.add(saved.parentId);
     expandedIds.add(saved.id);
     closeFolderForm();
@@ -213,7 +221,7 @@ async function removeFolder(folder) {
   if (!window.confirm(`确认删除文件夹“${folder.name}”？只能删除空文件夹。`)) return;
   try {
     error.value = '';
-    await noteFolderApi.delete(folder.id);
+    await noteFolderApi.delete(workspaceId.value, folder.id);
     expandedIds.delete(folder.id);
     await loadFolders();
   } catch (err) {
@@ -223,7 +231,7 @@ async function removeFolder(folder) {
 
 onMounted(async () => {
   try {
-    [tags.value] = await Promise.all([tagApi.list(), loadFolders(), loadNotes()]);
+    [tags.value] = await Promise.all([tagApi.list(workspaceId.value), loadFolders(), loadNotes()]);
   } catch (err) {
     error.value = err.message;
     loading.value = false;

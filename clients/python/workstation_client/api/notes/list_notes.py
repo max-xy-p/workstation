@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -11,6 +12,7 @@ from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
+    workspace_id: int,
     *,
     keyword: str | Unset = UNSET,
     folder_id: int | Unset = UNSET,
@@ -38,7 +40,9 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/notes",
+        "url": "/api/workspaces/{workspace_id}/notes".format(
+            workspace_id=quote(str(workspace_id), safe=""),
+        ),
         "params": params,
     }
 
@@ -86,6 +90,7 @@ def _build_response(
 
 
 def sync_detailed(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -98,6 +103,7 @@ def sync_detailed(
     """分页查询笔记
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         folder_id (int | Unset):
         tag_id (int | Unset):
@@ -114,6 +120,7 @@ def sync_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         keyword=keyword,
         folder_id=folder_id,
         tag_id=tag_id,
@@ -130,6 +137,7 @@ def sync_detailed(
 
 
 def sync(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -142,6 +150,7 @@ def sync(
     """分页查询笔记
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         folder_id (int | Unset):
         tag_id (int | Unset):
@@ -158,6 +167,7 @@ def sync(
     """
 
     return sync_detailed(
+        workspace_id=workspace_id,
         client=client,
         keyword=keyword,
         folder_id=folder_id,
@@ -169,6 +179,7 @@ def sync(
 
 
 async def asyncio_detailed(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -181,6 +192,7 @@ async def asyncio_detailed(
     """分页查询笔记
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         folder_id (int | Unset):
         tag_id (int | Unset):
@@ -197,6 +209,7 @@ async def asyncio_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         keyword=keyword,
         folder_id=folder_id,
         tag_id=tag_id,
@@ -211,6 +224,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    workspace_id: int,
     *,
     client: AuthenticatedClient | Client,
     keyword: str | Unset = UNSET,
@@ -223,6 +237,7 @@ async def asyncio(
     """分页查询笔记
 
     Args:
+        workspace_id (int):
         keyword (str | Unset):
         folder_id (int | Unset):
         tag_id (int | Unset):
@@ -240,6 +255,7 @@ async def asyncio(
 
     return (
         await asyncio_detailed(
+            workspace_id=workspace_id,
             client=client,
             keyword=keyword,
             folder_id=folder_id,

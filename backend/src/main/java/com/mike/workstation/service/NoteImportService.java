@@ -3,6 +3,7 @@ package com.mike.workstation.service;
 import com.mike.workstation.config.NoteImportProperties;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.NoteImportDuplicateStrategy;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteImportItemResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
@@ -37,19 +38,25 @@ public class NoteImportService {
     private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
     public NoteImportService(
             NoteImportProperties properties,
             NoteMapper noteMapper,
             NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
-            TagMapper tagMapper
+            TagMapper tagMapper,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
     ) {
         this.properties = properties;
         this.noteMapper = noteMapper;
         this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
     /**
@@ -61,20 +68,22 @@ public class NoteImportService {
      * @return 导入汇总和单文件明细
      */
     @Transactional
-    public NoteImportResponse importMarkdown(NoteImportRequest request) {
-        validateRequest(request);
+    public NoteImportResponse importMarkdown(Long workspaceId, NoteImportRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_IMPORT);
+        validateRequest(workspaceId, request);
         Path sourcePath = resolveAllowedPath(request.sourcePath());
         List<Path> markdownFiles = collectMarkdownFiles(sourcePath);
         List<NoteImportItemResponse> items = new ArrayList<>();
         List<Long> tagIds = normalizedTagIds(request.tagIds());
 
         for (Path markdownFile : markdownFiles) {
-            items.add(importOne(markdownFile, request, tagIds));
+            items.add(importOne(workspaceId, markdownFile, request, tagIds));
         }
 
         int importedCount = count(items, STATUS_IMPORTED);
         int skippedCount = count(items, STATUS_SKIPPED);
         int failedCount = count(items, STATUS_FAILED);
+        auditService.success(workspaceId, "NOTE_IMPORT", "NOTE", null);
         return new NoteImportResponse(importedCount, skippedCount, failedCount, items);
     }
 
@@ -83,7 +92,9 @@ public class NoteImportService {
      *
      * <p>单个文件导入失败不会中断整批导入，而是以 FAILED 明细返回给前端。</p>
      */
-    private NoteImportItemResponse importOne(Path markdownFile, NoteImportRequest request, List<Long> tagIds) {
+    private NoteImportItemResponse importOne(
+            Long workspaceId, Path markdownFile, NoteImportRequest request, List<Long> tagIds
+    ) {
         String filePath = markdownFile.toString();
         Long insertedNoteId = null;
         try {
@@ -94,11 +105,13 @@ public class NoteImportService {
 
             String content = Files.readString(markdownFile, StandardCharsets.UTF_8);
             String title = MarkdownTitleExtractor.extract(content, markdownFile);
-            if (request.duplicateStrategy() == NoteImportDuplicateStrategy.SKIP_TITLE && noteMapper.countByTitle(title) > 0) {
+            if (request.duplicateStrategy() == NoteImportDuplicateStrategy.SKIP_TITLE
+                    && noteMapper.countByTitle(workspaceId, title) > 0) {
                 return new NoteImportItemResponse(filePath, title, STATUS_SKIPPED, "已存在同标题笔记", null);
             }
 
             Note note = new Note();
+            note.setWorkspaceId(workspaceId);
             note.setTitle(title);
             note.setContent(content);
             note.setFolderId(request.folderId());
@@ -111,15 +124,15 @@ public class NoteImportService {
 
             // 笔记与标签是多对多关系，创建笔记后再批量补关联。
             for (Long tagId : tagIds) {
-                tagMapper.insertNoteTag(note.getId(), tagId);
+                tagMapper.insertNoteTag(workspaceId, note.getId(), tagId);
             }
 
             return new NoteImportItemResponse(filePath, title, STATUS_IMPORTED, "导入成功", note.getId());
         } catch (IOException | RuntimeException ex) {
             // importMarkdown 是一个事务；这里清理半成品后继续处理后续文件，让批量导入能返回完整结果。
             if (insertedNoteId != null) {
-                tagMapper.deleteNoteTags(insertedNoteId);
-                noteMapper.delete(insertedNoteId);
+                tagMapper.deleteNoteTags(workspaceId, insertedNoteId);
+                noteMapper.delete(workspaceId, insertedNoteId);
             }
             return new NoteImportItemResponse(filePath, null, STATUS_FAILED, ex.getMessage(), null);
         }
@@ -130,7 +143,7 @@ public class NoteImportService {
      *
      * <p>除基础必填项外，还会确认文件夹、项目和标签 ID 是否真实存在。</p>
      */
-    private void validateRequest(NoteImportRequest request) {
+    private void validateRequest(Long workspaceId, NoteImportRequest request) {
         RequestChecks.requiredObject(request, "导入请求");
         RequestChecks.requiredText(request.sourcePath(), "导入路径");
         RequestChecks.requiredObject(request.duplicateStrategy(), "重复标题处理方式");
@@ -141,13 +154,13 @@ public class NoteImportService {
             throw new BusinessException("笔记导入文件大小限制未正确配置");
         }
         if (request.folderId() != null) {
-            RequestChecks.requiredExisting(folderMapper.findById(request.folderId()), "文件夹不存在");
+            RequestChecks.requiredExisting(folderMapper.findById(workspaceId, request.folderId()), "文件夹不存在");
         }
         if (request.projectId() != null) {
-            RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "关联项目不存在");
+            RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "关联项目不存在");
         }
         List<Long> tagIds = normalizedTagIds(request.tagIds());
-        if (RequestChecks.hasItems(tagIds) && tagMapper.findByIds(tagIds).size() != tagIds.size()) {
+        if (RequestChecks.hasItems(tagIds) && tagMapper.findByIds(workspaceId, tagIds).size() != tagIds.size()) {
             throw new BusinessException("存在无效标签");
         }
     }

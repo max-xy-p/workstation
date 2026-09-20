@@ -2,6 +2,7 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.assembler.NoteResponseAssembler;
 import com.mike.workstation.domain.Note;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
@@ -28,19 +29,25 @@ public class NoteService {
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
     private final NoteTagLoader noteTagLoader;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
     public NoteService(
             NoteMapper noteMapper,
             NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
             TagMapper tagMapper,
-            NoteTagLoader noteTagLoader
+            NoteTagLoader noteTagLoader,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
     ) {
         this.noteMapper = noteMapper;
         this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
         this.noteTagLoader = noteTagLoader;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
     /**
@@ -53,14 +60,15 @@ public class NoteService {
      * @return 笔记列表
      */
     public PageResponse<NoteSummaryResponse> list(
-            String keyword, Long folderId, Long tagId, Long projectId, int page, int size
+            Long workspaceId, String keyword, Long folderId, Long tagId, Long projectId, int page, int size
     ) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
         PageQuery query = PageQuery.of(page, size);
         List<Note> notes = noteMapper.listSummariesPage(
-                keyword, folderId, tagId, projectId, query.offset(), query.size()
+                workspaceId, keyword, folderId, tagId, projectId, query.offset(), query.size()
         );
-        noteTagLoader.attachTags(notes);
-        long total = noteMapper.count(keyword, folderId, tagId, projectId);
+        noteTagLoader.attachTags(workspaceId, notes);
+        long total = noteMapper.count(workspaceId, keyword, folderId, tagId, projectId);
         return PageResponse.of(notes.stream().map(NoteResponseAssembler::toSummary).toList(), page, size, total);
     }
 
@@ -70,14 +78,15 @@ public class NoteService {
      * @param id 笔记 ID
      * @return 笔记详情
      */
-    public NoteDetailResponse get(Long id) {
-        return NoteResponseAssembler.toDetail(getEntity(id));
+    public NoteDetailResponse get(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
+        return NoteResponseAssembler.toDetail(getEntity(workspaceId, id));
     }
 
-    private Note getEntity(Long id) {
-        Note note = noteMapper.findDetailById(id);
+    private Note getEntity(Long workspaceId, Long id) {
+        Note note = noteMapper.findDetailById(workspaceId, id);
         RequestChecks.requiredExisting(note, "笔记不存在");
-        attachTags(note);
+        attachTags(workspaceId, note);
         return note;
     }
 
@@ -88,16 +97,19 @@ public class NoteService {
      * @return 创建后的笔记
      */
     @Transactional
-    public NoteDetailResponse create(NoteRequest request) {
-        validate(request);
+    public NoteDetailResponse create(Long workspaceId, NoteRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        validate(workspaceId, request);
         Note note = new Note();
+        note.setWorkspaceId(workspaceId);
         applyRequest(note, request);
         LocalDateTime now = LocalDateTime.now();
         note.setCreatedAt(now);
         note.setUpdatedAt(now);
         noteMapper.insert(note);
-        replaceTags(note.getId(), request.tagIds());
-        return get(note.getId());
+        replaceTags(workspaceId, note.getId(), request.tagIds());
+        auditService.success(workspaceId, "NOTE_CREATE", "NOTE", note.getId());
+        return get(workspaceId, note.getId());
     }
 
     /**
@@ -108,16 +120,19 @@ public class NoteService {
      * @return 更新后的笔记
      */
     @Transactional
-    public NoteDetailResponse update(Long id, NoteRequest request) {
-        validate(request);
-        getEntity(id);
+    public NoteDetailResponse update(Long workspaceId, Long id, NoteRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        validate(workspaceId, request);
+        getEntity(workspaceId, id);
         Note note = new Note();
         note.setId(id);
+        note.setWorkspaceId(workspaceId);
         applyRequest(note, request);
         note.setUpdatedAt(LocalDateTime.now());
         noteMapper.update(note);
-        replaceTags(id, request.tagIds());
-        return get(id);
+        replaceTags(workspaceId, id, request.tagIds());
+        auditService.success(workspaceId, "NOTE_UPDATE", "NOTE", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -128,10 +143,12 @@ public class NoteService {
      * @param id 笔记 ID
      */
     @Transactional
-    public void delete(Long id) {
-        getEntity(id);
-        tagMapper.deleteNoteTags(id);
-        noteMapper.delete(id);
+    public void delete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        getEntity(workspaceId, id);
+        tagMapper.deleteNoteTags(workspaceId, id);
+        noteMapper.delete(workspaceId, id);
+        auditService.success(workspaceId, "NOTE_DELETE", "NOTE", id);
     }
 
     /**
@@ -139,19 +156,19 @@ public class NoteService {
      *
      * <p>文件夹、项目和标签都是可选关系；只要传入 ID，就必须能在数据库中找到对应记录。</p>
      */
-    private void validate(NoteRequest request) {
+    private void validate(Long workspaceId, NoteRequest request) {
         RequestChecks.requiredObject(request, "笔记请求");
         RequestChecks.requiredText(request.title(), "笔记标题");
         RequestChecks.requiredText(request.content(), "笔记内容");
         RequestChecks.maxLength(request.title().trim(), 200, "笔记标题");
         if (request.folderId() != null) {
-            RequestChecks.requiredExisting(folderMapper.findById(request.folderId()), "文件夹不存在");
+            RequestChecks.requiredExisting(folderMapper.findById(workspaceId, request.folderId()), "文件夹不存在");
         }
         if (request.projectId() != null) {
-            RequestChecks.requiredExisting(projectMapper.findById(request.projectId()), "关联项目不存在");
+            RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "关联项目不存在");
         }
         List<Long> tagIds = normalizedTagIds(request.tagIds());
-        if (RequestChecks.hasItems(tagIds) && tagMapper.findByIds(tagIds).size() != tagIds.size()) {
+        if (RequestChecks.hasItems(tagIds) && tagMapper.findByIds(workspaceId, tagIds).size() != tagIds.size()) {
             throw new BusinessException("存在无效标签");
         }
     }
@@ -169,8 +186,8 @@ public class NoteService {
     /**
      * 给笔记补充标签列表。
      */
-    private void attachTags(Note note) {
-        note.setTags(tagMapper.findByNoteId(note.getId()));
+    private void attachTags(Long workspaceId, Note note) {
+        note.setTags(tagMapper.findByNoteId(workspaceId, note.getId()));
     }
 
     /**
@@ -178,10 +195,10 @@ public class NoteService {
      *
      * <p>第一版不做局部增删标签，统一先删再插，逻辑简单且便于保证最终状态与请求一致。</p>
      */
-    private void replaceTags(Long noteId, List<Long> tagIds) {
-        tagMapper.deleteNoteTags(noteId);
+    private void replaceTags(Long workspaceId, Long noteId, List<Long> tagIds) {
+        tagMapper.deleteNoteTags(workspaceId, noteId);
         for (Long tagId : normalizedTagIds(tagIds)) {
-            tagMapper.insertNoteTag(noteId, tagId);
+            tagMapper.insertNoteTag(workspaceId, noteId, tagId);
         }
     }
 

@@ -41,7 +41,7 @@
         class="note-tree-note-row"
         :class="{ selected: selectedNoteId === note.id }"
         :style="{ '--tree-depth': depth + 1 }"
-        :to="{ name: 'note-edit', params: { id: note.id } }"
+        :to="{ name: 'note-edit', params: { ...workspaceParams, id: note.id } }"
       >
         <FileText />
         <span>{{ note.title }}</span>
@@ -53,7 +53,11 @@
 <script setup>
 import { ChevronRight, Ellipsis, FilePlus2, FileText, Folder, FolderOpen, FolderPlus, Pencil, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
+import { workspaceRouteParams } from '../utils/workspaceRoute';
+
+const route = useRoute();
+const workspaceParams = workspaceRouteParams(route);
 
 const props = defineProps({
   folder: { type: Object, required: true },

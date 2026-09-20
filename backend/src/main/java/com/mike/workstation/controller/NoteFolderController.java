@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/note-folders")
+@RequestMapping("/api/workspaces/{workspaceId}/note-folders")
 public class NoteFolderController {
     private final NoteFolderService folderService;
 
@@ -25,29 +25,31 @@ public class NoteFolderController {
     }
 
     @GetMapping
-    public List<NoteFolderResponse> list() {
-        return folderService.list();
+    public List<NoteFolderResponse> list(@PathVariable Long workspaceId) {
+        return folderService.list(workspaceId);
     }
 
     @GetMapping("/{id}")
-    public NoteFolderResponse get(@PathVariable Long id) {
-        return folderService.get(id);
+    public NoteFolderResponse get(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return folderService.get(workspaceId, id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NoteFolderResponse create(@RequestBody NoteFolderRequest request) {
-        return folderService.create(request);
+    public NoteFolderResponse create(@PathVariable Long workspaceId, @RequestBody NoteFolderRequest request) {
+        return folderService.create(workspaceId, request);
     }
 
     @PutMapping("/{id}")
-    public NoteFolderResponse update(@PathVariable Long id, @RequestBody NoteFolderRequest request) {
-        return folderService.update(id, request);
+    public NoteFolderResponse update(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteFolderRequest request
+    ) {
+        return folderService.update(workspaceId, id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        folderService.delete(id);
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        folderService.delete(workspaceId, id);
     }
 }

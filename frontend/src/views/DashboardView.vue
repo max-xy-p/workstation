@@ -45,7 +45,7 @@
             <span class="eyebrow">项目</span>
             <h2>最近项目</h2>
           </div>
-          <RouterLink class="text-link" :to="{ name: 'projects' }">查看全部 →</RouterLink>
+          <RouterLink class="text-link" :to="{ name: 'projects', params: workspaceParams }">查看全部 →</RouterLink>
         </div>
         <div v-if="summary.recentProjects.length" class="record-list">
           <RouterLink v-for="(project, index) in summary.recentProjects" :key="project.id" class="record-row" :to="`/projects/${project.id}`">
@@ -66,7 +66,7 @@
             <span class="eyebrow">笔记</span>
             <h2>最近笔记</h2>
           </div>
-          <RouterLink class="text-link" :to="{ name: 'notes' }">进入知识库 →</RouterLink>
+          <RouterLink class="text-link" :to="{ name: 'notes', params: workspaceParams }">进入知识库 →</RouterLink>
         </div>
         <div v-if="summary.recentNotes.length" class="record-list">
           <RouterLink v-for="(note, index) in summary.recentNotes" :key="note.id" class="record-row" :to="`/notes/${note.id}/edit`">
@@ -86,12 +86,15 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { dashboardApi } from '../api/workstation';
 import { PROJECT_STATUSES, optionLabel } from '../constants/options';
 import AppIcon from '../components/AppIcon.vue';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 
+const route = useRoute();
 const router = useRouter();
+const workspaceParams = workspaceRouteParams(route);
 const keyword = ref('');
 const error = ref('');
 const summary = reactive({
@@ -113,14 +116,14 @@ function formatDate(value) {
 
 // 根据入口按钮跳转到对应模块，并把关键字带到目标列表页。
 function search(target) {
-  router.push({ name: target, query: { keyword: keyword.value } });
+  router.push({ name: target, params: workspaceParams, query: { keyword: keyword.value } });
 }
 
 // 加载首页统计数字和最近更新列表。
 async function load() {
   try {
     error.value = '';
-    Object.assign(summary, await dashboardApi.summary());
+    Object.assign(summary, await dashboardApi.summary(workspaceIdFromRoute(route)));
   } catch (err) {
     error.value = err.message;
   }

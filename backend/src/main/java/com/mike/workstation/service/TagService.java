@@ -2,6 +2,7 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.assembler.TagResponseAssembler;
 import com.mike.workstation.domain.Tag;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.TagRequest;
 import com.mike.workstation.dto.TagResponse;
 import com.mike.workstation.exception.BusinessException;
@@ -19,9 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public class TagService {
     private final TagMapper tagMapper;
+    private final WorkspaceAuthorizationService authorization;
+    private final AuditService auditService;
 
-    public TagService(TagMapper tagMapper) {
+    public TagService(
+            TagMapper tagMapper,
+            WorkspaceAuthorizationService authorization,
+            AuditService auditService
+    ) {
         this.tagMapper = tagMapper;
+        this.authorization = authorization;
+        this.auditService = auditService;
     }
 
     /**
@@ -29,8 +38,9 @@ public class TagService {
      *
      * @return 标签列表
      */
-    public List<TagResponse> list() {
-        return tagMapper.list().stream().map(TagResponseAssembler::toResponse).toList();
+    public List<TagResponse> list(Long workspaceId) {
+        authorization.require(workspaceId, WorkspacePermission.TAG_READ);
+        return tagMapper.list(workspaceId).stream().map(TagResponseAssembler::toResponse).toList();
     }
 
     /**
@@ -39,12 +49,13 @@ public class TagService {
      * @param id 标签 ID
      * @return 标签实体
      */
-    public TagResponse get(Long id) {
-        return TagResponseAssembler.toResponse(getEntity(id));
+    public TagResponse get(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.TAG_READ);
+        return TagResponseAssembler.toResponse(getEntity(workspaceId, id));
     }
 
-    private Tag getEntity(Long id) {
-        Tag tag = tagMapper.findById(id);
+    private Tag getEntity(Long workspaceId, Long id) {
+        Tag tag = tagMapper.findById(workspaceId, id);
         RequestChecks.requiredExisting(tag, "标签不存在");
         return tag;
     }
@@ -56,15 +67,18 @@ public class TagService {
      * @return 创建后的标签
      */
     @Transactional
-    public TagResponse create(TagRequest request) {
-        validate(request, null);
+    public TagResponse create(Long workspaceId, TagRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.TAG_WRITE);
+        validate(workspaceId, request, null);
         Tag tag = new Tag();
+        tag.setWorkspaceId(workspaceId);
         tag.setName(request.name().trim());
         LocalDateTime now = LocalDateTime.now();
         tag.setCreatedAt(now);
         tag.setUpdatedAt(now);
         tagMapper.insert(tag);
-        return get(tag.getId());
+        auditService.success(workspaceId, "TAG_CREATE", "TAG", tag.getId());
+        return get(workspaceId, tag.getId());
     }
 
     /**
@@ -75,15 +89,18 @@ public class TagService {
      * @return 更新后的标签
      */
     @Transactional
-    public TagResponse update(Long id, TagRequest request) {
-        getEntity(id);
-        validate(request, id);
+    public TagResponse update(Long workspaceId, Long id, TagRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.TAG_WRITE);
+        getEntity(workspaceId, id);
+        validate(workspaceId, request, id);
         Tag tag = new Tag();
         tag.setId(id);
+        tag.setWorkspaceId(workspaceId);
         tag.setName(request.name().trim());
         tag.setUpdatedAt(LocalDateTime.now());
         tagMapper.update(tag);
-        return get(id);
+        auditService.success(workspaceId, "TAG_UPDATE", "TAG", id);
+        return get(workspaceId, id);
     }
 
     /**
@@ -92,21 +109,23 @@ public class TagService {
      * @param id 标签 ID
      */
     @Transactional
-    public void delete(Long id) {
-        getEntity(id);
-        tagMapper.deleteTagLinks(id);
-        tagMapper.delete(id);
+    public void delete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.TAG_WRITE);
+        getEntity(workspaceId, id);
+        tagMapper.deleteTagLinks(workspaceId, id);
+        tagMapper.delete(workspaceId, id);
+        auditService.success(workspaceId, "TAG_DELETE", "TAG", id);
     }
 
     /**
      * 校验标签请求。
      */
-    private void validate(TagRequest request, Long excludeId) {
+    private void validate(Long workspaceId, TagRequest request, Long excludeId) {
         RequestChecks.requiredObject(request, "标签请求");
         RequestChecks.requiredText(request.name(), "标签名称");
         String name = request.name().trim();
         RequestChecks.maxLength(name, 80, "标签名称");
-        if (tagMapper.countByName(name, excludeId) > 0) {
+        if (tagMapper.countByName(workspaceId, name, excludeId) > 0) {
             throw new BusinessException("标签名称已存在");
         }
     }

@@ -6,20 +6,23 @@ import TasksView from '../views/TasksView.vue';
 import NotesView from '../views/NotesView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
 import LoginView from '../views/LoginView.vue';
+import WorkspaceUnavailableView from '../views/WorkspaceUnavailableView.vue';
 import { auth } from '../auth';
+import { workspace } from '../workspace';
 
 export const routes = [
   { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },
-  { path: '/', redirect: { name: 'dashboard' } },
-  { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
-  { path: '/projects', name: 'projects', component: ProjectsView, meta: { title: '项目' } },
-  { path: '/projects/:id', name: 'project-detail', component: ProjectDetailView, meta: { title: '项目详情' } },
-  { path: '/tasks', name: 'tasks', component: TasksView, meta: { title: '任务看板' } },
-  { path: '/notes', name: 'notes', component: NotesView, meta: { title: '笔记' } },
-  { path: '/notes/import', name: 'note-import', component: NotesView, meta: { title: '导入笔记' } },
-  { path: '/notes/new', name: 'note-new', component: NotesView, meta: { title: '新建笔记' } },
-  { path: '/notes/:id/edit', name: 'note-edit', component: NotesView, meta: { title: '编辑笔记' } },
-  { path: '/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '标签' } }
+  { path: '/', name: 'root', component: WorkspaceUnavailableView, meta: { title: '工作空间' } },
+  { path: '/workspace-unavailable', name: 'workspace-unavailable', component: WorkspaceUnavailableView, meta: { title: '工作空间不可用' } },
+  { path: '/w/:workspaceId/dashboard', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
+  { path: '/w/:workspaceId/projects', name: 'projects', component: ProjectsView, meta: { title: '项目' } },
+  { path: '/w/:workspaceId/projects/:id', name: 'project-detail', component: ProjectDetailView, meta: { title: '项目详情' } },
+  { path: '/w/:workspaceId/tasks', name: 'tasks', component: TasksView, meta: { title: '任务看板' } },
+  { path: '/w/:workspaceId/notes', name: 'notes', component: NotesView, meta: { title: '笔记' } },
+  { path: '/w/:workspaceId/notes/import', name: 'note-import', component: NotesView, meta: { title: '导入笔记' } },
+  { path: '/w/:workspaceId/notes/new', name: 'note-new', component: NotesView, meta: { title: '新建笔记' } },
+  { path: '/w/:workspaceId/notes/:id/edit', name: 'note-edit', component: NotesView, meta: { title: '编辑笔记' } },
+  { path: '/w/:workspaceId/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '标签' } }
 ];
 
 const router = createRouter({
@@ -35,8 +38,22 @@ router.beforeEach(async (to) => {
   if (user && to.name === 'login') {
     const redirect = sessionStorage.getItem('workstation:login-redirect');
     sessionStorage.removeItem('workstation:login-redirect');
-    return redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : { name: 'notes' };
+    if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
+    const defaultWorkspace = await workspace.ensureWorkspace();
+    return defaultWorkspace
+      ? { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } }
+      : { name: 'workspace-unavailable' };
   }
+  if (!user || to.meta.public) return true;
+
+  const defaultWorkspace = await workspace.ensureWorkspace();
+  if (!defaultWorkspace) return to.name === 'workspace-unavailable' ? true : { name: 'workspace-unavailable' };
+  if (to.name === 'root') {
+    return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };
+  }
+  if (to.name === 'workspace-unavailable') return true;
+  const selected = workspace.selectWorkspace(to.params.workspaceId);
+  if (!selected) return { name: 'workspace-unavailable' };
   return true;
 });
 

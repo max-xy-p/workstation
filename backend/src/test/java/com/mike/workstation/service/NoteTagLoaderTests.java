@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NoteTagLoaderTests {
+    private static final long WORKSPACE_ID = 9L;
+
     @Mock
     private TagMapper tagMapper;
     @InjectMocks
@@ -25,11 +27,12 @@ class NoteTagLoaderTests {
     void loadsTagsForAllNotesWithOneMapperCall() {
         Note first = note(1L);
         Note second = note(2L);
-        when(tagMapper.findByNoteIds(List.of(1L, 2L))).thenReturn(List.of(row(1L, 10L, "Java")));
+        when(tagMapper.findByNoteIds(WORKSPACE_ID, List.of(1L, 2L)))
+                .thenReturn(List.of(row(1L, 10L, "Java")));
 
-        noteTagLoader.attachTags(List.of(first, second));
+        noteTagLoader.attachTags(WORKSPACE_ID, List.of(first, second));
 
-        verify(tagMapper).findByNoteIds(List.of(1L, 2L));
+        verify(tagMapper).findByNoteIds(WORKSPACE_ID, List.of(1L, 2L));
         assertThat(first.getTags()).extracting(tag -> tag.getName()).containsExactly("Java");
         assertThat(second.getTags()).isEmpty();
     }

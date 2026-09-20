@@ -3,6 +3,15 @@ type Schemas = components['schemas'];
 type ResourceId = number;
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type WorkspaceRequest = Schemas['WorkspaceRequest'];
+export type WorkspaceResponse = Schemas['WorkspaceResponse'];
+export type WorkspaceMemberRequest = Schemas['WorkspaceMemberRequest'];
+export type WorkspaceMemberRoleRequest = Schemas['WorkspaceMemberRoleRequest'];
+export type WorkspaceMemberResponse = Schemas['WorkspaceMemberResponse'];
+export type WorkspacePermission = Schemas['WorkspacePermission'];
+export type WorkspaceRole = Schemas['WorkspaceRole'];
+export type AuditEventResponse = Schemas['AuditEventResponse'];
+export type AuditEventPageResponse = Schemas['AuditEventPageResponse'];
 export type DashboardResponse = Schemas['DashboardResponse'];
 export type NoteRequest = Schemas['NoteRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
@@ -27,6 +36,7 @@ export type TagResponse = Schemas['TagResponse'];
 export type NoteListParams = NonNullable<operations['listNotes']['parameters']['query']>;
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
+export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
 export type QueryParams = object;
 export interface WorkstationTransport {
     get<T>(path: string, params?: QueryParams): Promise<T>;
@@ -36,8 +46,71 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    workspaceApi: {
+        list: () => Promise<{
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            createdAt: string;
+            updatedAt: string;
+        }[]>;
+        get: (workspaceId: ResourceId) => Promise<{
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
+        update: (workspaceId: ResourceId, payload: WorkspaceRequest) => Promise<{
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
+        listMembers: (workspaceId: ResourceId) => Promise<{
+            subjectId: string;
+            principalType: components["schemas"]["PrincipalType"];
+            username: string | null;
+            displayName: string | null;
+            role: components["schemas"]["WorkspaceRole"];
+            joinedAt: string;
+        }[]>;
+        addMember: (workspaceId: ResourceId, payload: WorkspaceMemberRequest) => Promise<{
+            subjectId: string;
+            principalType: components["schemas"]["PrincipalType"];
+            username: string | null;
+            displayName: string | null;
+            role: components["schemas"]["WorkspaceRole"];
+            joinedAt: string;
+        }>;
+        updateMember: (workspaceId: ResourceId, subjectId: string, role: WorkspaceRole) => Promise<{
+            subjectId: string;
+            principalType: components["schemas"]["PrincipalType"];
+            username: string | null;
+            displayName: string | null;
+            role: components["schemas"]["WorkspaceRole"];
+            joinedAt: string;
+        }>;
+        removeMember: (workspaceId: ResourceId, subjectId: string) => Promise<null>;
+    };
+    auditApi: {
+        list: (workspaceId: ResourceId, params?: AuditEventListParams) => Promise<{
+            items: components["schemas"]["AuditEventResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+    };
     dashboardApi: {
-        summary: () => Promise<{
+        summary: (workspaceId: ResourceId) => Promise<{
             activeProjectCount: number;
             todoTaskCount: number;
             inProgressTaskCount: number;
@@ -46,14 +119,14 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
         }>;
     };
     projectApi: {
-        list: (params?: ProjectListParams) => Promise<{
+        list: (workspaceId: ResourceId, params?: ProjectListParams) => Promise<{
             items: components["schemas"]["ProjectSummaryResponse"][];
             page: number;
             size: number;
             total: number;
             hasMore: boolean;
         }>;
-        listAll: (params?: ProjectListParams) => Promise<{
+        listAll: (workspaceId: ResourceId, params?: ProjectListParams) => Promise<{
             id: number;
             name: string;
             description: string | null;
@@ -63,12 +136,12 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }[]>;
-        detail: (id: ResourceId) => Promise<{
+        detail: (workspaceId: ResourceId, id: ResourceId) => Promise<{
             project: components["schemas"]["ProjectResponse"];
             tasks: components["schemas"]["TaskResponse"][];
             notes: components["schemas"]["NoteSummaryResponse"][];
         }>;
-        create: (payload: ProjectRequest) => Promise<{
+        create: (workspaceId: ResourceId, payload: ProjectRequest) => Promise<{
             id: number;
             name: string;
             description: string | null;
@@ -79,7 +152,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (id: ResourceId, payload: ProjectRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: ProjectRequest) => Promise<{
             id: number;
             name: string;
             description: string | null;
@@ -90,7 +163,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        updateStatus: (id: ResourceId, status: ProjectStatus) => Promise<{
+        updateStatus: (workspaceId: ResourceId, id: ResourceId, status: ProjectStatus) => Promise<{
             id: number;
             name: string;
             description: string | null;
@@ -101,17 +174,17 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        delete: (id: ResourceId) => Promise<null>;
+        delete: (workspaceId: ResourceId, id: ResourceId) => Promise<null>;
     };
     taskApi: {
-        list: (params?: TaskListParams) => Promise<{
+        list: (workspaceId: ResourceId, params?: TaskListParams) => Promise<{
             items: components["schemas"]["TaskResponse"][];
             page: number;
             size: number;
             total: number;
             hasMore: boolean;
         }>;
-        listAll: (params?: TaskListParams) => Promise<{
+        listAll: (workspaceId: ResourceId, params?: TaskListParams) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -123,7 +196,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }[]>;
-        get: (id: ResourceId) => Promise<{
+        get: (workspaceId: ResourceId, id: ResourceId) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -135,7 +208,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        create: (payload: TaskRequest) => Promise<{
+        create: (workspaceId: ResourceId, payload: TaskRequest) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -147,7 +220,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (id: ResourceId, payload: TaskRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: TaskRequest) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -159,7 +232,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        updateStatus: (id: ResourceId, status: TaskStatus) => Promise<{
+        updateStatus: (workspaceId: ResourceId, id: ResourceId, status: TaskStatus) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -171,17 +244,17 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        delete: (id: ResourceId) => Promise<null>;
+        delete: (workspaceId: ResourceId, id: ResourceId) => Promise<null>;
     };
     noteApi: {
-        list: (params?: NoteListParams) => Promise<{
+        list: (workspaceId: ResourceId, params?: NoteListParams) => Promise<{
             items: components["schemas"]["NoteSummaryResponse"][];
             page: number;
             size: number;
             total: number;
             hasMore: boolean;
         }>;
-        listAll: (params?: NoteListParams) => Promise<{
+        listAll: (workspaceId: ResourceId, params?: NoteListParams) => Promise<{
             id: number;
             title: string;
             folderId: number | null;
@@ -193,7 +266,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }[]>;
-        get: (id: ResourceId) => Promise<{
+        get: (workspaceId: ResourceId, id: ResourceId) => Promise<{
             id: number;
             title: string;
             content: string;
@@ -206,7 +279,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        create: (payload: NoteRequest) => Promise<{
+        create: (workspaceId: ResourceId, payload: NoteRequest) => Promise<{
             id: number;
             title: string;
             content: string;
@@ -219,7 +292,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (id: ResourceId, payload: NoteRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: NoteRequest) => Promise<{
             id: number;
             title: string;
             content: string;
@@ -232,71 +305,71 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        importMarkdown: (payload: NoteImportRequest) => Promise<{
+        importMarkdown: (workspaceId: ResourceId, payload: NoteImportRequest) => Promise<{
             importedCount: number;
             skippedCount: number;
             failedCount: number;
             items: components["schemas"]["NoteImportItemResponse"][];
         }>;
-        delete: (id: ResourceId) => Promise<null>;
+        delete: (workspaceId: ResourceId, id: ResourceId) => Promise<null>;
     };
     noteFolderApi: {
-        list: () => Promise<{
+        list: (workspaceId: ResourceId) => Promise<{
             id: number;
             name: string;
             parentId: number | null;
             createdAt: string;
             updatedAt: string;
         }[]>;
-        get: (id: ResourceId) => Promise<{
+        get: (workspaceId: ResourceId, id: ResourceId) => Promise<{
             id: number;
             name: string;
             parentId: number | null;
             createdAt: string;
             updatedAt: string;
         }>;
-        create: (payload: NoteFolderRequest) => Promise<{
+        create: (workspaceId: ResourceId, payload: NoteFolderRequest) => Promise<{
             id: number;
             name: string;
             parentId: number | null;
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (id: ResourceId, payload: NoteFolderRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: NoteFolderRequest) => Promise<{
             id: number;
             name: string;
             parentId: number | null;
             createdAt: string;
             updatedAt: string;
         }>;
-        delete: (id: ResourceId) => Promise<null>;
+        delete: (workspaceId: ResourceId, id: ResourceId) => Promise<null>;
     };
     tagApi: {
-        list: () => Promise<{
+        list: (workspaceId: ResourceId) => Promise<{
             id: number;
             name: string;
             createdAt: string;
             updatedAt: string;
         }[]>;
-        get: (id: ResourceId) => Promise<{
+        get: (workspaceId: ResourceId, id: ResourceId) => Promise<{
             id: number;
             name: string;
             createdAt: string;
             updatedAt: string;
         }>;
-        create: (payload: TagRequest) => Promise<{
+        create: (workspaceId: ResourceId, payload: TagRequest) => Promise<{
             id: number;
             name: string;
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (id: ResourceId, payload: TagRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: TagRequest) => Promise<{
             id: number;
             name: string;
             createdAt: string;
             updatedAt: string;
         }>;
-        delete: (id: ResourceId) => Promise<null>;
+        delete: (workspaceId: ResourceId, id: ResourceId) => Promise<null>;
     };
 };
 export type WorkstationApi = ReturnType<typeof createWorkstationApi>;

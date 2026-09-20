@@ -9,6 +9,7 @@ import lombok.Data;
  */
 public class Project {
     private Long id;
+    private Long workspaceId;
     private String name;
     private String description;
     private ProjectStatus status;

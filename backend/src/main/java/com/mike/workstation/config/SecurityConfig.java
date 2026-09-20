@@ -36,7 +36,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/**").hasRole("OWNER")
+                        .requestMatchers("/api/**").hasAnyRole(
+                                "WORKSTATION_USER", "WORKSTATION_ADMIN", "WORKSTATION_SERVICE")
                         .anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Backend 不使用 Cookie 认证，因此没有浏览器 CSRF 状态；CSRF 已由 Gateway 校验。
@@ -81,7 +82,7 @@ public class SecurityConfig {
 
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.get("roles") instanceof Collection<?> roles) {
-                // 把 Keycloak 的 OWNER Realm 角色转换为 Spring Security 能识别的 ROLE_OWNER。
+                // 把 Keycloak Realm 角色转换为 Spring Security 能识别的 ROLE_* 系统角色。
                 roles.stream()
                         .map(String::valueOf)
                         .map(role -> new SimpleGrantedAuthority("ROLE_" + role))

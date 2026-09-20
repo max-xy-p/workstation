@@ -4,7 +4,7 @@
 
     <form class="editor-document" @submit.prevent="save">
       <div class="editor-toolbar">
-        <RouterLink class="back-link" :to="{ name: 'notes' }">← 返回笔记</RouterLink>
+        <RouterLink class="back-link" :to="{ name: 'notes', params: workspaceParams }">← 返回笔记</RouterLink>
         <div class="editor-status">
           <span>{{ characterCount }} 字</span>
           <span v-if="saveState" class="save-state" :data-sync-status="syncStatus" :title="persistenceReceipt">{{ saveState }}</span>
@@ -63,9 +63,20 @@ import { auth } from '../auth';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 import { flattenFolderOptions } from '../utils/noteFolders';
 import { deleteNoteDraft, getNoteDraft, putNoteDraft } from '../utils/noteDraftStore';
+import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 
 const route = useRoute();
 const router = useRouter();
+const workspaceId = computed(() => workspaceIdFromRoute(route));
+const workspaceParams = workspaceRouteParams(route);
+const newDraftId = route.query.draftId || window.crypto.randomUUID();
+if (!route.params.id && !route.query.draftId) {
+  void router.replace({
+    name: 'note-new',
+    params: workspaceParams,
+    query: { ...route.query, draftId: newDraftId }
+  });
+}
 const error = ref('');
 const folders = ref([]);
 const projects = ref([]);
@@ -80,7 +91,12 @@ const form = reactive({ title: '', content: '', folderId: route.query.folderId |
 const isEdit = computed(() => Boolean(route.params.id));
 const folderOptions = computed(() => flattenFolderOptions(folders.value));
 const characterCount = computed(() => form.content.replace(/\s/g, '').length);
-const draftKey = computed(() => `note-draft:${auth.state.user?.username || 'anonymous'}:${route.params.id || 'new'}`);
+const draftKey = computed(() => [
+  'note-draft',
+  auth.state.user?.subjectId || 'anonymous',
+  workspaceId.value,
+  route.params.id || `new:${newDraftId}`
+].join(':'));
 const canSave = computed(() => form.title.trim().length > 0 && form.content.trim().length > 0);
 const persistenceReceipt = computed(() => persistedVersion === null ? syncStatus.value : `${syncStatus.value} · version ${persistedVersion}`);
 const propertySummary = computed(() => {
@@ -111,9 +127,9 @@ function payload() {
 
 async function loadOptions() {
   const [folderList, projectList, tagList] = await Promise.all([
-    noteFolderApi.list(),
-    projectApi.listAll(),
-    tagApi.list()
+    noteFolderApi.list(workspaceId.value),
+    projectApi.listAll(workspaceId.value),
+    tagApi.list(workspaceId.value)
   ]);
   folders.value = folderList;
   projects.value = projectList;
@@ -122,7 +138,7 @@ async function loadOptions() {
 
 async function loadNote() {
   if (!isEdit.value) return;
-  const note = await noteApi.get(route.params.id);
+  const note = await noteApi.get(workspaceId.value, route.params.id);
   persistedVersion = requirePersistenceReceipt(note);
   saved.value = note;
   Object.assign(form, {
@@ -142,10 +158,10 @@ async function removeNote() {
   if (!window.confirm('确认删除笔记？')) return;
   try {
     error.value = '';
-    await noteApi.delete(route.params.id);
+    await noteApi.delete(workspaceId.value, route.params.id);
     await clearDraft();
     emit('deleted', Number(route.params.id));
-    await router.replace({ name: 'notes' });
+    await router.replace({ name: 'notes', params: workspaceParams });
   } catch (err) {
     error.value = err.message;
   }
@@ -171,9 +187,9 @@ async function persist(manual = false) {
     syncStatus.value = 'SYNCING';
     saveState.value = manual ? '保存中…' : '自动保存中…';
     if (isEdit.value) {
-      saved.value = await noteApi.update(route.params.id, payload());
+      saved.value = await noteApi.update(workspaceId.value, route.params.id, payload());
     } else {
-      saved.value = await noteApi.create(payload());
+      saved.value = await noteApi.create(workspaceId.value, payload());
       createdNoteId = saved.value.id;
     }
     persistedVersion = requirePersistenceReceipt(saved.value, previousVersion);
@@ -187,7 +203,7 @@ async function persist(manual = false) {
     syncStatus.value = 'SYNCED';
     saveState.value = manual ? '已保存' : '已自动保存';
     if (createdNoteId) {
-      await router.replace({ name: 'note-edit', params: { id: createdNoteId } });
+      await router.replace({ name: 'note-edit', params: { ...workspaceParams, id: createdNoteId } });
     }
   } catch (err) {
     error.value = err.message;
@@ -236,6 +252,8 @@ async function saveDraft() {
     }
     await putNoteDraft({
       key: draftKey.value,
+      subjectId: auth.state.user?.subjectId || null,
+      workspaceId: workspaceId.value,
       noteId: isEdit.value ? Number(route.params.id) : null,
       snapshot: formSnapshot(),
       baseSnapshot: persistedSnapshot,

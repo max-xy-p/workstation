@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/notes")
+@RequestMapping("/api/workspaces/{workspaceId}/notes")
 /**
  * 笔记接口控制器。
  *
@@ -47,6 +47,7 @@ public class NoteController {
      */
     @GetMapping
     public PageResponse<NoteSummaryResponse> list(
+            @PathVariable Long workspaceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long folderId,
             @RequestParam(required = false) Long tagId,
@@ -54,7 +55,7 @@ public class NoteController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return noteService.list(keyword, folderId, tagId, projectId, page, size);
+        return noteService.list(workspaceId, keyword, folderId, tagId, projectId, page, size);
     }
 
     /**
@@ -64,8 +65,8 @@ public class NoteController {
      * @return 笔记详情，包含文件夹、项目和标签信息
      */
     @GetMapping("/{id}")
-    public NoteDetailResponse get(@PathVariable Long id) {
-        return noteService.get(id);
+    public NoteDetailResponse get(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return noteService.get(workspaceId, id);
     }
 
     /**
@@ -76,8 +77,8 @@ public class NoteController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NoteDetailResponse create(@RequestBody NoteRequest request) {
-        return noteService.create(request);
+    public NoteDetailResponse create(@PathVariable Long workspaceId, @RequestBody NoteRequest request) {
+        return noteService.create(workspaceId, request);
     }
 
     /**
@@ -89,8 +90,8 @@ public class NoteController {
      * @return 导入结果汇总和每个文件的处理明细
      */
     @PostMapping("/import")
-    public NoteImportResponse importMarkdown(@RequestBody NoteImportRequest request) {
-        return noteImportService.importMarkdown(request);
+    public NoteImportResponse importMarkdown(@PathVariable Long workspaceId, @RequestBody NoteImportRequest request) {
+        return noteImportService.importMarkdown(workspaceId, request);
     }
 
     /**
@@ -101,8 +102,10 @@ public class NoteController {
      * @return 更新后的笔记数据
      */
     @PutMapping("/{id}")
-    public NoteDetailResponse update(@PathVariable Long id, @RequestBody NoteRequest request) {
-        return noteService.update(id, request);
+    public NoteDetailResponse update(
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteRequest request
+    ) {
+        return noteService.update(workspaceId, id, request);
     }
 
     /**
@@ -114,7 +117,7 @@ public class NoteController {
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        noteService.delete(id);
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        noteService.delete(workspaceId, id);
     }
 }

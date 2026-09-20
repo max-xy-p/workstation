@@ -1,5 +1,5 @@
 <template>
-  <RouterView v-if="isLoginPage" />
+  <RouterView v-if="isBarePage" />
 
   <div v-else :class="isModuleWorkspace ? 'module-workspace-shell' : 'app-shell'">
     <aside v-if="!isModuleWorkspace" class="sidebar">
@@ -13,7 +13,7 @@
 
       <div class="workspace-chip">
         <span class="status-dot"></span>
-        <span>私人知识库</span>
+        <span>{{ workspace.state.current?.name || '个人知识库' }}</span>
       </div>
 
       <p class="nav-label">工作区</p>
@@ -24,7 +24,7 @@
           class="nav-item"
           :class="{ 'router-link-active': isNavActive(item.name) }"
           active-class="route-active"
-          :to="{ name: item.name }"
+          :to="{ name: item.name, params: { workspaceId: workspace.currentId.value } }"
         >
           <AppIcon :name="item.icon" />
           <span>{{ item.title }}</span>
@@ -35,8 +35,8 @@
         <div class="owner-chip">
           <span class="owner-avatar">{{ ownerInitial }}</span>
           <span>
-            <strong>{{ auth.state.user?.username }}</strong>
-            <small>站点所有者</small>
+            <strong>{{ auth.state.user?.displayName || auth.state.user?.username }}</strong>
+            <small>{{ workspaceRoleLabel }}</small>
           </span>
         </div>
         <button class="logout-button" type="button" :disabled="loggingOut" @click="signOut">
@@ -54,7 +54,7 @@
           <p>{{ currentMeta.description }}</p>
         </div>
         <div class="topbar-actions">
-          <RouterLink class="button topbar-action" :to="{ name: 'note-new' }">
+          <RouterLink class="button topbar-action" :to="{ name: 'note-new', params: { workspaceId: workspace.currentId.value } }">
             <AppIcon name="write" />
             <span>新建笔记</span>
           </RouterLink>
@@ -76,16 +76,23 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { auth } from './auth';
+import { workspace } from './workspace';
 import AppIcon from './components/AppIcon.vue';
 import { routes } from './router';
 
 const route = useRoute();
 const router = useRouter();
 const loggingOut = ref(false);
-const isLoginPage = computed(() => route.name === 'login');
+const isBarePage = computed(() => ['login', 'workspace-unavailable', 'root'].includes(route.name));
 const isEditorPage = computed(() => ['notes', 'note-new', 'note-edit'].includes(route.name));
 const isModuleWorkspace = computed(() => ['notes', 'note-new', 'note-edit', 'note-import'].includes(route.name));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
+const workspaceRoleLabel = computed(() => ({
+  OWNER: '工作空间所有者',
+  ADMIN: '工作空间管理员',
+  EDITOR: '编辑者',
+  VIEWER: '只读成员'
+}[workspace.state.current?.role] || '工作空间成员'));
 const navOrder = ['notes', 'projects', 'tasks', 'taxonomy', 'dashboard'];
 const navItems = computed(() => navOrder.map((name) => {
   const item = routes.find((routeItem) => routeItem.name === name);

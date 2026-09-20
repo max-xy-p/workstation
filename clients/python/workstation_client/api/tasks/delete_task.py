@@ -11,12 +11,14 @@ from ...types import Response
 
 
 def _get_kwargs(
+    workspace_id: int,
     id: int,
 ) -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "delete",
-        "url": "/api/tasks/{id}".format(
+        "url": "/api/workspaces/{workspace_id}/tasks/{id}".format(
+            workspace_id=quote(str(workspace_id), safe=""),
             id=quote(str(id), safe=""),
         ),
     }
@@ -60,6 +62,7 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 
 def sync_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -67,6 +70,7 @@ def sync_detailed(
     """删除任务
 
     Args:
+        workspace_id (int):
         id (int):
 
     Raises:
@@ -78,6 +82,7 @@ def sync_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
     )
 
@@ -89,6 +94,7 @@ def sync_detailed(
 
 
 def sync(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -96,6 +102,7 @@ def sync(
     """删除任务
 
     Args:
+        workspace_id (int):
         id (int):
 
     Raises:
@@ -107,12 +114,14 @@ def sync(
     """
 
     return sync_detailed(
+        workspace_id=workspace_id,
         id=id,
         client=client,
     ).parsed
 
 
 async def asyncio_detailed(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -120,6 +129,7 @@ async def asyncio_detailed(
     """删除任务
 
     Args:
+        workspace_id (int):
         id (int):
 
     Raises:
@@ -131,6 +141,7 @@ async def asyncio_detailed(
     """
 
     kwargs = _get_kwargs(
+        workspace_id=workspace_id,
         id=id,
     )
 
@@ -140,6 +151,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
+    workspace_id: int,
     id: int,
     *,
     client: AuthenticatedClient | Client,
@@ -147,6 +159,7 @@ async def asyncio(
     """删除任务
 
     Args:
+        workspace_id (int):
         id (int):
 
     Raises:
@@ -159,6 +172,7 @@ async def asyncio(
 
     return (
         await asyncio_detailed(
+            workspace_id=workspace_id,
             id=id,
             client=client,
         )
