@@ -12,15 +12,15 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.InMemoryReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.userinfo.ReactiveOAuth2UserService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.AuthenticationMethod;
@@ -44,7 +44,6 @@ import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -190,25 +189,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public GrantedAuthoritiesMapper userAuthoritiesMapper() {
-        return authorities -> {
-            List<GrantedAuthority> mapped = new ArrayList<>(authorities);
-            for (GrantedAuthority authority : authorities) {
-                if (!(authority instanceof OidcUserAuthority oidcAuthority)) {
-                    continue;
-                }
-                var realmAccess = oidcAuthority.getIdToken().getClaimAsMap("realm_access");
-                if (realmAccess == null || !(realmAccess.get("roles") instanceof Collection<?> roles)) {
-                    continue;
-                }
-                // Keycloak Realm 角色位于 realm_access.roles；Spring Security 使用 ROLE_ 前缀判断角色。
-                roles.stream()
-                        .map(String::valueOf)
-                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                        .forEach(mapped::add);
-            }
-            return mapped;
-        };
+    public ReactiveOAuth2UserService<OidcUserRequest, OidcUser> oidcUserService(
+            ReactiveJwtDecoder jwtDecoder) {
+        return new GatewayOidcUserService(jwtDecoder);
     }
 
     private DefaultServerOAuth2AuthorizationRequestResolver authorizationRequestResolver(

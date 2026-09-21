@@ -75,6 +75,8 @@ Browser
 
 采用 Authorization Code + PKCE 的原因，是让 Token 交换发生在 Gateway，而不是暴露给浏览器。登录完成后，浏览器只知道自己拥有一个会话，不直接读取 Access Token 或 Refresh Token。
 
+Gateway 在建立登录会话前验证 Access Token 的签名、Issuer、Audience 和有效期，并从其中的 `realm_access.roles` 映射 `WORKSTATION_USER`、`WORKSTATION_ADMIN` 系统准入角色。ID Token 用于确认登录身份，不作为系统角色来源；没有相应角色的用户不能访问业务 API。
+
 ## 浏览器 API 流程
 
 读请求携带 Session Cookie。Gateway 从服务端 Session 中取得 Access Token并转发给 Backend。

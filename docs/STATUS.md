@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-09-19。
+> 核对日期：2026-09-21。
 
 ## 当前状态
 
@@ -71,6 +71,7 @@
 
 ## 验证与说明
 
+- 2026-09-21 Gateway 浏览器登录系统角色改为从已验证的 Access Token 读取，不再依赖 ID Token 携带 Realm Role；`mvn.cmd verify` 通过 10 项 Gateway 测试。尚未重新部署容器或执行真实 Keycloak 浏览器登录烟测。
 - 2026-09-19 审计异步化：成功业务事件改为 Transactional Outbox，XXL-JOB 调度 Relay，RabbitMQ 负责可靠传输、消费重试和死信；权限拒绝审计失败不再改变 `403/404`。Backend 39 项测试、开发与生产 Compose 配置静态校验通过；未执行数据库迁移和完整容器烟测。
 - 2026-09-19 Workspace 改造：Backend、Gateway、OpenAPI 2.0.0、Python/TypeScript SDK 和 Frontend 已切换到 `/api/workspaces/{workspaceId}`；Backend 35 项测试、Gateway 7 项测试、TypeScript SDK 2 项测试、Python 认证层与生成契约 4 项测试、SDK 版本一致性检查、Frontend 类型检查和生产构建通过。
 - 2026-09-16 文档整理：认证、OpenAPI、SDK 分发和应用部署分别确定唯一流程文档；删除三个已完成的实施方案，将开发规范、生成限制和注意事项集中到 `AGENTS.md`。
