@@ -1,0 +1,24 @@
+# 认证与安全规范
+
+- 所有业务 API 都受认证保护。
+- Web/Nginx 和 Gateway 是统一入口，不允许客户端绕过 Gateway 直连 Backend。
+- 浏览器使用 Gateway Session Cookie。
+- Access Token 和 Refresh Token 不进入浏览器存储。
+- 浏览器写请求由 `frontend/src/api/client.ts` 自动携带 Cookie 和 CSRF Token。
+- Python 服务使用独立 Keycloak Client Credentials，经 Gateway 携带 Bearer Token 调用 Backend。
+- Gateway 只有在 Bearer Token 已成功认证后才能豁免 CSRF，不能只检查 `Authorization` Header 是否存在。
+- Gateway 转发机器请求时保留原始 Bearer Token。
+- Backend 始终独立校验：
+  - 签名；
+  - Issuer；
+  - Audience；
+  - Token 有效期；
+  - `WORKSTATION_*` 系统角色；
+  - Workspace 成员关系；
+  - Permission。
+- 浏览器 Gateway Client、Python Client 和其他机器服务使用不同的 Client ID 与 Secret。
+- Secret、完整 Token、真实密码不得进入源码、OpenAPI、日志、镜像层或 GitHub Actions 输出。
+- 生产入口必须使用 HTTPS，并正确转发 Host、Proto 和 Port。
+- 不因为前置 Gateway 已完成认证而删除 Backend 自身必须承担的资源授权和 Token 校验。
+- 权限拒绝必须发生在实际业务操作之前，不能依赖前端隐藏按钮作为安全措施。
+- 日志和错误消息不得泄露 Secret、完整 Token、密码、数据库连接凭证或其他敏感认证数据。

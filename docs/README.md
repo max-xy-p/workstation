@@ -14,12 +14,12 @@
 | [`ci-cd.md`](ci-cd.md) | CI/CD 的作用、交付物、环境边界、发布和回滚流程 |
 当前没有进行中的方案文档。多用户 Workspace 的稳定边界见根目录 [`../ARCHITECTURE.md`](../ARCHITECTURE.md) 和 [`authentication.md`](authentication.md)，审计异步投递流程见 [`audit/README.md`](audit/README.md)，完成状态与迁移注意事项见 [`STATUS.md`](STATUS.md)。后续存在未完成方案时再创建 `plans/` 目录，完成后按维护原则清理。
 
-仓库根目录的 [`../README.md`](../README.md) 负责本地运行入口，[`../ARCHITECTURE.md`](../ARCHITECTURE.md) 负责系统整体结构，[`../AGENTS.md`](../AGENTS.md) 负责开发规范、实现约束和验证要求。
+仓库根目录的 [`../README.md`](../README.md) 负责本地运行入口，[`../ARCHITECTURE.md`](../ARCHITECTURE.md) 负责系统整体结构，[`../AGENTS.md`](../AGENTS.md) 及其链接的 `agent-guides/` 负责开发规范、实现约束和验证要求。
 
 ## 维护原则
 
 1. 一个流程只保留一份主文档，其他位置只提供链接。
 2. 文档描述为什么、由谁负责、按什么顺序执行，不复制大段代码、工作流 YAML 或配置模板。
 3. 具体命令以根 README 和项目配置为准；具体实现以源码为准。
-4. 开发约束和注意事项写入 `AGENTS.md`，项目进度只写入 `STATUS.md`。
+4. Agent 开发约束和注意事项写入 `AGENTS.md` 与其链接的 `agent-guides/`，项目进度只写入 `STATUS.md`。
 5. 已完成且不再承担维护职责的方案文档直接删除，不保留兼容副本。

@@ -1,0 +1,21 @@
+# Docker、CI 与发布注意事项
+
+- Web 镜像构建上下文必须是仓库根目录，因为 Frontend 依赖 `clients/typescript`。
+- `frontend/Dockerfile` 中的源文件路径相对于仓库根目录。
+- Nginx 配置来源是 `frontend/nginx.conf`。
+- CI 必须覆盖：
+  - Backend；
+  - Gateway；
+  - OpenAPI/Python；
+  - TypeScript SDK；
+  - Frontend；
+  - 三个应用镜像。
+- 不在文档或交付说明中声称运行了项目没有配置的测试、lint 或 format。
+- GHCR 应用镜像使用不可变版本标签。
+- 生产部署不依赖 `latest`。
+- SDK 仓库读取凭证、GHCR 拉取凭证和 Keycloak 运行凭证用途不同，不得混用。
+- 数据库、Realm 或数据卷操作前先确认目标和备份。
+- 不得用容器重建代替数据库迁移。
+- CI 中使用的 Secret 通过 GitHub Actions Secret、环境 Secret 或对应的安全凭证机制提供。
+- 不把 Secret 写入 Compose、Dockerfile、Workflow 日志或构建参数输出。
+- Dockerfile 和 Compose 的修改必须考虑本地、CI 和生产三种运行环境。

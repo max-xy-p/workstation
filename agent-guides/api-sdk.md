@@ -1,0 +1,22 @@
+# OpenAPI 与 SDK 规范
+
+- `openapi/workstation.yaml` 是 HTTP Request/Response、分页、错误结构和 endpoint 的唯一契约真源。
+- OpenAPI 不负责文件夹层级、删除限制、事务、关联校验、`notes.version` 递增或 IndexedDB 草稿策略。
+- 调用方可见的接口变化必须先修改 OpenAPI，再修改 Backend，并重新生成客户端。
+- `operationId`、字段名称、状态码和可空性应保持稳定。
+- 破坏性变化必须明确评估版本影响。
+- `clients/python/` 由 `openapi-python-client` 生成，不手工修改其源码、README 或包配置。
+- `clients/typescript/src/generated/schema.ts` 和 `clients/typescript/dist/` 是生成内容，不手工修改。
+- Python 手写认证代码只放在 `clients/python-auth/`。
+- TypeScript 手写 endpoint 和 Transport 放在生成目录之外。
+- Frontend 通过 `clients/typescript` 使用业务 DTO 和 endpoint，不在 `frontend` 中重新声明同一套业务类型。
+- OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 的语义化版本必须一致。
+- Python 认证层精确依赖同版本 Python SDK。
+- 发布前运行 `scripts/check_sdk_versions.py`。
+- `sdk-v<版本>` 必须与契约版本一致。
+- `sdk-v*` 只发布 SDK。
+- `v*` 只发布应用镜像。
+- 两种 Tag 不得互相触发错误的发布流程。
+- 生成器版本和锁文件必须提交。
+- 重新生成后必须确认没有非预期漂移。
+- 不为了让现有实现通过而偷偷修改契约；契约变化必须体现真实 API 语义。
