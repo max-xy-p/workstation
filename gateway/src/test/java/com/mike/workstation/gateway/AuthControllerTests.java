@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.web.server.csrf.CsrfToken;
 import org.springframework.security.web.server.WebFilterExchange;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -39,12 +40,20 @@ class AuthControllerTests {
             }
         };
 
-        AuthController.CsrfResponse response = controller.csrf(Mono.just(token)).block();
-
-        assertThat(response).isNotNull();
-        assertThat(response.headerName()).isEqualTo("X-XSRF-TOKEN");
-        assertThat(response.parameterName()).isEqualTo("_csrf");
-        assertThat(response.token()).isEqualTo("token-value");
+        // 通过真实 WebFlux 参数解析调用，防止把 CsrfToken 接口误当作模型对象实例化。
+        WebTestClient.bindToController(controller)
+                .webFilter((exchange, chain) -> {
+                    exchange.getAttributes().put(CsrfToken.class.getName(), Mono.just(token));
+                    return chain.filter(exchange);
+                })
+                .build()
+                .get().uri("/api/auth/csrf")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.headerName").isEqualTo("X-XSRF-TOKEN")
+                .jsonPath("$.parameterName").isEqualTo("_csrf")
+                .jsonPath("$.token").isEqualTo("token-value");
     }
 
     @Test
