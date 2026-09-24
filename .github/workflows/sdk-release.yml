@@ -6,7 +6,7 @@ on:
       - "sdk-v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sdk-release-${{ github.ref }}
@@ -21,24 +21,26 @@ jobs:
     name: 构建并发布 SDK 制品
     runs-on: ubuntu-latest
     needs: verify
+    permissions:
+      contents: write
 
     steps:
       - name: 检出仓库
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: 配置 Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
 
       - name: 配置 uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: "0.11.28"
           enable-cache: true
 
       - name: 配置 Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "20"
           cache: npm
@@ -57,14 +59,15 @@ jobs:
         shell: bash
         run: |
           uv venv .sdk-release-venv
-          uv pip install --python .sdk-release-venv/bin/python release/python/*.whl
+          uv export --project clients/python-auth --locked --no-emit-project --no-emit-local --no-hashes --no-header --no-annotate --output-file .sdk-release-constraints.txt
+          uv pip install --no-build --python .sdk-release-venv/bin/python --constraints .sdk-release-constraints.txt release/python/*.whl
           .sdk-release-venv/bin/python -c \
             "from workstation_auth import ClientCredentialsProvider; from workstation_client import AuthenticatedClient"
 
       - name: 构建 TypeScript SDK 包
         working-directory: clients/typescript
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run api:generate
           npm run typecheck
           npm run build

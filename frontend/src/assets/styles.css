@@ -919,9 +919,6 @@ textarea:focus {
 .filter-panel {
   padding: 18px;
   box-shadow: none;
-}
-
-.filter-panel {
   display: flex;
   align-items: center;
   gap: 12px;

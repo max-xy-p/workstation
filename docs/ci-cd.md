@@ -26,10 +26,17 @@ SDK 是开发制品，不是 Workstation 应用容器。它使用独立标签和
   -> Python 认证层测试
   -> TypeScript SDK 类型检查、构建和测试
   -> Frontend 类型检查和构建
+  -> SonarQube 扫描 Backend、Gateway、Frontend 和仓库其他源码与配置
   -> 三个应用镜像构建
 ```
 
 CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某一种语言中更新。镜像构建也属于验证范围，因为本地源码构建成功不代表 Docker 构建上下文和复制路径一定正确。
+
+## SonarQube 分析
+
+仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中编译 Backend 和 Gateway，向 Java 分析器提供字节码，并安装 Frontend 与 TypeScript SDK 的依赖；扫描结果包含两个 Java 模块、Frontend，以及仓库中的其他源码和配置。测试目录单独标记为测试代码。扫描作业等待 Quality Gate 结果；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
+
+启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。发布流程复用的 CI 不重复提交一次标签分析。
 
 ## 标签的含义
 
@@ -68,6 +75,8 @@ CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某�
 Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience、角色和用户变化需要受控更新，不能假设重启会覆盖数据库中的现有配置。
 
 任何生产数据或身份配置变更都应先备份，并明确其与应用版本的兼容关系。
+
+升级包含任务依据笔记功能的已有数据库时，在备份后执行 `backend/src/main/resources/db/migrate-task-evidence.sql`，再发布应用。脚本可重复执行，会为 `tasks` 增加可空关联字段、索引和工作空间内外键；全新数据库直接使用 `schema.sql`。旧应用能保留该可空字段运行，但它不知道如何清除依据关联；若需回滚到旧应用并恢复笔记删除操作，应先清理关联或恢复迁移前备份。迁移不由容器重启自动执行。
 
 ## 回滚含义
 

@@ -29,9 +29,10 @@
     <section class="quick-search">
       <div class="search-field">
         <AppIcon name="search" />
-        <input v-model="keyword" aria-label="搜索标题" placeholder="搜索项目、任务或笔记标题…" @keyup.enter="search('notes')" />
+        <input v-model="keyword" aria-label="搜索工作空间" placeholder="搜索项目、任务或笔记内容…" @keyup.enter="search('search')" />
       </div>
       <div class="search-scopes">
+        <button @click="search('search')">全部</button>
         <button class="secondary" @click="search('projects')">项目</button>
         <button class="secondary" @click="search('tasks')">任务</button>
         <button @click="search('notes')">笔记</button>
@@ -48,7 +49,7 @@
           <RouterLink class="text-link" :to="{ name: 'projects', params: workspaceParams }">查看全部 →</RouterLink>
         </div>
         <div v-if="summary.recentProjects.length" class="record-list">
-          <RouterLink v-for="(project, index) in summary.recentProjects" :key="project.id" class="record-row" :to="`/projects/${project.id}`">
+          <RouterLink v-for="(project, index) in summary.recentProjects" :key="project.id" class="record-row" :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }">
             <span class="record-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <div class="record-main">
               <h3>{{ project.name }}</h3>
@@ -69,7 +70,7 @@
           <RouterLink class="text-link" :to="{ name: 'notes', params: workspaceParams }">进入知识库 →</RouterLink>
         </div>
         <div v-if="summary.recentNotes.length" class="record-list">
-          <RouterLink v-for="(note, index) in summary.recentNotes" :key="note.id" class="record-row" :to="`/notes/${note.id}/edit`">
+          <RouterLink v-for="(note, index) in summary.recentNotes" :key="note.id" class="record-row" :to="{ name: 'note-edit', params: { ...workspaceParams, id: note.id } }">
             <span class="record-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <div class="record-main">
               <h3>{{ note.title }}</h3>

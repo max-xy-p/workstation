@@ -6,7 +6,7 @@ COPY clients/typescript ./clients/typescript
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 
 WORKDIR /build/frontend
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY frontend/ ./
 
