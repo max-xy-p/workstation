@@ -19,7 +19,7 @@
           <span aria-hidden="true">→</span>
         </RouterLink>
         <p v-if="!group.loading && !group.error && !group.items.length" class="empty">没有匹配的{{ group.label }}</p>
-        <p v-if="group.loading" role="status">正在查找…</p>
+        <output v-if="group.loading">正在查找…</output>
         <button v-if="group.hasMore && !group.error" class="secondary" type="button" :disabled="group.loading" @click="loadGroup(group)">加载更多{{ group.label }}</button>
       </section>
     </div>

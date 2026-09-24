@@ -17,8 +17,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,7 +118,7 @@ public class NoteImportService {
             note.setContent(content);
             note.setFolderId(request.folderId());
             note.setProjectId(request.projectId());
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
             note.setCreatedAt(now);
             note.setUpdatedAt(now);
             noteMapper.insert(note);
@@ -225,7 +227,7 @@ public class NoteImportService {
         if (tagIds == null) {
             return List.of();
         }
-        return tagIds.stream().filter(id -> id != null).distinct().toList();
+        return tagIds.stream().filter(Objects::nonNull).distinct().toList();
     }
 
     /**

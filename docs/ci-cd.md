@@ -34,7 +34,7 @@ CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某�
 
 ## SonarQube 分析
 
-仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中编译 Backend 和 Gateway，向 Java 分析器提供字节码，并安装 Frontend 与 TypeScript SDK 的依赖；扫描结果包含两个 Java 模块、Frontend，以及仓库中的其他源码和配置。测试目录单独标记为测试代码。扫描作业等待 Quality Gate 结果；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
+仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中编译 Backend 和 Gateway，向 Java 分析器提供字节码，并安装 Frontend 与 TypeScript SDK 的依赖；扫描结果包含两个 Java 模块、Frontend、手写 SDK 与认证层，以及仓库中的其他源码和配置。自动生成的 Python SDK、TypeScript Schema 和构建产物不参与分析；测试目录单独标记为测试代码。扫描作业等待 Quality Gate 结果；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
 
 启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。发布流程复用的 CI 不重复提交一次标签分析。
 

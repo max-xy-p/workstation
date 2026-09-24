@@ -6,6 +6,7 @@ import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.mapper.AuditOutboxMapper;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ public class AuditOutboxStateService {
     /** RabbitMQ 已确认接收消息后，将当前租约下的记录标记为发布完成。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markPublished(AuditOutbox event) {
-        int updated = outboxMapper.markPublished(event.getId(), event.getLockedBy(), LocalDateTime.now());
+        int updated = outboxMapper.markPublished(event.getId(), event.getLockedBy(), LocalDateTime.now(ZoneId.systemDefault()));
         requireUpdated(updated, event);
     }
 
@@ -39,8 +40,8 @@ public class AuditOutboxStateService {
         boolean exhausted = event.getAttempts() >= properties.maxAttempts();
         AuditOutboxStatus status = exhausted ? AuditOutboxStatus.FAILED : AuditOutboxStatus.PENDING;
         LocalDateTime nextAttemptAt = exhausted
-                ? LocalDateTime.now()
-                : LocalDateTime.now().plus(retryDelay(event.getAttempts()));
+                ? LocalDateTime.now(ZoneId.systemDefault())
+                : LocalDateTime.now(ZoneId.systemDefault()).plus(retryDelay(event.getAttempts()));
         int updated = outboxMapper.markFailure(
                 event.getId(),
                 event.getLockedBy(),

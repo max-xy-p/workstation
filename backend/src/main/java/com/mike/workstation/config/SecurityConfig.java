@@ -22,6 +22,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
@@ -101,7 +102,7 @@ public class SecurityConfig {
                 "{\"code\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
                 code,
                 message,
-                OffsetDateTime.now()
+                OffsetDateTime.now(ZoneId.systemDefault())
         );
     }
 }

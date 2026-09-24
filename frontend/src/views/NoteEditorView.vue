@@ -324,6 +324,25 @@ async function recordSaveFailure(err) {
   saveState.value = cached ? '保存未完成，修改已缓存' : '保存和本地缓存均失败';
 }
 
+async function completePersist(response, snapshot, previousVersion) {
+  persistedVersion = requirePersistenceReceipt(response, previousVersion);
+  if (!isEdit) createdNoteId = response.id;
+  saved.value = response;
+  persistedSnapshot = snapshot;
+  await clearConfirmedDrafts(snapshot);
+  if (isDirty()) await saveDraft();
+  if (createdNoteId) await enqueueDraft(() => deleteNoteDraft(draftKey));
+  if (disposed) return;
+  emit('saved', response);
+  syncStatus.value = isDirty() ? 'PENDING' : 'SYNCED';
+  saveState.value = isDirty() ? '已有新修改待保存' : '已保存';
+  if (!isEdit) {
+    await router.replace({ name: 'note-edit', params: { ...workspaceParams, id: response.id } });
+  } else {
+    void loadRelatedTasks(response);
+  }
+}
+
 async function persist(manual = false) {
   if (conflictActive.value) {
     if (manual) error.value = '请先处理笔记版本冲突';
@@ -351,24 +370,7 @@ async function persist(manual = false) {
     const response = targetId
       ? await noteApi.update(workspaceId, targetId, { ...payload, expectedVersion: previousVersion })
       : await noteApi.create(workspaceId, payload);
-    persistedVersion = requirePersistenceReceipt(response, previousVersion);
-    if (!isEdit) createdNoteId = response.id;
-    saved.value = response;
-    persistedSnapshot = snapshot;
-    await clearConfirmedDrafts(snapshot);
-    if (isDirty()) {
-      await saveDraft();
-    }
-    if (createdNoteId) await enqueueDraft(() => deleteNoteDraft(draftKey));
-    if (disposed) return;
-    emit('saved', response);
-    syncStatus.value = isDirty() ? 'PENDING' : 'SYNCED';
-    saveState.value = isDirty() ? '已有新修改待保存' : '已保存';
-    if (!isEdit) {
-      await router.replace({ name: 'note-edit', params: { ...workspaceParams, id: response.id } });
-    } else {
-      void loadRelatedTasks(response);
-    }
+    await completePersist(response, snapshot, previousVersion);
   } catch (err) {
     await recordSaveFailure(err);
   } finally {

@@ -1,7 +1,6 @@
 import type { components, operations } from './generated/schema.js';
 
 type Schemas = components['schemas'];
-type ResourceId = number;
 
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
@@ -74,122 +73,122 @@ async function listAllPages<T, P extends QueryParams>(
 }
 
 export function createWorkstationApi(transport: WorkstationTransport) {
-  const workspacePath = (workspaceId: ResourceId) => `/workspaces/${workspaceId}`;
+  const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
     workspaceApi: {
       list: () => transport.get<WorkspaceResponse[]>('/workspaces'),
       create: (payload: WorkspaceRequest) =>
         transport.post<WorkspaceResponse, WorkspaceRequest>('/workspaces', payload),
-      get: (workspaceId: ResourceId) =>
+      get: (workspaceId: number) =>
         transport.get<WorkspaceResponse>(workspacePath(workspaceId)),
-      update: (workspaceId: ResourceId, payload: WorkspaceRequest) =>
+      update: (workspaceId: number, payload: WorkspaceRequest) =>
         transport.put<WorkspaceResponse, WorkspaceRequest>(workspacePath(workspaceId), payload),
-      listMembers: (workspaceId: ResourceId) =>
+      listMembers: (workspaceId: number) =>
         transport.get<WorkspaceMemberResponse[]>(`${workspacePath(workspaceId)}/members`),
-      findMemberCandidates: (workspaceId: ResourceId, username: string) =>
+      findMemberCandidates: (workspaceId: number, username: string) =>
         transport.get<WorkspaceMemberCandidate[]>(`${workspacePath(workspaceId)}/member-candidates`, { username }),
-      addMember: (workspaceId: ResourceId, payload: WorkspaceMemberRequest) =>
+      addMember: (workspaceId: number, payload: WorkspaceMemberRequest) =>
         transport.post<WorkspaceMemberResponse, WorkspaceMemberRequest>(
           `${workspacePath(workspaceId)}/members`, payload),
       updateMember: (
-        workspaceId: ResourceId,
+        workspaceId: number,
         subjectId: string,
         role: WorkspaceRole
       ) => transport.put<WorkspaceMemberResponse, WorkspaceMemberRoleRequest>(
         `${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`,
         { role }
       ),
-      removeMember: (workspaceId: ResourceId, subjectId: string) =>
+      removeMember: (workspaceId: number, subjectId: string) =>
         transport.delete(`${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`)
     },
     auditApi: {
-      list: (workspaceId: ResourceId, params?: AuditEventListParams) =>
+      list: (workspaceId: number, params?: AuditEventListParams) =>
         transport.get<AuditEventPageResponse>(`${workspacePath(workspaceId)}/audit-events`, params)
     },
     dashboardApi: {
-      summary: (workspaceId: ResourceId) =>
+      summary: (workspaceId: number) =>
         transport.get<DashboardResponse>(`${workspacePath(workspaceId)}/dashboard`)
     },
     projectApi: {
-      list: (workspaceId: ResourceId, params?: ProjectListParams) =>
+      list: (workspaceId: number, params?: ProjectListParams) =>
         transport.get<ProjectPageResponse>(`${workspacePath(workspaceId)}/projects`, params),
-      listAll: (workspaceId: ResourceId, params?: ProjectListParams) =>
+      listAll: (workspaceId: number, params?: ProjectListParams) =>
         listAllPages<ProjectSummaryResponse, ProjectListParams>(
           transport, `${workspacePath(workspaceId)}/projects`, params),
-      detail: (workspaceId: ResourceId, id: ResourceId) =>
+      detail: (workspaceId: number, id: number) =>
         transport.get<ProjectDetailResponse>(`${workspacePath(workspaceId)}/projects/${id}`),
-      create: (workspaceId: ResourceId, payload: ProjectRequest) =>
+      create: (workspaceId: number, payload: ProjectRequest) =>
         transport.post<ProjectResponse, ProjectRequest>(`${workspacePath(workspaceId)}/projects`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: ProjectRequest) =>
+      update: (workspaceId: number, id: number, payload: ProjectRequest) =>
         transport.put<ProjectResponse, ProjectRequest>(`${workspacePath(workspaceId)}/projects/${id}`, payload),
-      updateStatus: (workspaceId: ResourceId, id: ResourceId, status: ProjectStatus) =>
+      updateStatus: (workspaceId: number, id: number, status: ProjectStatus) =>
         transport.patch<ProjectResponse, Schemas['ProjectStatusRequest']>(
           `${workspacePath(workspaceId)}/projects/${id}/status`,
           { status }
         ),
-      delete: (workspaceId: ResourceId, id: ResourceId) =>
+      delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
     },
     taskApi: {
-      list: (workspaceId: ResourceId, params?: TaskListParams) =>
+      list: (workspaceId: number, params?: TaskListParams) =>
         transport.get<TaskPageResponse>(`${workspacePath(workspaceId)}/tasks`, params),
-      listAll: (workspaceId: ResourceId, params?: TaskListParams) =>
+      listAll: (workspaceId: number, params?: TaskListParams) =>
         listAllPages<TaskResponse, TaskListParams>(transport, `${workspacePath(workspaceId)}/tasks`, params),
-      get: (workspaceId: ResourceId, id: ResourceId) =>
+      get: (workspaceId: number, id: number) =>
         transport.get<TaskResponse>(`${workspacePath(workspaceId)}/tasks/${id}`),
-      create: (workspaceId: ResourceId, payload: TaskRequest) =>
+      create: (workspaceId: number, payload: TaskRequest) =>
         transport.post<TaskResponse, TaskRequest>(`${workspacePath(workspaceId)}/tasks`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: TaskRequest) =>
+      update: (workspaceId: number, id: number, payload: TaskRequest) =>
         transport.put<TaskResponse, TaskRequest>(`${workspacePath(workspaceId)}/tasks/${id}`, payload),
-      updateStatus: (workspaceId: ResourceId, id: ResourceId, status: TaskStatus) =>
+      updateStatus: (workspaceId: number, id: number, status: TaskStatus) =>
         transport.patch<TaskResponse, Schemas['TaskStatusRequest']>(`${workspacePath(workspaceId)}/tasks/${id}/status`, {
           status
         }),
-      delete: (workspaceId: ResourceId, id: ResourceId) =>
+      delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
     },
     noteApi: {
-      list: (workspaceId: ResourceId, params?: NoteListParams) =>
+      list: (workspaceId: number, params?: NoteListParams) =>
         transport.get<NotePageResponse>(`${workspacePath(workspaceId)}/notes`, params),
-      listAll: (workspaceId: ResourceId, params?: NoteListParams) =>
+      listAll: (workspaceId: number, params?: NoteListParams) =>
         listAllPages<NoteSummaryResponse, NoteListParams>(
           transport, `${workspacePath(workspaceId)}/notes`, params),
-      get: (workspaceId: ResourceId, id: ResourceId) =>
+      get: (workspaceId: number, id: number) =>
         transport.get<NoteDetailResponse>(`${workspacePath(workspaceId)}/notes/${id}`),
-      create: (workspaceId: ResourceId, payload: NoteRequest) =>
+      create: (workspaceId: number, payload: NoteRequest) =>
         transport.post<NoteDetailResponse, NoteRequest>(`${workspacePath(workspaceId)}/notes`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: NoteUpdateRequest) =>
+      update: (workspaceId: number, id: number, payload: NoteUpdateRequest) =>
         transport.put<NoteDetailResponse, NoteUpdateRequest>(`${workspacePath(workspaceId)}/notes/${id}`, payload),
-      importMarkdown: (workspaceId: ResourceId, payload: NoteImportRequest) =>
+      importMarkdown: (workspaceId: number, payload: NoteImportRequest) =>
         transport.post<NoteImportResponse, NoteImportRequest>(
           `${workspacePath(workspaceId)}/notes/import`, payload),
-      delete: (workspaceId: ResourceId, id: ResourceId) =>
+      delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/notes/${id}`)
     },
     noteFolderApi: {
-      list: (workspaceId: ResourceId) =>
+      list: (workspaceId: number) =>
         transport.get<NoteFolderResponse[]>(`${workspacePath(workspaceId)}/note-folders`),
-      get: (workspaceId: ResourceId, id: ResourceId) =>
+      get: (workspaceId: number, id: number) =>
         transport.get<NoteFolderResponse>(`${workspacePath(workspaceId)}/note-folders/${id}`),
-      create: (workspaceId: ResourceId, payload: NoteFolderRequest) =>
+      create: (workspaceId: number, payload: NoteFolderRequest) =>
         transport.post<NoteFolderResponse, NoteFolderRequest>(
           `${workspacePath(workspaceId)}/note-folders`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: NoteFolderRequest) =>
+      update: (workspaceId: number, id: number, payload: NoteFolderRequest) =>
         transport.put<NoteFolderResponse, NoteFolderRequest>(
           `${workspacePath(workspaceId)}/note-folders/${id}`, payload),
-      delete: (workspaceId: ResourceId, id: ResourceId) =>
+      delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/note-folders/${id}`)
     },
     tagApi: {
-      list: (workspaceId: ResourceId) =>
+      list: (workspaceId: number) =>
         transport.get<TagResponse[]>(`${workspacePath(workspaceId)}/tags`),
-      get: (workspaceId: ResourceId, id: ResourceId) =>
+      get: (workspaceId: number, id: number) =>
         transport.get<TagResponse>(`${workspacePath(workspaceId)}/tags/${id}`),
-      create: (workspaceId: ResourceId, payload: TagRequest) =>
+      create: (workspaceId: number, payload: TagRequest) =>
         transport.post<TagResponse, TagRequest>(`${workspacePath(workspaceId)}/tags`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: TagRequest) =>
+      update: (workspaceId: number, id: number, payload: TagRequest) =>
         transport.put<TagResponse, TagRequest>(`${workspacePath(workspaceId)}/tags/${id}`, payload),
-      delete: (workspaceId: ResourceId, id: ResourceId) =>
+      delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/tags/${id}`)
     }
   };

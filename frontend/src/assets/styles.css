@@ -2381,6 +2381,7 @@ textarea:focus {
   padding: 11px 13px;
   border: 0;
   border-radius: 7px;
+  display: block;
   color: var(--moss-dark);
   background: var(--moss-soft);
   font-size: 12px;

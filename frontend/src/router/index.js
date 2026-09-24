@@ -34,16 +34,18 @@ const router = createRouter({
   routes
 });
 
+async function resolveLoginRoute() {
+  const redirect = sessionStorage.getItem('workstation:login-redirect');
+  sessionStorage.removeItem('workstation:login-redirect');
+  if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
+  const defaultWorkspace = await workspace.ensureWorkspace();
+  return defaultWorkspace
+    ? { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } }
+    : { name: 'workspace-unavailable' };
+}
+
 async function resolveSignedInRoute(to) {
-  if (to.name === 'login') {
-    const redirect = sessionStorage.getItem('workstation:login-redirect');
-    sessionStorage.removeItem('workstation:login-redirect');
-    if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
-    const defaultWorkspace = await workspace.ensureWorkspace();
-    return defaultWorkspace
-      ? { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } }
-      : { name: 'workspace-unavailable' };
-  }
+  if (to.name === 'login') return resolveLoginRoute();
   const defaultWorkspace = await workspace.ensureWorkspace();
   if (!defaultWorkspace) return to.name === 'workspace-unavailable' ? true : { name: 'workspace-unavailable' };
   if (to.name === 'root') {
@@ -73,7 +75,8 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to) => {
-  document.title = `${to.meta.title || '工作台'} · 个人工作台`;
+  const title = typeof to.meta.title === 'string' ? to.meta.title : '工作台';
+  document.title = `${title} · 个人工作台`;
 });
 
 export default router;

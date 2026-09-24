@@ -1,6 +1,7 @@
 package com.mike.workstation.exception;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 public record ApiError(String code, String message, OffsetDateTime timestamp) {
     /**
@@ -11,6 +12,6 @@ public record ApiError(String code, String message, OffsetDateTime timestamp) {
      * @return 错误响应
      */
     public static ApiError of(String code, String message) {
-        return new ApiError(code, message, OffsetDateTime.now());
+        return new ApiError(code, message, OffsetDateTime.now(ZoneId.systemDefault()));
     }
 }

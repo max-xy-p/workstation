@@ -1,7 +1,11 @@
 package com.mike.workstation;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 
 @SpringBootTest(properties = {
         "SERVER_PORT=0",
@@ -13,9 +17,12 @@ import org.springframework.boot.test.context.SpringBootTest;
         "NOTE_IMPORT_MAX_FILE_BYTES=1048576"
 })
 class WorkstationApplicationTests {
+    @Autowired
+    private ApplicationContext context;
 
     @Test
     void contextLoads() {
+        assertNotNull(context.getBean(WorkstationApplication.class));
     }
 
 }

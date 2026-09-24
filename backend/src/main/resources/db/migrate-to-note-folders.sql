@@ -19,7 +19,7 @@ SELECT id, name, NULL, created_at, updated_at
 FROM categories;
 
 ALTER TABLE notes ADD COLUMN folder_id BIGINT NULL AFTER content;
-UPDATE notes SET folder_id = category_id;
+UPDATE notes SET folder_id = category_id WHERE category_id IS NOT NULL;
 
 ALTER TABLE notes
     DROP FOREIGN KEY fk_notes_category,

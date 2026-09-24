@@ -34,7 +34,7 @@
             <p>通过统一身份中心验证身份，继续整理你的知识。</p>
           </div>
 
-          <p v-if="expired" class="login-notice" role="status">登录状态已失效，请重新验证。</p>
+          <output v-if="expired" class="login-notice">登录状态已失效，请重新验证。</output>
           <button class="login-submit" type="button" :disabled="submitting" @click="submit">
             <span>{{ submitting ? '正在前往身份中心…' : '使用统一身份登录' }}</span>
             <AppIcon v-if="!submitting" name="arrow" />

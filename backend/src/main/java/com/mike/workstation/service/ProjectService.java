@@ -17,6 +17,7 @@ import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>集中处理项目的校验、详情聚合和删除规则，Controller 不直接理解这些业务约束。</p>
  */
 public class ProjectService {
+    private static final String PROJECT_RESOURCE = "PROJECT";
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
@@ -120,11 +122,11 @@ public class ProjectService {
         Project project = new Project();
         project.setWorkspaceId(workspaceId);
         applyRequest(project, request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         project.setCreatedAt(now);
         project.setUpdatedAt(now);
         projectMapper.insert(project);
-        auditService.success(workspaceId, "PROJECT_CREATE", "PROJECT", project.getId());
+        auditService.success(workspaceId, "PROJECT_CREATE", PROJECT_RESOURCE, project.getId());
         return get(workspaceId, project.getId());
     }
 
@@ -144,9 +146,9 @@ public class ProjectService {
         project.setId(id);
         project.setWorkspaceId(workspaceId);
         applyRequest(project, request);
-        project.setUpdatedAt(LocalDateTime.now());
+        project.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         projectMapper.update(project);
-        auditService.success(workspaceId, "PROJECT_UPDATE", "PROJECT", id);
+        auditService.success(workspaceId, "PROJECT_UPDATE", PROJECT_RESOURCE, id);
         return get(workspaceId, id);
     }
 
@@ -162,8 +164,8 @@ public class ProjectService {
         authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
         RequestChecks.requiredObject(status, "项目状态");
         getEntity(workspaceId, id);
-        projectMapper.updateStatus(workspaceId, id, status, LocalDateTime.now());
-        auditService.success(workspaceId, "PROJECT_STATUS_UPDATE", "PROJECT", id);
+        projectMapper.updateStatus(workspaceId, id, status, LocalDateTime.now(ZoneId.systemDefault()));
+        auditService.success(workspaceId, "PROJECT_STATUS_UPDATE", PROJECT_RESOURCE, id);
         return get(workspaceId, id);
     }
 
@@ -183,9 +185,9 @@ public class ProjectService {
         }
 
         // 项目仅被笔记引用时允许删除，同时解除这些笔记的项目关联。
-        noteMapper.clearProject(workspaceId, id, LocalDateTime.now());
+        noteMapper.clearProject(workspaceId, id, LocalDateTime.now(ZoneId.systemDefault()));
         projectMapper.delete(workspaceId, id);
-        auditService.success(workspaceId, "PROJECT_DELETE", "PROJECT", id);
+        auditService.success(workspaceId, "PROJECT_DELETE", PROJECT_RESOURCE, id);
     }
 
     /**

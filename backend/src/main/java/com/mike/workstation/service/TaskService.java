@@ -13,6 +13,7 @@ import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,7 +98,7 @@ public class TaskService {
         Task task = new Task();
         task.setWorkspaceId(workspaceId);
         applyRequest(task, request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         taskMapper.insert(task);
@@ -121,7 +122,7 @@ public class TaskService {
         task.setId(id);
         task.setWorkspaceId(workspaceId);
         applyRequest(task, request);
-        task.setUpdatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         taskMapper.update(task);
         auditService.success(workspaceId, "TASK_UPDATE", "TASK", id);
         return get(workspaceId, id);
@@ -139,7 +140,7 @@ public class TaskService {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
         RequestChecks.requiredObject(status, "任务状态");
         getEntity(workspaceId, id);
-        taskMapper.updateStatus(workspaceId, id, status, LocalDateTime.now());
+        taskMapper.updateStatus(workspaceId, id, status, LocalDateTime.now(ZoneId.systemDefault()));
         auditService.success(workspaceId, "TASK_STATUS_UPDATE", "TASK", id);
         return get(workspaceId, id);
     }

@@ -47,6 +47,8 @@ import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
+    private static final String ACCESS_DENIED_CODE = "ACCESS_DENIED";
+    private static final String UNAUTHENTICATED_CODE = "UNAUTHENTICATED";
     /**
      * Python 等机器客户端携带自己的 Bearer Token。该链不读取浏览器 Session，
      * 也不执行 CSRF；只有通过 JWT、Audience 和 WORKSTATION_SERVICE 角色校验后才能访问业务 API。
@@ -68,14 +70,14 @@ public class SecurityConfig {
                                 .jwtDecoder(jwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter()))
                         .authenticationEntryPoint((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "访问令牌无效或已过期"))
+                                exchange, HttpStatus.UNAUTHORIZED, UNAUTHENTICATED_CODE, "访问令牌无效或已过期"))
                         .accessDeniedHandler((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.FORBIDDEN, "ACCESS_DENIED", "权限不足")))
+                                exchange, HttpStatus.FORBIDDEN, ACCESS_DENIED_CODE, "权限不足")))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "访问令牌无效或已过期"))
+                                exchange, HttpStatus.UNAUTHORIZED, UNAUTHENTICATED_CODE, "访问令牌无效或已过期"))
                         .accessDeniedHandler((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.FORBIDDEN, "ACCESS_DENIED", "权限不足")))
+                                exchange, HttpStatus.FORBIDDEN, ACCESS_DENIED_CODE, "权限不足")))
                 .requestCache(ServerHttpSecurity.RequestCacheSpec::disable)
                 .build();
     }
@@ -115,9 +117,9 @@ public class SecurityConfig {
                         .logoutSuccessHandler(keycloakLogoutSuccessHandler))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "请先登录"))
+                                exchange, HttpStatus.UNAUTHORIZED, UNAUTHENTICATED_CODE, "请先登录"))
                         .accessDeniedHandler((exchange, ignored) -> writeError(
-                                exchange, HttpStatus.FORBIDDEN, "ACCESS_DENIED", "请求校验失败或权限不足")))
+                                exchange, HttpStatus.FORBIDDEN, ACCESS_DENIED_CODE, "请求校验失败或权限不足")))
                 .requestCache(cache -> cache.disable())
                 .build();
     }
@@ -243,7 +245,7 @@ public class SecurityConfig {
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         byte[] body = ("{\"code\":\"" + code + "\",\"message\":\"" + message
-                + "\",\"timestamp\":\"" + java.time.OffsetDateTime.now() + "\"}")
+                + "\",\"timestamp\":\"" + java.time.OffsetDateTime.now(java.time.ZoneId.systemDefault()) + "\"}")
                 .getBytes(StandardCharsets.UTF_8);
         return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(body)));
     }

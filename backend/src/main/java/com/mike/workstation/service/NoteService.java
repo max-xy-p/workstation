@@ -16,7 +16,9 @@ import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>负责 Markdown 笔记的 CRUD、文件夹/项目存在性校验，以及笔记标签多对多关系维护。</p>
  */
 public class NoteService {
+    private static final String NOTE_NOT_FOUND = "笔记不存在";
     private final NoteMapper noteMapper;
     private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
@@ -91,7 +94,7 @@ public class NoteService {
 
     private Note getEntity(Long workspaceId, Long id) {
         Note note = noteMapper.findDetailById(workspaceId, id);
-        RequestChecks.requiredExisting(note, "笔记不存在");
+        RequestChecks.requiredExisting(note, NOTE_NOT_FOUND);
         attachTags(workspaceId, note);
         return note;
     }
@@ -109,7 +112,7 @@ public class NoteService {
         Note note = new Note();
         note.setWorkspaceId(workspaceId);
         applyRequest(note, request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         note.setCreatedAt(now);
         note.setUpdatedAt(now);
         noteMapper.insert(note);
@@ -140,9 +143,9 @@ public class NoteService {
         note.setWorkspaceId(workspaceId);
         note.setVersion(request.expectedVersion());
         applyRequest(note, noteRequest);
-        note.setUpdatedAt(LocalDateTime.now());
+        note.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         if (noteMapper.update(note) == 0) {
-            RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), "笔记不存在");
+            RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), NOTE_NOT_FOUND);
             throw new NoteVersionConflictException();
         }
         taskMapper.clearEvidenceOutsideProject(workspaceId, id, note.getProjectId(), note.getUpdatedAt());
@@ -161,8 +164,8 @@ public class NoteService {
     @Transactional
     public void delete(Long workspaceId, Long id) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
-        RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), "笔记不存在");
-        taskMapper.clearEvidenceNote(workspaceId, id, LocalDateTime.now());
+        RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), NOTE_NOT_FOUND);
+        taskMapper.clearEvidenceNote(workspaceId, id, LocalDateTime.now(ZoneId.systemDefault()));
         tagMapper.deleteNoteTags(workspaceId, id);
         noteMapper.delete(workspaceId, id);
         auditService.success(workspaceId, "NOTE_DELETE", "NOTE", id);
@@ -228,6 +231,6 @@ public class NoteService {
         if (tagIds == null) {
             return List.of();
         }
-        return tagIds.stream().filter(id -> id != null).distinct().toList();
+        return tagIds.stream().filter(Objects::nonNull).distinct().toList();
     }
 }

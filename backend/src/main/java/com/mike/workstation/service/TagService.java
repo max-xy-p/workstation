@@ -8,6 +8,7 @@ import com.mike.workstation.dto.TagResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.TagMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,7 +74,7 @@ public class TagService {
         Tag tag = new Tag();
         tag.setWorkspaceId(workspaceId);
         tag.setName(request.name().trim());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         tag.setCreatedAt(now);
         tag.setUpdatedAt(now);
         tagMapper.insert(tag);
@@ -97,7 +98,7 @@ public class TagService {
         tag.setId(id);
         tag.setWorkspaceId(workspaceId);
         tag.setName(request.name().trim());
-        tag.setUpdatedAt(LocalDateTime.now());
+        tag.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         tagMapper.update(tag);
         auditService.success(workspaceId, "TAG_UPDATE", "TAG", id);
         return get(workspaceId, id);

@@ -19,6 +19,7 @@ import com.mike.workstation.mapper.WorkspaceMapper;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 /** 工作空间初始化、查询和成员管理。 */
 public class WorkspaceService {
+    private static final String WORKSPACE_MEMBER_RESOURCE = "WORKSPACE_MEMBER";
+    private static final String WORKSPACE_RESOURCE = "WORKSPACE";
+    private static final String WORKSPACE_NAME = "工作空间名称";
     private final WorkspaceMapper workspaceMapper;
     private final CurrentPrincipalResolver principalResolver;
     private final WorkspaceAuthorizationService authorization;
@@ -67,11 +71,11 @@ public class WorkspaceService {
             throw new BusinessException("只有用户可以创建共享工作空间");
         }
         RequestChecks.requiredObject(request, "工作空间请求");
-        RequestChecks.requiredText(request.name(), "工作空间名称");
+        RequestChecks.requiredText(request.name(), WORKSPACE_NAME);
         String name = request.name().trim();
-        RequestChecks.maxLength(name, 120, "工作空间名称");
+        RequestChecks.maxLength(name, 120, WORKSPACE_NAME);
         upsertPrincipal(principal.subjectId(), principal.principalType(), principal.username(), principal.displayName());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         Workspace workspace = new Workspace();
         workspace.setName(name);
         workspace.setType(WorkspaceType.SHARED);
@@ -85,7 +89,7 @@ public class WorkspaceService {
         owner.setRole(WorkspaceRole.OWNER);
         owner.setJoinedAt(now);
         workspaceMapper.insertMember(owner);
-        auditService.success(workspace.getId(), "WORKSPACE_CREATE", "WORKSPACE", workspace.getId());
+        auditService.success(workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
         return get(workspace.getId());
     }
 
@@ -104,12 +108,12 @@ public class WorkspaceService {
     public WorkspaceResponse update(Long workspaceId, WorkspaceRequest request) {
         Workspace workspace = authorization.require(workspaceId, WorkspacePermission.WORKSPACE_WRITE);
         RequestChecks.requiredObject(request, "工作空间请求");
-        RequestChecks.requiredText(request.name(), "工作空间名称");
-        RequestChecks.maxLength(request.name().trim(), 120, "工作空间名称");
+        RequestChecks.requiredText(request.name(), WORKSPACE_NAME);
+        RequestChecks.maxLength(request.name().trim(), 120, WORKSPACE_NAME);
         workspace.setName(request.name().trim());
-        workspace.setUpdatedAt(LocalDateTime.now());
+        workspace.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         workspaceMapper.updateWorkspace(workspace);
-        auditService.success(workspaceId, "WORKSPACE_UPDATE", "WORKSPACE", workspaceId);
+        auditService.success(workspaceId, "WORKSPACE_UPDATE", WORKSPACE_RESOURCE, workspaceId);
         return get(workspaceId);
     }
 
@@ -140,9 +144,9 @@ public class WorkspaceService {
         member.setWorkspaceId(workspaceId);
         member.setSubjectId(request.subjectId());
         member.setRole(request.role());
-        member.setJoinedAt(LocalDateTime.now());
+        member.setJoinedAt(LocalDateTime.now(ZoneId.systemDefault()));
         workspaceMapper.insertMember(member);
-        auditService.success(workspaceId, "MEMBER_ADD", "WORKSPACE_MEMBER", null);
+        auditService.success(workspaceId, "MEMBER_ADD", WORKSPACE_MEMBER_RESOURCE, null);
         return WorkspaceResponseAssembler.toMemberResponse(
                 workspaceMapper.findMember(workspaceId, request.subjectId()));
     }
@@ -161,7 +165,7 @@ public class WorkspaceService {
             throw new BusinessException("不能降级工作空间的最后一个 Owner");
         }
         workspaceMapper.updateMemberRole(workspaceId, subjectId, role);
-        auditService.success(workspaceId, "MEMBER_ROLE_UPDATE", "WORKSPACE_MEMBER", null);
+        auditService.success(workspaceId, "MEMBER_ROLE_UPDATE", WORKSPACE_MEMBER_RESOURCE, null);
         return WorkspaceResponseAssembler.toMemberResponse(workspaceMapper.findMember(workspaceId, subjectId));
     }
 
@@ -176,13 +180,13 @@ public class WorkspaceService {
             throw new BusinessException("不能移除工作空间的最后一个 Owner");
         }
         workspaceMapper.deleteMember(workspaceId, subjectId);
-        auditService.success(workspaceId, "MEMBER_REMOVE", "WORKSPACE_MEMBER", null);
+        auditService.success(workspaceId, "MEMBER_REMOVE", WORKSPACE_MEMBER_RESOURCE, null);
     }
 
     private void ensurePersonalWorkspace(CurrentPrincipal principal) {
         Workspace workspace = workspaceMapper.findPersonalByOwner(principal.subjectId());
         boolean created = workspace == null;
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         if (created) {
             workspace = new Workspace();
             workspace.setName(personalWorkspaceName(principal));
@@ -201,7 +205,7 @@ public class WorkspaceService {
         member.setJoinedAt(now);
         workspaceMapper.insertMember(member);
         if (created) {
-            auditService.success(workspace.getId(), "WORKSPACE_CREATE", "WORKSPACE", workspace.getId());
+            auditService.success(workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
         }
     }
 
@@ -213,7 +217,7 @@ public class WorkspaceService {
         principal.setPrincipalType(type);
         principal.setUsername(username);
         principal.setDisplayName(displayName);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         principal.setCreatedAt(now);
         principal.setUpdatedAt(now);
         workspaceMapper.upsertPrincipal(principal);
@@ -236,7 +240,7 @@ public class WorkspaceService {
     }
 
     private void denyOwnerChange(Long workspaceId, String message) {
-        auditService.denied(workspaceId, "MEMBER_MANAGE", "WORKSPACE_MEMBER", null);
+        auditService.denied(workspaceId, "MEMBER_MANAGE", WORKSPACE_MEMBER_RESOURCE, null);
         throw new WorkspaceAccessDeniedException(message);
     }
 

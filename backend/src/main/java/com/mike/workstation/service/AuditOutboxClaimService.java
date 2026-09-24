@@ -5,6 +5,7 @@ import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.mapper.AuditOutboxMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class AuditOutboxClaimService {
      */
     @Transactional
     public List<AuditOutbox> claimBatch() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         List<AuditOutbox> events = outboxMapper.findClaimable(now, properties.batchSize());
         if (events.isEmpty()) {
             return List.of();

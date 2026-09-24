@@ -9,6 +9,7 @@ import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NoteFolderService {
+    private static final String NOTE_FOLDER_RESOURCE = "NOTE_FOLDER";
     private final NoteFolderMapper folderMapper;
     private final NoteMapper noteMapper;
     private final WorkspaceAuthorizationService authorization;
@@ -58,11 +60,11 @@ public class NoteFolderService {
         folder.setWorkspaceId(workspaceId);
         folder.setName(request.name().trim());
         folder.setParentId(request.parentId());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         folder.setCreatedAt(now);
         folder.setUpdatedAt(now);
         folderMapper.insert(folder);
-        auditService.success(workspaceId, "FOLDER_CREATE", "NOTE_FOLDER", folder.getId());
+        auditService.success(workspaceId, "FOLDER_CREATE", NOTE_FOLDER_RESOURCE, folder.getId());
         return get(workspaceId, folder.getId());
     }
 
@@ -78,9 +80,9 @@ public class NoteFolderService {
         folder.setWorkspaceId(workspaceId);
         folder.setName(request.name().trim());
         folder.setParentId(request.parentId());
-        folder.setUpdatedAt(LocalDateTime.now());
+        folder.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
         folderMapper.update(folder);
-        auditService.success(workspaceId, "FOLDER_UPDATE", "NOTE_FOLDER", id);
+        auditService.success(workspaceId, "FOLDER_UPDATE", NOTE_FOLDER_RESOURCE, id);
         return get(workspaceId, id);
     }
 
@@ -95,7 +97,7 @@ public class NoteFolderService {
             throw new BusinessException("文件夹下存在笔记，不能直接删除");
         }
         folderMapper.delete(workspaceId, id);
-        auditService.success(workspaceId, "FOLDER_DELETE", "NOTE_FOLDER", id);
+        auditService.success(workspaceId, "FOLDER_DELETE", NOTE_FOLDER_RESOURCE, id);
     }
 
     private void validateRequest(Long workspaceId, NoteFolderRequest request, Long excludeId) {

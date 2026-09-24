@@ -1,3 +1,5 @@
 [mcp_servers.sonarqube]
 command = "sonar"
-args = ["run", "mcp", "--project", "max-xy-p_workstation"]
+args = [ "run", "mcp", "--project", "max-xy-p_workstation" ]
+env_vars = ["SONARQUBE_CLI_TOKEN", "SONARQUBE_CLI_ORG", "SONARQUBE_CLI_SERVER"]
+startup_timeout_sec = 60

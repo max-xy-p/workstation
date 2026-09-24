@@ -5,6 +5,7 @@ import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.domain.AuditResult;
 import com.mike.workstation.security.CurrentPrincipalResolver;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ public class AuditService {
     ) {
         // 在业务线程中固化操作者快照；异步消费线程没有原请求的 SecurityContext。
         var principal = principalResolver.require();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         AuditOutbox event = new AuditOutbox();
         // 同一 eventId 会一路传到最终表，用于抵御 At-least-once 投递产生的重复消息。
         event.setEventId(UUID.randomUUID().toString());
