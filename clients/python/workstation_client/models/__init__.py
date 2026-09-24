@@ -16,6 +16,7 @@ from .note_import_status import NoteImportStatus
 from .note_page_response import NotePageResponse
 from .note_request import NoteRequest
 from .note_summary_response import NoteSummaryResponse
+from .note_update_request import NoteUpdateRequest
 from .principal_type import PrincipalType
 from .project_detail_response import ProjectDetailResponse
 from .project_page_response import ProjectPageResponse
@@ -32,6 +33,7 @@ from .task_request import TaskRequest
 from .task_response import TaskResponse
 from .task_status import TaskStatus
 from .task_status_request import TaskStatusRequest
+from .workspace_member_candidate import WorkspaceMemberCandidate
 from .workspace_member_request import WorkspaceMemberRequest
 from .workspace_member_response import WorkspaceMemberResponse
 from .workspace_member_role_request import WorkspaceMemberRoleRequest
@@ -58,6 +60,7 @@ __all__ = (
     "NotePageResponse",
     "NoteRequest",
     "NoteSummaryResponse",
+    "NoteUpdateRequest",
     "PrincipalType",
     "ProjectDetailResponse",
     "ProjectPageResponse",
@@ -74,6 +77,7 @@ __all__ = (
     "TaskResponse",
     "TaskStatus",
     "TaskStatusRequest",
+    "WorkspaceMemberCandidate",
     "WorkspaceMemberRequest",
     "WorkspaceMemberResponse",
     "WorkspaceMemberRoleRequest",

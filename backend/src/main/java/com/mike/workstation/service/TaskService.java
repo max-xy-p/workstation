@@ -8,7 +8,9 @@ import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.dto.PageResponse;
+import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.ProjectMapper;
+import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,17 +26,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
+    private final NoteMapper noteMapper;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
 
     public TaskService(
             TaskMapper taskMapper,
             ProjectMapper projectMapper,
+            NoteMapper noteMapper,
             WorkspaceAuthorizationService authorization,
             AuditService auditService
     ) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
+        this.noteMapper = noteMapper;
         this.authorization = authorization;
         this.auditService = auditService;
     }
@@ -165,6 +170,13 @@ public class TaskService {
         RequestChecks.requiredObject(request.priority(), "任务优先级");
         RequestChecks.maxLength(request.title().trim(), 200, "任务标题");
         RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "所属项目不存在");
+        if (request.evidenceNoteId() != null) {
+            var note = noteMapper.lockById(workspaceId, request.evidenceNoteId());
+            RequestChecks.requiredExisting(note, "依据笔记不存在");
+            if (!request.projectId().equals(note.getProjectId())) {
+                throw new BusinessException("依据笔记必须属于任务项目");
+            }
+        }
     }
 
     /**
@@ -177,5 +189,6 @@ public class TaskService {
         task.setStatus(request.status());
         task.setPriority(request.priority());
         task.setDueDate(request.dueDate());
+        task.setEvidenceNoteId(request.evidenceNoteId());
     }
 }

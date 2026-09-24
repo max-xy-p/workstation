@@ -12,7 +12,7 @@ public final class NoteResponseAssembler {
         return new NoteSummaryResponse(
                 note.getId(), note.getTitle(), note.getFolderId(), note.getFolderName(),
                 note.getProjectId(), note.getProjectName(), note.getVersion(),
-                TagResponseAssembler.toResponses(note.getTags()),
+                TagResponseAssembler.toResponses(note.getTags()), note.getExcerpt(),
                 ApiTime.toOffset(note.getCreatedAt()), ApiTime.toOffset(note.getUpdatedAt())
         );
     }

@@ -25,9 +25,11 @@ public interface TaskMapper {
     @Select("""
             <script>
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
-                   t.status, t.priority, t.due_date, t.created_at, t.updated_at
+                   t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
+                   t.created_at, t.updated_at
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
             <where>
                 t.workspace_id = #{workspaceId}
                 <if test="keyword != null and keyword != ''">
@@ -79,9 +81,11 @@ public interface TaskMapper {
 
     @Select("""
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
-                   t.status, t.priority, t.due_date, t.created_at, t.updated_at
+                   t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
+                   t.created_at, t.updated_at
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
             WHERE t.workspace_id = #{workspaceId} AND t.project_id = #{projectId}
             ORDER BY t.updated_at DESC, t.id DESC
             """)
@@ -92,9 +96,11 @@ public interface TaskMapper {
      */
     @Select("""
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
-                   t.status, t.priority, t.due_date, t.created_at, t.updated_at
+                   t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
+                   t.created_at, t.updated_at
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
             WHERE t.workspace_id = #{workspaceId} AND t.id = #{id}
             """)
     Task findById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
@@ -104,9 +110,9 @@ public interface TaskMapper {
      */
     @Insert("""
             INSERT INTO tasks
-                (workspace_id, title, description, project_id, status, priority, due_date, created_at, updated_at)
+                (workspace_id, title, description, project_id, status, priority, due_date, evidence_note_id, created_at, updated_at)
             VALUES
-                (#{workspaceId}, #{title}, #{description}, #{projectId}, #{status}, #{priority}, #{dueDate}, #{createdAt}, #{updatedAt})
+                (#{workspaceId}, #{title}, #{description}, #{projectId}, #{status}, #{priority}, #{dueDate}, #{evidenceNoteId}, #{createdAt}, #{updatedAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Task task);
@@ -122,6 +128,7 @@ public interface TaskMapper {
                 status = #{status},
                 priority = #{priority},
                 due_date = #{dueDate},
+                evidence_note_id = #{evidenceNoteId},
                 updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
@@ -147,6 +154,28 @@ public interface TaskMapper {
      */
     @Delete("DELETE FROM tasks WHERE workspace_id = #{workspaceId} AND id = #{id}")
     int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    @Update("""
+            UPDATE tasks SET evidence_note_id = NULL, updated_at = #{updatedAt}
+            WHERE workspace_id = #{workspaceId} AND evidence_note_id = #{noteId}
+            """)
+    int clearEvidenceNote(
+            @Param("workspaceId") Long workspaceId,
+            @Param("noteId") Long noteId,
+            @Param("updatedAt") java.time.LocalDateTime updatedAt
+    );
+
+    @Update("""
+            UPDATE tasks SET evidence_note_id = NULL, updated_at = #{updatedAt}
+            WHERE workspace_id = #{workspaceId} AND evidence_note_id = #{noteId}
+              AND (#{projectId} IS NULL OR project_id != #{projectId})
+            """)
+    int clearEvidenceOutsideProject(
+            @Param("workspaceId") Long workspaceId,
+            @Param("noteId") Long noteId,
+            @Param("projectId") Long projectId,
+            @Param("updatedAt") java.time.LocalDateTime updatedAt
+    );
 
     /**
      * 统计某项目下的任务数量，用于项目删除前校验。

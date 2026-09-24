@@ -10,12 +10,14 @@ export type WorkspaceResponse = Schemas['WorkspaceResponse'];
 export type WorkspaceMemberRequest = Schemas['WorkspaceMemberRequest'];
 export type WorkspaceMemberRoleRequest = Schemas['WorkspaceMemberRoleRequest'];
 export type WorkspaceMemberResponse = Schemas['WorkspaceMemberResponse'];
+export type WorkspaceMemberCandidate = Schemas['WorkspaceMemberCandidate'];
 export type WorkspacePermission = Schemas['WorkspacePermission'];
 export type WorkspaceRole = Schemas['WorkspaceRole'];
 export type AuditEventResponse = Schemas['AuditEventResponse'];
 export type AuditEventPageResponse = Schemas['AuditEventPageResponse'];
 export type DashboardResponse = Schemas['DashboardResponse'];
 export type NoteRequest = Schemas['NoteRequest'];
+export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
 export type NoteImportRequest = Schemas['NoteImportRequest'];
@@ -76,12 +78,16 @@ export function createWorkstationApi(transport: WorkstationTransport) {
   return {
     workspaceApi: {
       list: () => transport.get<WorkspaceResponse[]>('/workspaces'),
+      create: (payload: WorkspaceRequest) =>
+        transport.post<WorkspaceResponse, WorkspaceRequest>('/workspaces', payload),
       get: (workspaceId: ResourceId) =>
         transport.get<WorkspaceResponse>(workspacePath(workspaceId)),
       update: (workspaceId: ResourceId, payload: WorkspaceRequest) =>
         transport.put<WorkspaceResponse, WorkspaceRequest>(workspacePath(workspaceId), payload),
       listMembers: (workspaceId: ResourceId) =>
         transport.get<WorkspaceMemberResponse[]>(`${workspacePath(workspaceId)}/members`),
+      findMemberCandidates: (workspaceId: ResourceId, username: string) =>
+        transport.get<WorkspaceMemberCandidate[]>(`${workspacePath(workspaceId)}/member-candidates`, { username }),
       addMember: (workspaceId: ResourceId, payload: WorkspaceMemberRequest) =>
         transport.post<WorkspaceMemberResponse, WorkspaceMemberRequest>(
           `${workspacePath(workspaceId)}/members`, payload),
@@ -152,8 +158,8 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         transport.get<NoteDetailResponse>(`${workspacePath(workspaceId)}/notes/${id}`),
       create: (workspaceId: ResourceId, payload: NoteRequest) =>
         transport.post<NoteDetailResponse, NoteRequest>(`${workspacePath(workspaceId)}/notes`, payload),
-      update: (workspaceId: ResourceId, id: ResourceId, payload: NoteRequest) =>
-        transport.put<NoteDetailResponse, NoteRequest>(`${workspacePath(workspaceId)}/notes/${id}`, payload),
+      update: (workspaceId: ResourceId, id: ResourceId, payload: NoteUpdateRequest) =>
+        transport.put<NoteDetailResponse, NoteUpdateRequest>(`${workspacePath(workspaceId)}/notes/${id}`, payload),
       importMarkdown: (workspaceId: ResourceId, payload: NoteImportRequest) =>
         transport.post<NoteImportResponse, NoteImportRequest>(
           `${workspacePath(workspaceId)}/notes/import`, payload),

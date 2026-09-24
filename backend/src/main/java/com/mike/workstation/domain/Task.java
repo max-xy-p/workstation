@@ -15,6 +15,8 @@ public class Task {
     private String description;
     private Long projectId;
     private String projectName;
+    private Long evidenceNoteId;
+    private String evidenceNoteTitle;
     private TaskStatus status;
     private TaskPriority priority;
     private LocalDate dueDate;

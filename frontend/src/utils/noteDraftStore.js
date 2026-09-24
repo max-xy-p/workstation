@@ -52,6 +52,32 @@ export async function getNoteDraft(key) {
   });
 }
 
+// 同一篇笔记的不同编辑页面分别保存草稿，恢复时一并列出。
+export async function listNoteDrafts(baseKey) {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const range = window.IDBKeyRange.bound(baseKey, `${baseKey}\uffff`);
+    const request = database.transaction(DRAFT_STORE, 'readonly').objectStore(DRAFT_STORE).getAll(range);
+    request.onsuccess = () => resolve(request.result
+      .filter((draft) => draft.key === baseKey || draft.key.startsWith(`${baseKey}:`))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)));
+    request.onerror = () => reject(request.error || new Error('读取本地草稿失败'));
+  });
+}
+
+// 只清理已经确认的快照，避免删掉另一页面在此期间写入的新修改。
+export async function deleteConfirmedDraft(key, snapshot) {
+  const database = await openDatabase();
+  const transaction = database.transaction(DRAFT_STORE, 'readwrite');
+  const completion = transactionCompletion(transaction);
+  const store = transaction.objectStore(DRAFT_STORE);
+  const request = store.get(key);
+  request.onsuccess = () => {
+    if (request.result?.snapshot === snapshot) store.delete(key);
+  };
+  await completion;
+}
+
 export async function putNoteDraft(draft) {
   const database = await openDatabase();
   const transaction = database.transaction(DRAFT_STORE, 'readwrite');

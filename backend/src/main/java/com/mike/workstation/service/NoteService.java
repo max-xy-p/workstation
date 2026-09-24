@@ -5,13 +5,16 @@ import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.NoteVersionConflictException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
+import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class NoteService {
     private final NoteFolderMapper folderMapper;
     private final ProjectMapper projectMapper;
     private final TagMapper tagMapper;
+    private final TaskMapper taskMapper;
     private final NoteTagLoader noteTagLoader;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
@@ -37,6 +41,7 @@ public class NoteService {
             NoteFolderMapper folderMapper,
             ProjectMapper projectMapper,
             TagMapper tagMapper,
+            TaskMapper taskMapper,
             NoteTagLoader noteTagLoader,
             WorkspaceAuthorizationService authorization,
             AuditService auditService
@@ -45,6 +50,7 @@ public class NoteService {
         this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
         this.tagMapper = tagMapper;
+        this.taskMapper = taskMapper;
         this.noteTagLoader = noteTagLoader;
         this.authorization = authorization;
         this.auditService = auditService;
@@ -120,17 +126,27 @@ public class NoteService {
      * @return 更新后的笔记
      */
     @Transactional
-    public NoteDetailResponse update(Long workspaceId, Long id, NoteRequest request) {
+    public NoteDetailResponse update(Long workspaceId, Long id, NoteUpdateRequest request) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
-        validate(workspaceId, request);
+        RequestChecks.requiredObject(request, "笔记更新请求");
+        if (request.expectedVersion() == null || request.expectedVersion() < 1) {
+            throw new BusinessException("笔记版本不合法");
+        }
+        NoteRequest noteRequest = request.note();
+        validate(workspaceId, noteRequest);
         getEntity(workspaceId, id);
         Note note = new Note();
         note.setId(id);
         note.setWorkspaceId(workspaceId);
-        applyRequest(note, request);
+        note.setVersion(request.expectedVersion());
+        applyRequest(note, noteRequest);
         note.setUpdatedAt(LocalDateTime.now());
-        noteMapper.update(note);
-        replaceTags(workspaceId, id, request.tagIds());
+        if (noteMapper.update(note) == 0) {
+            RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), "笔记不存在");
+            throw new NoteVersionConflictException();
+        }
+        taskMapper.clearEvidenceOutsideProject(workspaceId, id, note.getProjectId(), note.getUpdatedAt());
+        replaceTags(workspaceId, id, noteRequest.tagIds());
         auditService.success(workspaceId, "NOTE_UPDATE", "NOTE", id);
         return get(workspaceId, id);
     }
@@ -145,7 +161,8 @@ public class NoteService {
     @Transactional
     public void delete(Long workspaceId, Long id) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
-        getEntity(workspaceId, id);
+        RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), "笔记不存在");
+        taskMapper.clearEvidenceNote(workspaceId, id, LocalDateTime.now());
         tagMapper.deleteNoteTags(workspaceId, id);
         noteMapper.delete(workspaceId, id);
         auditService.success(workspaceId, "NOTE_DELETE", "NOTE", id);

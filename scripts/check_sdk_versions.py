@@ -25,7 +25,7 @@ def read_toml(path: Path) -> dict:
 
 def read_openapi_version(path: Path) -> str:
     content = path.read_text(encoding="utf-8")
-    match = re.search(r"(?m)^info:\s*$\n^  title:.*$\n^  version:\s*([^\s#]+)", content)
+    match = re.search(r"(?m)^info:\s*$\n^ {2}title:.*$\n^ {2}version:\s*([^\s#]+)", content)
     if not match:
         raise ValueError(f"无法从 {path} 读取 info.version")
     return match.group(1)

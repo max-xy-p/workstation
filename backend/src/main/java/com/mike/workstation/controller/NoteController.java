@@ -4,6 +4,7 @@ import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.service.NoteImportService;
@@ -103,7 +104,7 @@ public class NoteController {
      */
     @PutMapping("/{id}")
     public NoteDetailResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteRequest request
+            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteUpdateRequest request
     ) {
         return noteService.update(workspaceId, id, request);
     }

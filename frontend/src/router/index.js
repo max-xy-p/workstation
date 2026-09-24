@@ -7,6 +7,8 @@ import NotesView from '../views/NotesView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
 import LoginView from '../views/LoginView.vue';
 import WorkspaceUnavailableView from '../views/WorkspaceUnavailableView.vue';
+import WorkspaceSettingsView from '../views/WorkspaceSettingsView.vue';
+import SearchView from '../views/SearchView.vue';
 import { auth } from '../auth';
 import { workspace } from '../workspace';
 
@@ -15,6 +17,8 @@ export const routes = [
   { path: '/', name: 'root', component: WorkspaceUnavailableView, meta: { title: '工作空间' } },
   { path: '/workspace-unavailable', name: 'workspace-unavailable', component: WorkspaceUnavailableView, meta: { title: '工作空间不可用' } },
   { path: '/w/:workspaceId/dashboard', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
+  { path: '/w/:workspaceId/settings', name: 'workspace-settings', component: WorkspaceSettingsView, meta: { title: '工作空间设置' } },
+  { path: '/w/:workspaceId/search', name: 'search', component: SearchView, meta: { title: '搜索' } },
   { path: '/w/:workspaceId/projects', name: 'projects', component: ProjectsView, meta: { title: '项目' } },
   { path: '/w/:workspaceId/projects/:id', name: 'project-detail', component: ProjectDetailView, meta: { title: '项目详情' } },
   { path: '/w/:workspaceId/tasks', name: 'tasks', component: TasksView, meta: { title: '任务看板' } },
@@ -30,12 +34,8 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach(async (to) => {
-  const user = await auth.ensureSession();
-  if (!user && !to.meta.public) {
-    return { name: 'login', query: { redirect: to.fullPath } };
-  }
-  if (user && to.name === 'login') {
+async function resolveSignedInRoute(to) {
+  if (to.name === 'login') {
     const redirect = sessionStorage.getItem('workstation:login-redirect');
     sessionStorage.removeItem('workstation:login-redirect');
     if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
@@ -44,17 +44,32 @@ router.beforeEach(async (to) => {
       ? { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } }
       : { name: 'workspace-unavailable' };
   }
-  if (!user || to.meta.public) return true;
-
   const defaultWorkspace = await workspace.ensureWorkspace();
   if (!defaultWorkspace) return to.name === 'workspace-unavailable' ? true : { name: 'workspace-unavailable' };
   if (to.name === 'root') {
     return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };
   }
   if (to.name === 'workspace-unavailable') return true;
-  const selected = workspace.selectWorkspace(to.params.workspaceId);
-  if (!selected) return { name: 'workspace-unavailable' };
+  try {
+    await workspace.activateWorkspace(to.params.workspaceId);
+  } catch (err) {
+    if (err.status !== 404 && err.status !== 403) throw err;
+    await workspace.refreshWorkspaces();
+    return workspace.currentId.value
+      ? { name: 'dashboard', params: { workspaceId: workspace.currentId.value } }
+      : { name: 'workspace-unavailable' };
+  }
+  if (to.name === 'note-new' && !to.query.draftId) {
+    return { name: to.name, params: to.params, query: { ...to.query, draftId: window.crypto.randomUUID() } };
+  }
   return true;
+}
+
+router.beforeEach(async (to) => {
+  const user = await auth.ensureSession();
+  if (!user) return to.meta.public ? true : { name: 'login', query: { redirect: to.fullPath } };
+  if (to.meta.public && to.name !== 'login') return true;
+  return resolveSignedInRoute(to);
 });
 
 router.afterEach((to) => {

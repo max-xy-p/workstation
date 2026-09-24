@@ -10,6 +10,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mike.workstation.service.WorkspaceAuthorizationService;
+import com.mike.workstation.service.NoteService;
+import com.mike.workstation.exception.NoteVersionConflictException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +37,8 @@ class ResourceServerIntegrationTests {
     private MockMvc mockMvc;
     @MockitoBean
     private WorkspaceAuthorizationService authorizationService;
+    @MockitoBean
+    private NoteService noteService;
 
     @Test
     void protectedApiRejectsAnonymousRequests() throws Exception {
@@ -79,5 +86,18 @@ class ResourceServerIntegrationTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.timestamp").isString());
+    }
+
+    @Test
+    void staleNoteUpdateReturnsStableConflictCode() throws Exception {
+        when(noteService.update(eq(1L), eq(2L), any())).thenThrow(new NoteVersionConflictException());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/workspaces/1/notes/2")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"标题\",\"content\":\"正文\",\"tagIds\":[],\"expectedVersion\":3}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("NOTE_VERSION_CONFLICT"));
     }
 }

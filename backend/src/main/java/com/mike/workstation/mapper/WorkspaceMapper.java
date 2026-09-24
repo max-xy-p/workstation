@@ -41,6 +41,34 @@ public interface WorkspaceMapper {
     int insertPersonalWorkspace(Workspace workspace);
 
     @Insert("""
+            INSERT INTO workspaces
+                (name, type, personal_owner_subject, created_by_subject, created_at, updated_at)
+            VALUES
+                (#{name}, #{type}, NULL, #{createdBySubject}, #{createdAt}, #{updatedAt})
+            """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insertSharedWorkspace(Workspace workspace);
+
+    @Select("""
+            SELECT subject_id, principal_type, username, display_name, created_at, updated_at
+            FROM security_principals
+            WHERE subject_id = #{subjectId}
+            """)
+    SecurityPrincipal findPrincipal(String subjectId);
+
+    /** 串行化成员变更，使最后一个 Owner 的判断与写入处于同一锁内。 */
+    @Select("SELECT id FROM workspaces WHERE id = #{workspaceId} FOR UPDATE")
+    Long lockWorkspace(Long workspaceId);
+
+    @Select("""
+            SELECT subject_id, principal_type, username, display_name, created_at, updated_at
+            FROM security_principals
+            WHERE principal_type = 'USER' AND username = #{username}
+            ORDER BY subject_id LIMIT 10
+            """)
+    List<SecurityPrincipal> findUsersByUsername(String username);
+
+    @Insert("""
             INSERT IGNORE INTO workspace_members (workspace_id, principal_subject, role, joined_at)
             VALUES (#{workspaceId}, #{subjectId}, #{role}, #{joinedAt})
             """)

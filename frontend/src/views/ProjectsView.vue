@@ -12,7 +12,7 @@
         </div>
         <div class="toolbar">
           <input v-model="filters.keyword" aria-label="搜索项目" placeholder="搜索项目名称…" @keyup.enter="load(0)" />
-          <select v-model="filters.status">
+          <select v-model="filters.status" aria-label="筛选项目状态">
             <option value="">全部状态</option>
             <option v-for="status in PROJECT_STATUSES" :key="status.value" :value="status.value">{{ status.label }}</option>
           </select>

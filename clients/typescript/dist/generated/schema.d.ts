@@ -13,7 +13,8 @@ export interface paths {
         /** 查询当前主体可访问的工作空间 */
         get: operations["listWorkspaces"];
         put?: never;
-        post?: never;
+        /** 创建共享工作空间 */
+        post: operations["createWorkspace"];
         delete?: never;
         options?: never;
         head?: never;
@@ -54,6 +55,25 @@ export interface paths {
         put?: never;
         /** 添加工作空间成员 */
         post: operations["addWorkspaceMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/member-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 按精确用户名查询已登录过的用户 */
+        get: operations["findWorkspaceMemberCandidate"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -428,10 +448,12 @@ export interface components {
         };
         WorkspaceMemberRequest: {
             subjectId: string;
-            principalType: components["schemas"]["PrincipalType"];
-            username?: string | null;
-            displayName?: string | null;
             role: components["schemas"]["WorkspaceRole"];
+        };
+        WorkspaceMemberCandidate: {
+            subjectId: string;
+            username: string;
+            displayName: string | null;
         };
         WorkspaceMemberRoleRequest: {
             role: components["schemas"]["WorkspaceRole"];
@@ -502,6 +524,18 @@ export interface components {
             /** @default [] */
             tagIds: number[];
         };
+        NoteUpdateRequest: {
+            title: string;
+            content: string;
+            /** Format: int64 */
+            folderId?: number | null;
+            /** Format: int64 */
+            projectId?: number | null;
+            /** @default [] */
+            tagIds: number[];
+            /** Format: int64 */
+            expectedVersion: number;
+        };
         NoteSummaryResponse: {
             /** Format: int64 */
             id: number;
@@ -514,6 +548,8 @@ export interface components {
             projectName: string | null;
             /** Format: int64 */
             version: number;
+            /** @description 关键词搜索时的正文片段，最长 200 字符；其他摘要查询为空 */
+            excerpt: string | null;
             tags: components["schemas"]["TagResponse"][];
             /** Format: date-time */
             createdAt: string;
@@ -636,6 +672,8 @@ export interface components {
             priority: components["schemas"]["TaskPriority"];
             /** Format: date */
             dueDate?: string | null;
+            /** Format: int64 */
+            evidenceNoteId?: number | null;
         };
         TaskResponse: {
             /** Format: int64 */
@@ -649,6 +687,9 @@ export interface components {
             priority: components["schemas"]["TaskPriority"];
             /** Format: date */
             dueDate: string | null;
+            /** Format: int64 */
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -735,6 +776,15 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
+        /** @description 笔记版本冲突，调用方应重新读取并处理本地修改 */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
     };
     parameters: {
         WorkspaceId: number;
@@ -768,6 +818,33 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceResponse"][];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description 创建者为 Owner 的共享工作空间 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };
@@ -874,6 +951,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkspaceMemberResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    findWorkspaceMemberCandidate: {
+        parameters: {
+            query: {
+                username: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 匹配的用户主体；不存在时返回空列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMemberCandidate"][];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -1099,7 +1204,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoteRequest"];
+                "application/json": components["schemas"]["NoteUpdateRequest"];
             };
         };
         responses: {
@@ -1116,6 +1221,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     deleteNote: {

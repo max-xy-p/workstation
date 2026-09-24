@@ -9,6 +9,7 @@ import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.domain.WorkspaceRole;
 import com.mike.workstation.domain.WorkspaceType;
 import com.mike.workstation.dto.WorkspaceMemberRequest;
+import com.mike.workstation.dto.WorkspaceMemberCandidate;
 import com.mike.workstation.dto.WorkspaceMemberResponse;
 import com.mike.workstation.dto.WorkspaceRequest;
 import com.mike.workstation.dto.WorkspaceResponse;
@@ -60,6 +61,46 @@ public class WorkspaceService {
     }
 
     @Transactional
+    public WorkspaceResponse createShared(WorkspaceRequest request) {
+        CurrentPrincipal principal = principalResolver.require();
+        if (principal.principalType() != PrincipalType.USER) {
+            throw new BusinessException("只有用户可以创建共享工作空间");
+        }
+        RequestChecks.requiredObject(request, "工作空间请求");
+        RequestChecks.requiredText(request.name(), "工作空间名称");
+        String name = request.name().trim();
+        RequestChecks.maxLength(name, 120, "工作空间名称");
+        upsertPrincipal(principal.subjectId(), principal.principalType(), principal.username(), principal.displayName());
+        LocalDateTime now = LocalDateTime.now();
+        Workspace workspace = new Workspace();
+        workspace.setName(name);
+        workspace.setType(WorkspaceType.SHARED);
+        workspace.setCreatedBySubject(principal.subjectId());
+        workspace.setCreatedAt(now);
+        workspace.setUpdatedAt(now);
+        workspaceMapper.insertSharedWorkspace(workspace);
+        WorkspaceMember owner = new WorkspaceMember();
+        owner.setWorkspaceId(workspace.getId());
+        owner.setSubjectId(principal.subjectId());
+        owner.setRole(WorkspaceRole.OWNER);
+        owner.setJoinedAt(now);
+        workspaceMapper.insertMember(owner);
+        auditService.success(workspace.getId(), "WORKSPACE_CREATE", "WORKSPACE", workspace.getId());
+        return get(workspace.getId());
+    }
+
+    public List<WorkspaceMemberCandidate> findMemberCandidates(Long workspaceId, String username) {
+        authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
+        RequestChecks.requiredText(username, "用户名");
+        String exactUsername = username.trim();
+        RequestChecks.maxLength(exactUsername, 255, "用户名");
+        return workspaceMapper.findUsersByUsername(exactUsername).stream()
+                .map(candidate -> new WorkspaceMemberCandidate(
+                        candidate.getSubjectId(), candidate.getUsername(), candidate.getDisplayName()))
+                .toList();
+    }
+
+    @Transactional
     public WorkspaceResponse update(Long workspaceId, WorkspaceRequest request) {
         Workspace workspace = authorization.require(workspaceId, WorkspacePermission.WORKSPACE_WRITE);
         RequestChecks.requiredObject(request, "工作空间请求");
@@ -81,6 +122,7 @@ public class WorkspaceService {
 
     @Transactional
     public WorkspaceMemberResponse addMember(Long workspaceId, WorkspaceMemberRequest request) {
+        workspaceMapper.lockWorkspace(workspaceId);
         Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         validateMemberRequest(request);
         if (request.role() == WorkspaceRole.OWNER && actorWorkspace.getRole() != WorkspaceRole.OWNER) {
@@ -90,7 +132,10 @@ public class WorkspaceService {
             throw new BusinessException("该主体已经是工作空间成员");
         }
 
-        upsertPrincipal(request.subjectId(), request.principalType(), request.username(), request.displayName());
+        SecurityPrincipal candidate = workspaceMapper.findPrincipal(request.subjectId());
+        if (candidate == null) {
+            throw new BusinessException("主体不存在，请先登录或使用机器身份访问工作空间列表");
+        }
         WorkspaceMember member = new WorkspaceMember();
         member.setWorkspaceId(workspaceId);
         member.setSubjectId(request.subjectId());
@@ -104,6 +149,7 @@ public class WorkspaceService {
 
     @Transactional
     public WorkspaceMemberResponse updateMemberRole(Long workspaceId, String subjectId, WorkspaceRole role) {
+        workspaceMapper.lockWorkspace(workspaceId);
         Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         RequestChecks.requiredText(subjectId, "主体标识");
         RequestChecks.requiredObject(role, "成员角色");
@@ -121,6 +167,7 @@ public class WorkspaceService {
 
     @Transactional
     public void removeMember(Long workspaceId, String subjectId) {
+        workspaceMapper.lockWorkspace(workspaceId);
         Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         WorkspaceMember target = workspaceMapper.findMember(workspaceId, subjectId);
         RequestChecks.requiredExisting(target, "工作空间成员不存在");
@@ -176,10 +223,7 @@ public class WorkspaceService {
         RequestChecks.requiredObject(request, "成员请求");
         RequestChecks.requiredText(request.subjectId(), "主体标识");
         RequestChecks.maxLength(request.subjectId(), 255, "主体标识");
-        RequestChecks.requiredObject(request.principalType(), "主体类型");
         RequestChecks.requiredObject(request.role(), "成员角色");
-        RequestChecks.maxLength(request.username(), 255, "用户名");
-        RequestChecks.maxLength(request.displayName(), 255, "显示名称");
     }
 
     private void requireOwnerForOwnerChange(

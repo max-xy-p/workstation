@@ -33,6 +33,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("BUSINESS_ERROR", ex.getMessage()));
     }
 
+    @ExceptionHandler(NoteVersionConflictException.class)
+    public ResponseEntity<ApiError> handleNoteVersionConflict(NoteVersionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of("NOTE_VERSION_CONFLICT", ex.getMessage()));
+    }
+
     /**
      * 处理已经进入工作空间但缺少目标 Permission 的错误。
      */

@@ -13,7 +13,10 @@
 
       <div class="workspace-chip">
         <span class="status-dot"></span>
-        <span>{{ workspace.state.current?.name || '个人知识库' }}</span>
+        <select :value="workspace.currentId.value || ''" aria-label="切换工作空间" @change="switchWorkspace">
+          <option v-for="item in workspace.state.items" :key="item.id" :value="item.id">{{ item.name }}</option>
+        </select>
+        <RouterLink :to="{ name: 'workspace-settings', params: { workspaceId: workspace.currentId.value } }" aria-label="工作空间设置" title="工作空间设置">设置</RouterLink>
       </div>
 
       <p class="nav-label">工作区</p>
@@ -65,7 +68,7 @@
       </header>
       <RouterView v-slot="{ Component }">
         <Transition name="page-fade" mode="out-in">
-          <component :is="Component" />
+          <component :is="Component" :key="route.fullPath" />
         </Transition>
       </RouterView>
     </main>
@@ -93,7 +96,7 @@ const workspaceRoleLabel = computed(() => ({
   EDITOR: '编辑者',
   VIEWER: '只读成员'
 }[workspace.state.current?.role] || '工作空间成员'));
-const navOrder = ['notes', 'projects', 'tasks', 'taxonomy', 'dashboard'];
+const navOrder = ['notes', 'projects', 'tasks', 'search', 'taxonomy', 'dashboard'];
 const navItems = computed(() => navOrder.map((name) => {
   const item = routes.find((routeItem) => routeItem.name === name);
   return { name, title: item.meta.title, icon: name === 'note-import' ? 'import' : name };
@@ -108,7 +111,9 @@ const pageMeta = {
   'note-import': { section: '内容迁移', description: '将已有 Markdown 文档加入知识库。' },
   'note-new': { section: 'Markdown 编辑器', description: '把刚刚想到的内容写下来。' },
   'note-edit': { section: 'Markdown 编辑器', description: '在一张文稿中书写和阅读。' },
-  taxonomy: { section: '知识组织', description: '维护笔记的棬索标签。' }
+  taxonomy: { section: '知识组织', description: '维护笔记的棬索标签。' },
+  'workspace-settings': { section: '团队协作', description: '管理工作空间与成员。' },
+  search: { section: '查找', description: '在当前工作空间检索项目、任务与笔记。' }
 };
 
 const currentMeta = computed(() => pageMeta[route.name] || { section: 'Workspace', description: '' });
@@ -116,6 +121,13 @@ const currentMeta = computed(() => pageMeta[route.name] || { section: 'Workspace
 function isNavActive(name) {
   if (name === 'notes') return ['notes', 'note-new', 'note-edit'].includes(route.name);
   return route.name === name;
+}
+
+function switchWorkspace(event) {
+  const workspaceId = Number(event.target.value);
+  if (Number.isSafeInteger(workspaceId)) {
+    void router.push({ name: 'dashboard', params: { workspaceId } });
+  }
 }
 
 async function signOut() {
@@ -140,3 +152,8 @@ function handleUnauthorized() {
 onMounted(() => window.addEventListener('workstation:unauthorized', handleUnauthorized));
 onBeforeUnmount(() => window.removeEventListener('workstation:unauthorized', handleUnauthorized));
 </script>
+
+<style scoped>
+.workspace-chip select { min-width: 0; flex: 1; width: 100%; border: 0; background: transparent; padding: 0.25rem; }
+.workspace-chip a { flex: none; font-size: 0.8rem; }
+</style>

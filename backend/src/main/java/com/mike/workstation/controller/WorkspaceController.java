@@ -1,6 +1,7 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.dto.WorkspaceMemberRequest;
+import com.mike.workstation.dto.WorkspaceMemberCandidate;
 import com.mike.workstation.dto.WorkspaceMemberResponse;
 import com.mike.workstation.dto.WorkspaceMemberRoleRequest;
 import com.mike.workstation.dto.WorkspaceRequest;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,6 +35,12 @@ public class WorkspaceController {
         return workspaceService.list();
     }
 
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkspaceResponse create(@RequestBody WorkspaceRequest request) {
+        return workspaceService.createShared(request);
+    }
+
     @GetMapping("/{workspaceId}")
     public WorkspaceResponse get(@PathVariable Long workspaceId) {
         return workspaceService.get(workspaceId);
@@ -46,6 +54,13 @@ public class WorkspaceController {
     @GetMapping("/{workspaceId}/members")
     public List<WorkspaceMemberResponse> listMembers(@PathVariable Long workspaceId) {
         return workspaceService.listMembers(workspaceId);
+    }
+
+    @GetMapping("/{workspaceId}/member-candidates")
+    public List<WorkspaceMemberCandidate> findMemberCandidates(
+            @PathVariable Long workspaceId, @RequestParam String username
+    ) {
+        return workspaceService.findMemberCandidates(workspaceId, username);
     }
 
     @PostMapping("/{workspaceId}/members")

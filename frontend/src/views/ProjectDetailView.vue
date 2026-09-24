@@ -12,6 +12,20 @@
         <p class="meta">技术栈：{{ detail.project.techStack || '未填写' }}</p>
         <pre class="markdown-body">{{ detail.project.runGuide || '未填写运行说明' }}</pre>
 
+        <section class="project-progress">
+          <h3>项目推进</h3>
+          <p>{{ completedCount }} / {{ detail.tasks.length }} 项任务已完成 · {{ detail.notes.length }} 篇项目笔记</p>
+          <progress :value="completedCount" :max="Math.max(detail.tasks.length, 1)" aria-label="项目任务完成进度"></progress>
+          <h4>最近更新的任务</h4>
+          <ul v-if="recentTasks.length">
+            <li v-for="task in recentTasks" :key="task.id">
+              <RouterLink :to="{ name: 'tasks', params: workspaceParams, query: { projectId: detail.project.id, taskId: task.id } }">{{ task.title }}</RouterLink>
+              · {{ taskStatusLabel(task.status) }} · {{ new Date(task.updatedAt).toLocaleString() }}
+            </li>
+          </ul>
+          <p v-else class="empty">创建第一项任务，开始推进项目。</p>
+        </section>
+
         <h3>关联任务</h3>
         <div v-if="detail.tasks.length" class="list">
           <div v-for="task in detail.tasks" :key="task.id" class="card">
@@ -20,6 +34,7 @@
               <span class="badge">{{ taskStatusLabel(task.status) }}</span>
             </div>
             <p class="meta">{{ priorityLabel(task.priority) }} · {{ task.dueDate || '无截止日期' }}</p>
+            <RouterLink v-if="task.evidenceNoteId" :to="{ name: 'note-edit', params: { ...workspaceParams, id: task.evidenceNoteId } }">依据笔记：{{ task.evidenceNoteTitle }}</RouterLink>
           </div>
         </div>
         <p v-else class="empty">暂无任务</p>
@@ -71,6 +86,12 @@
             </select>
           </label>
           <label class="wide">截止日期<input v-model="taskForm.dueDate" type="date" /></label>
+          <label class="wide">依据笔记
+            <select v-model="taskForm.evidenceNoteId">
+              <option value="">未关联</option>
+              <option v-for="note in detail.notes" :key="note.id" :value="note.id">{{ note.title }}</option>
+            </select>
+          </label>
           <label class="wide">描述<textarea v-model="taskForm.description" /></label>
           <div class="actions wide"><button type="submit">创建任务</button></div>
         </form>
@@ -93,7 +114,10 @@ const workspaceParams = workspaceRouteParams(route);
 const error = ref('');
 const detail = reactive({ project: null, tasks: [], notes: [] });
 const projectForm = reactive({});
-const taskForm = reactive({ title: '', description: '', status: '', priority: '', dueDate: '' });
+const taskForm = reactive({ title: '', description: '', status: '', priority: '', dueDate: '', evidenceNoteId: '' });
+const completedCount = computed(() => detail.tasks.filter((task) => task.status === 'DONE').length);
+const recentTasks = computed(() => [...detail.tasks].sort((left, right) =>
+  new Date(right.updatedAt) - new Date(left.updatedAt) || right.id - left.id).slice(0, 5));
 
 const projectStatusLabel = (value) => optionLabel(PROJECT_STATUSES, value);
 const taskStatusLabel = (value) => optionLabel(TASK_STATUSES, value);
@@ -155,9 +179,10 @@ async function createTask() {
       projectId: detail.project.id,
       status: taskForm.status,
       priority: taskForm.priority,
-      dueDate: taskForm.dueDate || null
+      dueDate: taskForm.dueDate || null,
+      evidenceNoteId: taskForm.evidenceNoteId ? Number(taskForm.evidenceNoteId) : null
     });
-    Object.assign(taskForm, { title: '', description: '', status: '', priority: '', dueDate: '' });
+    Object.assign(taskForm, { title: '', description: '', status: '', priority: '', dueDate: '', evidenceNoteId: '' });
     await load();
   } catch (err) {
     error.value = err.message;
@@ -178,3 +203,10 @@ async function removeProject() {
 
 onMounted(load);
 </script>
+
+<style scoped>
+.project-progress { border-block: 1px solid var(--border, #e5e7eb); padding: 1rem 0; margin: 1.25rem 0; }
+.project-progress progress { width: 100%; height: 0.5rem; accent-color: #6f785c; }
+.project-progress ul { padding-left: 1.25rem; }
+.project-progress li { margin: 0.65rem 0; line-height: 1.6; }
+</style>

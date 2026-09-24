@@ -14,6 +14,7 @@ public class Note {
     private Long workspaceId;
     private String title;
     private String content;
+    private String excerpt;
     private Long folderId;
     private String folderName;
     private Long projectId;

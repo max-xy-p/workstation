@@ -24,6 +24,8 @@ class TaskResponse:
         status (TaskStatus):
         priority (TaskPriority):
         due_date (datetime.date | None):
+        evidence_note_id (int | None):
+        evidence_note_title (None | str):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
     """
@@ -36,6 +38,8 @@ class TaskResponse:
     status: TaskStatus
     priority: TaskPriority
     due_date: datetime.date | None
+    evidence_note_id: int | None
+    evidence_note_title: None | str
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -61,6 +65,12 @@ class TaskResponse:
         else:
             due_date = self.due_date
 
+        evidence_note_id: int | None
+        evidence_note_id = self.evidence_note_id
+
+        evidence_note_title: None | str
+        evidence_note_title = self.evidence_note_title
+
         created_at = self.created_at.isoformat()
 
         updated_at = self.updated_at.isoformat()
@@ -77,6 +87,8 @@ class TaskResponse:
                 "status": status,
                 "priority": priority,
                 "dueDate": due_date,
+                "evidenceNoteId": evidence_note_id,
+                "evidenceNoteTitle": evidence_note_title,
                 "createdAt": created_at,
                 "updatedAt": updated_at,
             }
@@ -121,6 +133,20 @@ class TaskResponse:
 
         due_date = _parse_due_date(d.pop("dueDate"))
 
+        def _parse_evidence_note_id(data: object) -> int | None:
+            if data is None:
+                return data
+            return cast(int | None, data)
+
+        evidence_note_id = _parse_evidence_note_id(d.pop("evidenceNoteId"))
+
+        def _parse_evidence_note_title(data: object) -> None | str:
+            if data is None:
+                return data
+            return cast(None | str, data)
+
+        evidence_note_title = _parse_evidence_note_title(d.pop("evidenceNoteTitle"))
+
         created_at = datetime.datetime.fromisoformat(d.pop("createdAt"))
 
         updated_at = datetime.datetime.fromisoformat(d.pop("updatedAt"))
@@ -134,6 +160,8 @@ class TaskResponse:
             status=status,
             priority=priority,
             due_date=due_date,
+            evidence_note_id=evidence_note_id,
+            evidence_note_title=evidence_note_title,
             created_at=created_at,
             updated_at=updated_at,
         )

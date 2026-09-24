@@ -24,6 +24,7 @@ class NoteSummaryResponse:
         project_id (int | None):
         project_name (None | str):
         version (int):
+        excerpt (None | str): 关键词搜索时的正文片段，最长 200 字符；其他摘要查询为空
         tags (list[TagResponse]):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
@@ -36,6 +37,7 @@ class NoteSummaryResponse:
     project_id: int | None
     project_name: None | str
     version: int
+    excerpt: None | str
     tags: list[TagResponse]
     created_at: datetime.datetime
     updated_at: datetime.datetime
@@ -59,6 +61,9 @@ class NoteSummaryResponse:
 
         version = self.version
 
+        excerpt: None | str
+        excerpt = self.excerpt
+
         tags = []
         for tags_item_data in self.tags:
             tags_item = tags_item_data.to_dict()
@@ -79,6 +84,7 @@ class NoteSummaryResponse:
                 "projectId": project_id,
                 "projectName": project_name,
                 "version": version,
+                "excerpt": excerpt,
                 "tags": tags,
                 "createdAt": created_at,
                 "updatedAt": updated_at,
@@ -126,6 +132,13 @@ class NoteSummaryResponse:
 
         version = d.pop("version")
 
+        def _parse_excerpt(data: object) -> None | str:
+            if data is None:
+                return data
+            return cast(None | str, data)
+
+        excerpt = _parse_excerpt(d.pop("excerpt"))
+
         tags = []
         _tags = d.pop("tags")
         for tags_item_data in _tags:
@@ -145,6 +158,7 @@ class NoteSummaryResponse:
             project_id=project_id,
             project_name=project_name,
             version=version,
+            excerpt=excerpt,
             tags=tags,
             created_at=created_at,
             updated_at=updated_at,

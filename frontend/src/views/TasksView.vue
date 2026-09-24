@@ -1,16 +1,16 @@
 <template>
   <section class="page tasks-page">
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split workspace-split tasks-layout">
+    <div class="split workspace-split tasks-layout" :class="{ 'tasks-readonly': !canWrite }">
       <section class="task-board">
         <div class="panel compact-panel">
           <div class="toolbar">
             <input v-model="filters.keyword" aria-label="搜索任务" placeholder="搜索任务标题…" @keyup.enter="load" />
-            <select v-model="filters.projectId">
+            <select v-model="filters.projectId" aria-label="筛选所属项目">
               <option value="">全部项目</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
             </select>
-            <select v-model="filters.priority">
+            <select v-model="filters.priority" aria-label="筛选任务优先级">
               <option value="">全部优先级</option>
               <option v-for="priority in TASK_PRIORITIES" :key="priority.value" :value="priority.value">{{ priority.label }}</option>
             </select>
@@ -25,14 +25,15 @@
               <span>{{ tasksByStatus(column.value).length }}</span>
             </div>
             <div v-if="tasksByStatus(column.value).length" class="list">
-              <article v-for="task in tasksByStatus(column.value)" :key="task.id" class="card task-card">
+              <article v-for="task in tasksByStatus(column.value)" :key="task.id" :id="`task-${task.id}`" class="card task-card">
                 <div class="card-title">
                   <h3>{{ task.title }}</h3>
                   <span class="badge">{{ priorityLabel(task.priority) }}</span>
                 </div>
                 <p class="meta">{{ task.projectName }} · {{ task.dueDate || '无截止日期' }}</p>
                 <p>{{ task.description || '未填写描述' }}</p>
-                <div class="actions">
+                <RouterLink v-if="task.evidenceNoteId" :to="{ name: 'note-edit', params: { workspaceId, id: task.evidenceNoteId } }">依据笔记：{{ task.evidenceNoteTitle || task.evidenceNoteId }}</RouterLink>
+                <div v-if="canWrite" class="actions">
                   <button
                     v-for="status in KANBAN_COLUMNS"
                     :key="status.value"
@@ -52,7 +53,7 @@
         </div>
       </section>
 
-      <section class="panel form-panel sticky-panel">
+      <section v-if="canWrite" class="panel form-panel sticky-panel">
         <div class="section-heading">
           <div>
             <span class="eyebrow">{{ form.id ? '编辑模式' : '快速创建' }}</span>
@@ -71,6 +72,12 @@
             <select v-model="form.status" required>
               <option value="" disabled>请选择</option>
               <option v-for="status in TASK_STATUSES" :key="status.value" :value="status.value">{{ status.label }}</option>
+            </select>
+          </label>
+          <label class="wide">依据笔记
+            <select v-model="form.evidenceNoteId">
+              <option value="">未关联</option>
+              <option v-for="note in evidenceNotes" :key="note.id" :value="note.id">{{ note.title }}</option>
             </select>
           </label>
           <label>优先级
@@ -92,17 +99,20 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import { projectApi, taskApi } from '../api/workstation';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
+import { noteApi, projectApi, taskApi } from '../api/workstation';
 import { KANBAN_COLUMNS, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
 import { workspaceIdFromRoute } from '../utils/workspaceRoute';
+import { workspace } from '../workspace';
 
 const route = useRoute();
 const workspaceId = computed(() => workspaceIdFromRoute(route));
+const canWrite = computed(() => workspace.hasPermission('TASK_WRITE'));
 const error = ref('');
 const tasks = ref([]);
 const projects = ref([]);
+const evidenceNotes = ref([]);
 const filters = reactive({
   keyword: route.query.keyword || '',
   projectId: route.query.projectId || '',
@@ -111,7 +121,7 @@ const filters = reactive({
 const form = reactive(emptyForm());
 
 function emptyForm() {
-  return { id: null, title: '', description: '', projectId: '', status: '', priority: '', dueDate: '' };
+  return { id: null, title: '', description: '', projectId: '', status: '', priority: '', dueDate: '', evidenceNoteId: '' };
 }
 
 function priorityLabel(value) {
@@ -137,7 +147,8 @@ function edit(task) {
     projectId: task.projectId,
     status: task.status,
     priority: task.priority,
-    dueDate: task.dueDate || ''
+    dueDate: task.dueDate || '',
+    evidenceNoteId: task.evidenceNoteId || ''
   });
 }
 
@@ -149,7 +160,8 @@ function payload() {
     projectId: Number(form.projectId),
     status: form.status,
     priority: form.priority,
-    dueDate: form.dueDate || null
+    dueDate: form.dueDate || null,
+    evidenceNoteId: form.evidenceNoteId ? Number(form.evidenceNoteId) : null
   };
 }
 
@@ -211,8 +223,31 @@ onMounted(async () => {
   try {
     await loadProjects();
     await load();
+    const selectedTask = tasks.value.find((task) => task.id === Number(route.query.taskId));
+    if (selectedTask && canWrite.value) edit(selectedTask);
   } catch (err) {
     error.value = err.message;
   }
 });
+
+watch(() => form.projectId, async (projectId, previous, onCleanup) => {
+  let active = true;
+  onCleanup(() => { active = false; });
+  try {
+    const notes = projectId
+      ? await noteApi.listAll(workspaceId.value, { projectId: Number(projectId) })
+      : [];
+    if (!active) return;
+    evidenceNotes.value = notes;
+    if (form.evidenceNoteId && !notes.some((note) => note.id === Number(form.evidenceNoteId))) {
+      form.evidenceNoteId = '';
+    }
+  } catch (err) {
+    if (active) error.value = err.message;
+  }
+});
 </script>
+
+<style scoped>
+.tasks-readonly { grid-template-columns: minmax(0, 1fr); }
+</style>

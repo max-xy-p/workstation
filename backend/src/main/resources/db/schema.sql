@@ -91,28 +91,6 @@ CREATE TABLE IF NOT EXISTS tags (
         FOREIGN KEY (workspace_id) REFERENCES workspaces (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS tasks (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    workspace_id BIGINT NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    description TEXT NULL,
-    project_id BIGINT NOT NULL,
-    status VARCHAR(32) NOT NULL,
-    priority VARCHAR(32) NOT NULL,
-    due_date DATE NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    PRIMARY KEY (id),
-    INDEX idx_tasks_workspace_id (workspace_id),
-    INDEX idx_tasks_workspace_project (workspace_id, project_id),
-    INDEX idx_tasks_status (status),
-    INDEX idx_tasks_priority (priority),
-    CONSTRAINT fk_tasks_workspace
-        FOREIGN KEY (workspace_id) REFERENCES workspaces (id),
-    CONSTRAINT fk_tasks_project
-        FOREIGN KEY (workspace_id, project_id) REFERENCES projects (workspace_id, id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS notes (
     id BIGINT NOT NULL AUTO_INCREMENT,
     workspace_id BIGINT NOT NULL,
@@ -135,6 +113,32 @@ CREATE TABLE IF NOT EXISTS notes (
         FOREIGN KEY (workspace_id, folder_id) REFERENCES note_folders (workspace_id, id),
     CONSTRAINT fk_notes_project
         FOREIGN KEY (workspace_id, project_id) REFERENCES projects (workspace_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    workspace_id BIGINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    project_id BIGINT NOT NULL,
+    evidence_note_id BIGINT NULL,
+    status VARCHAR(32) NOT NULL,
+    priority VARCHAR(32) NOT NULL,
+    due_date DATE NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    INDEX idx_tasks_workspace_id (workspace_id),
+    INDEX idx_tasks_workspace_project (workspace_id, project_id),
+    INDEX idx_tasks_workspace_evidence (workspace_id, evidence_note_id),
+    INDEX idx_tasks_status (status),
+    INDEX idx_tasks_priority (priority),
+    CONSTRAINT fk_tasks_workspace
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id),
+    CONSTRAINT fk_tasks_project
+        FOREIGN KEY (workspace_id, project_id) REFERENCES projects (workspace_id, id),
+    CONSTRAINT fk_tasks_evidence_note
+        FOREIGN KEY (workspace_id, evidence_note_id) REFERENCES notes (workspace_id, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS note_tag (

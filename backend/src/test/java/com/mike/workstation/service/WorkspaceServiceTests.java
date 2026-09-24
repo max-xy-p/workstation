@@ -1,6 +1,7 @@
 package com.mike.workstation.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
@@ -11,7 +12,10 @@ import com.mike.workstation.domain.Workspace;
 import com.mike.workstation.domain.WorkspaceMember;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.domain.WorkspaceRole;
+import com.mike.workstation.domain.SecurityPrincipal;
+import com.mike.workstation.domain.WorkspaceType;
 import com.mike.workstation.dto.WorkspaceMemberRequest;
+import com.mike.workstation.dto.WorkspaceRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 import com.mike.workstation.mapper.WorkspaceMapper;
@@ -63,12 +67,58 @@ class WorkspaceServiceTests {
         when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
                 .thenReturn(workspace(WorkspaceRole.ADMIN));
 
-        var request = new WorkspaceMemberRequest(
-                "subject-2", PrincipalType.USER, "member", "Member", WorkspaceRole.OWNER);
+        var request = new WorkspaceMemberRequest("subject-2", WorkspaceRole.OWNER);
 
         assertThatThrownBy(() -> workspaceService.addMember(WORKSPACE_ID, request))
                 .isInstanceOf(WorkspaceAccessDeniedException.class);
         verify(auditService).denied(WORKSPACE_ID, "MEMBER_MANAGE", "WORKSPACE_MEMBER", null);
+    }
+
+    @Test
+    void createSharedWorkspaceAddsCreatorAsOwner() {
+        var principal = new CurrentPrincipal(
+                "subject-1", PrincipalType.USER, "mike", "Mike", Set.of("WORKSTATION_USER"));
+        when(principalResolver.require()).thenReturn(principal);
+        doAnswer(invocation -> {
+            Workspace workspace = invocation.getArgument(0);
+            assertThat(workspace.getType()).isEqualTo(WorkspaceType.SHARED);
+            workspace.setId(WORKSPACE_ID);
+            return 1;
+        }).when(workspaceMapper).insertSharedWorkspace(any(Workspace.class));
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.WORKSPACE_READ))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+
+        workspaceService.createShared(new WorkspaceRequest("Team"));
+
+        verify(workspaceMapper).insertMember(any(WorkspaceMember.class));
+        verify(auditService).success(WORKSPACE_ID, "WORKSPACE_CREATE", "WORKSPACE", WORKSPACE_ID);
+    }
+
+    @Test
+    void addingUnknownMemberDoesNotCreatePrincipal() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+
+        assertThatThrownBy(() -> workspaceService.addMember(
+                WORKSPACE_ID, new WorkspaceMemberRequest("unknown", WorkspaceRole.EDITOR)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("主体不存在");
+    }
+
+    @Test
+    void addingKnownMemberUsesServerPrincipal() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+        SecurityPrincipal principal = new SecurityPrincipal();
+        principal.setSubjectId("subject-2");
+        principal.setPrincipalType(PrincipalType.USER);
+        when(workspaceMapper.findPrincipal("subject-2")).thenReturn(principal);
+        when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
+                .thenReturn(null, member("subject-2", WorkspaceRole.EDITOR));
+
+        workspaceService.addMember(WORKSPACE_ID, new WorkspaceMemberRequest("subject-2", WorkspaceRole.EDITOR));
+
+        verify(workspaceMapper).insertMember(any(WorkspaceMember.class));
     }
 
     @Test

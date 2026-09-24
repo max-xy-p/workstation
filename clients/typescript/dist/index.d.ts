@@ -8,12 +8,14 @@ export type WorkspaceResponse = Schemas['WorkspaceResponse'];
 export type WorkspaceMemberRequest = Schemas['WorkspaceMemberRequest'];
 export type WorkspaceMemberRoleRequest = Schemas['WorkspaceMemberRoleRequest'];
 export type WorkspaceMemberResponse = Schemas['WorkspaceMemberResponse'];
+export type WorkspaceMemberCandidate = Schemas['WorkspaceMemberCandidate'];
 export type WorkspacePermission = Schemas['WorkspacePermission'];
 export type WorkspaceRole = Schemas['WorkspaceRole'];
 export type AuditEventResponse = Schemas['AuditEventResponse'];
 export type AuditEventPageResponse = Schemas['AuditEventPageResponse'];
 export type DashboardResponse = Schemas['DashboardResponse'];
 export type NoteRequest = Schemas['NoteRequest'];
+export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
 export type NoteImportRequest = Schemas['NoteImportRequest'];
@@ -56,6 +58,15 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }[]>;
+        create: (payload: WorkspaceRequest) => Promise<{
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
         get: (workspaceId: ResourceId) => Promise<{
             id: number;
             name: string;
@@ -81,6 +92,11 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             displayName: string | null;
             role: components["schemas"]["WorkspaceRole"];
             joinedAt: string;
+        }[]>;
+        findMemberCandidates: (workspaceId: ResourceId, username: string) => Promise<{
+            subjectId: string;
+            username: string;
+            displayName: string | null;
         }[]>;
         addMember: (workspaceId: ResourceId, payload: WorkspaceMemberRequest) => Promise<{
             subjectId: string;
@@ -193,6 +209,8 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             status: components["schemas"]["TaskStatus"];
             priority: components["schemas"]["TaskPriority"];
             dueDate: string | null;
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
         }[]>;
@@ -205,6 +223,8 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             status: components["schemas"]["TaskStatus"];
             priority: components["schemas"]["TaskPriority"];
             dueDate: string | null;
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
         }>;
@@ -217,6 +237,8 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             status: components["schemas"]["TaskStatus"];
             priority: components["schemas"]["TaskPriority"];
             dueDate: string | null;
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
         }>;
@@ -229,6 +251,8 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             status: components["schemas"]["TaskStatus"];
             priority: components["schemas"]["TaskPriority"];
             dueDate: string | null;
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
         }>;
@@ -241,6 +265,8 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             status: components["schemas"]["TaskStatus"];
             priority: components["schemas"]["TaskPriority"];
             dueDate: string | null;
+            evidenceNoteId: number | null;
+            evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
         }>;
@@ -262,6 +288,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             projectId: number | null;
             projectName: string | null;
             version: number;
+            excerpt: string | null;
             tags: components["schemas"]["TagResponse"][];
             createdAt: string;
             updatedAt: string;
@@ -292,7 +319,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }>;
-        update: (workspaceId: ResourceId, id: ResourceId, payload: NoteRequest) => Promise<{
+        update: (workspaceId: ResourceId, id: ResourceId, payload: NoteUpdateRequest) => Promise<{
             id: number;
             title: string;
             content: string;

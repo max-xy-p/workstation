@@ -1,6 +1,6 @@
 <template>
   <div class="tiptap-editor-shell">
-    <div v-if="editor" class="tiptap-format-toolbar" role="toolbar" aria-label="正文格式">
+    <div v-if="editor && editable" class="tiptap-format-toolbar" role="toolbar" aria-label="正文格式">
       <select
         class="tiptap-block-select"
         :value="activeBlock"
@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, triggerRef, watch } from 'vue';
 import { Editor, EditorContent } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
@@ -108,6 +108,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Code2, Italic, List, ListOrdered, Quote, Redo2, Undo2 } from '@lucide/vue';
 
 const props = defineProps({
+  editable: { type: Boolean, default: true },
   modelValue: {
     type: String,
     default: ''
@@ -116,10 +117,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'ready', 'error']);
 const editor = shallowRef(null);
-const toolbarVersion = ref(0);
 
 const activeBlock = computed(() => {
-  toolbarVersion.value;
   if (!editor.value) return 'paragraph';
   if (editor.value.isActive('heading', { level: 1 })) return 'heading-1';
   if (editor.value.isActive('heading', { level: 2 })) return 'heading-2';
@@ -127,21 +126,18 @@ const activeBlock = computed(() => {
   return 'paragraph';
 });
 const canUndo = computed(() => {
-  toolbarVersion.value;
   return editor.value?.can().undo() ?? false;
 });
 const canRedo = computed(() => {
-  toolbarVersion.value;
   return editor.value?.can().redo() ?? false;
 });
 
 function isActive(name) {
-  toolbarVersion.value;
   return editor.value?.isActive(name) ?? false;
 }
 
 function refreshToolbar() {
-  toolbarVersion.value += 1;
+  triggerRef(editor);
 }
 
 function setBlockType(event) {
@@ -158,6 +154,7 @@ function setBlockType(event) {
 onMounted(() => {
   try {
     editor.value = new Editor({
+      editable: props.editable,
       extensions: [
         StarterKit.configure({
           heading: { levels: [1, 2, 3] }
@@ -199,6 +196,8 @@ watch(() => props.modelValue, (value) => {
     emitUpdate: false
   });
 });
+
+watch(() => props.editable, (value) => editor.value?.setEditable(value));
 
 onBeforeUnmount(() => {
   editor.value?.destroy();

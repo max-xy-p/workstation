@@ -14,6 +14,7 @@ export type {
   NoteListParams,
   NotePageResponse,
   NoteRequest,
+  NoteUpdateRequest,
   NoteSummaryResponse,
   ProjectDetailResponse,
   ProjectListParams,
@@ -29,6 +30,7 @@ export type {
   TaskResponse,
   TaskStatus,
   WorkspacePermission,
+  WorkspaceMemberCandidate,
   WorkspaceRequest,
   WorkspaceResponse,
   WorkspaceRole

@@ -50,10 +50,10 @@ Gateway 中的认证状态用于浏览器会话和系统级准入，Backend 中�
 
 ## 业务模块
 
-- Workspaces：个人工作空间幂等初始化、成员管理、角色权限和审计查询。
-- Notes：Markdown 笔记 CRUD、多级文件夹、搜索、标签/项目筛选和文件导入。
+- Workspaces：个人工作空间幂等初始化、共享空间创建、成员管理、角色权限和审计查询。
+- Notes：Markdown 笔记 CRUD、版本条件更新、多级文件夹、搜索、标签/项目筛选和文件导入。
 - Projects：项目资料、状态以及关联任务和笔记。
-- Tasks：任务 CRUD、优先级、截止日期和看板状态。
+- Tasks：任务 CRUD、依据笔记、优先级、截止日期和看板状态。
 - Dashboard：活跃项目、任务数量和最近记录。
 - Frontend shell：概览、项目、任务和标签使用全局侧栏；笔记使用独立工作区外壳。
 
@@ -74,7 +74,7 @@ NotesView / NoteEditorView
   -> notes / note_folders / note_tag / tags（workspace_id）
 ```
 
-笔记正文以 Markdown 保存在 MySQL。浏览器 IndexedDB 的 `workstation-cache/note-drafts` 仅保存尚未获得服务端确认的草稿，草稿键包含用户主体、Workspace 和笔记标识。更新成功后 `notes.version` 递增，前端确认响应版本后才清理草稿。
+笔记正文以 Markdown 保存在 MySQL。浏览器 IndexedDB 的 `workstation-cache/note-drafts` 仅保存尚未获得服务端确认的草稿，草稿键包含用户主体、Workspace、笔记标识和编辑会话。更新请求携带读取时的版本，Backend 条件更新成功后递增 `notes.version`；不匹配时返回 `409`，Frontend 保留草稿并展示服务端版本，只有确认响应版本后才清理已确认的草稿。
 
 ## 关键组件
 

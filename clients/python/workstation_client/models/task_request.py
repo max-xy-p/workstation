@@ -23,6 +23,7 @@ class TaskRequest:
         priority (TaskPriority):
         description (None | str | Unset):
         due_date (datetime.date | None | Unset):
+        evidence_note_id (int | None | Unset):
     """
 
     title: str
@@ -31,6 +32,7 @@ class TaskRequest:
     priority: TaskPriority
     description: None | str | Unset = UNSET
     due_date: datetime.date | None | Unset = UNSET
+    evidence_note_id: int | None | Unset = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         title = self.title
@@ -55,6 +57,12 @@ class TaskRequest:
         else:
             due_date = self.due_date
 
+        evidence_note_id: int | None | Unset
+        if isinstance(self.evidence_note_id, Unset):
+            evidence_note_id = UNSET
+        else:
+            evidence_note_id = self.evidence_note_id
+
         field_dict: dict[str, Any] = {}
 
         field_dict.update(
@@ -69,6 +77,8 @@ class TaskRequest:
             field_dict["description"] = description
         if due_date is not UNSET:
             field_dict["dueDate"] = due_date
+        if evidence_note_id is not UNSET:
+            field_dict["evidenceNoteId"] = evidence_note_id
 
         return field_dict
 
@@ -109,6 +119,15 @@ class TaskRequest:
 
         due_date = _parse_due_date(d.pop("dueDate", UNSET))
 
+        def _parse_evidence_note_id(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        evidence_note_id = _parse_evidence_note_id(d.pop("evidenceNoteId", UNSET))
+
         task_request = cls(
             title=title,
             project_id=project_id,
@@ -116,6 +135,7 @@ class TaskRequest:
             priority=priority,
             description=description,
             due_date=due_date,
+            evidence_note_id=evidence_note_id,
         )
 
         return task_request

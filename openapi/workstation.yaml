@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 2.0.0
+  version: 3.0.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -35,6 +35,24 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [workspaces]
+      operationId: createWorkspace
+      summary: 创建共享工作空间
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceRequest" }
+      responses:
+        "201":
+          description: 创建者为 Owner 的共享工作空间
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
@@ -92,6 +110,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
     post:
       tags: [workspace-members]
       operationId: addWorkspaceMember
@@ -107,6 +126,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WorkspaceMemberResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/member-candidates:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [workspace-members]
+      operationId: findWorkspaceMemberCandidate
+      summary: 按精确用户名查询已登录过的用户
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 255 }
+      responses:
+        "200":
+          description: 匹配的用户主体；不存在时返回空列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceMemberCandidate" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -280,7 +324,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/NoteRequest"
+              $ref: "#/components/schemas/NoteUpdateRequest"
       responses:
         "200":
           description: 更新后的笔记详情；version 已递增
@@ -292,6 +336,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [notes]
       operationId: deleteNote
@@ -796,6 +841,11 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ApiError" }
+    Conflict:
+      description: 笔记版本冲突，调用方应重新读取并处理本地修改
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
 
   schemas:
     ApiError:
@@ -864,13 +914,18 @@ components:
     WorkspaceMemberRequest:
       type: object
       additionalProperties: false
-      required: [subjectId, principalType, role]
+      required: [subjectId, role]
       properties:
         subjectId: { type: string, minLength: 1, maxLength: 255 }
-        principalType: { $ref: "#/components/schemas/PrincipalType" }
-        username: { type: [string, "null"], maxLength: 255 }
-        displayName: { type: [string, "null"], maxLength: 255 }
         role: { $ref: "#/components/schemas/WorkspaceRole" }
+    WorkspaceMemberCandidate:
+      type: object
+      additionalProperties: false
+      required: [subjectId, username, displayName]
+      properties:
+        subjectId: { type: string }
+        username: { type: string }
+        displayName: { type: [string, "null"] }
     WorkspaceMemberRoleRequest:
       type: object
       additionalProperties: false
@@ -974,11 +1029,26 @@ components:
           items: { type: integer, format: int64 }
           uniqueItems: true
           default: []
+    NoteUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [title, content, expectedVersion]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, minLength: 1 }
+        folderId: { type: [integer, "null"], format: int64 }
+        projectId: { type: [integer, "null"], format: int64 }
+        tagIds:
+          type: array
+          items: { type: integer, format: int64 }
+          uniqueItems: true
+          default: []
+        expectedVersion: { type: integer, format: int64, minimum: 1 }
 
     NoteSummaryResponse:
       type: object
       additionalProperties: false
-      required: [id, title, folderId, folderName, projectId, projectName, version, tags, createdAt, updatedAt]
+      required: [id, title, folderId, folderName, projectId, projectName, version, tags, excerpt, createdAt, updatedAt]
       properties:
         id: { type: integer, format: int64 }
         title: { type: string }
@@ -987,6 +1057,9 @@ components:
         projectId: { type: [integer, "null"], format: int64 }
         projectName: { type: [string, "null"] }
         version: { type: integer, format: int64, minimum: 1 }
+        excerpt:
+          type: [string, "null"]
+          description: 关键词搜索时的正文片段，最长 200 字符；其他摘要查询为空
         tags:
           type: array
           items: { $ref: "#/components/schemas/TagResponse" }
@@ -1137,10 +1210,11 @@ components:
         status: { $ref: "#/components/schemas/TaskStatus" }
         priority: { $ref: "#/components/schemas/TaskPriority" }
         dueDate: { type: [string, "null"], format: date }
+        evidenceNoteId: { type: [integer, "null"], format: int64 }
     TaskResponse:
       type: object
       additionalProperties: false
-      required: [id, title, description, projectId, projectName, status, priority, dueDate, createdAt, updatedAt]
+      required: [id, title, description, projectId, projectName, status, priority, dueDate, evidenceNoteId, evidenceNoteTitle, createdAt, updatedAt]
       properties:
         id: { type: integer, format: int64 }
         title: { type: string }
@@ -1150,6 +1224,8 @@ components:
         status: { $ref: "#/components/schemas/TaskStatus" }
         priority: { $ref: "#/components/schemas/TaskPriority" }
         dueDate: { type: [string, "null"], format: date }
+        evidenceNoteId: { type: [integer, "null"], format: int64 }
+        evidenceNoteTitle: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     TaskStatusRequest:

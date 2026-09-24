@@ -90,18 +90,16 @@ async function loadCsrfToken(): Promise<void> {
   if (csrfToken) {
     return;
   }
-  if (!csrfRequest) {
-    csrfRequest = fetch(buildUrl('/auth/csrf'), { credentials: 'include' })
-      .then(parseResponse<CsrfResponse>)
-      .then((data) => {
-        csrfHeaderName = data.headerName;
-        csrfParameterName = data.parameterName;
-        csrfToken = data.token;
-      })
-      .finally(() => {
-        csrfRequest = null;
-      });
-  }
+  csrfRequest ??= fetch(buildUrl('/auth/csrf'), { credentials: 'include' })
+    .then(parseResponse<CsrfResponse>)
+    .then((data) => {
+      csrfHeaderName = data.headerName;
+      csrfParameterName = data.parameterName;
+      csrfToken = data.token;
+    })
+    .finally(() => {
+      csrfRequest = null;
+    });
   await csrfRequest;
 }
 

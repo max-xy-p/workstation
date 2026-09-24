@@ -14,9 +14,11 @@ export function createWorkstationApi(transport) {
     return {
         workspaceApi: {
             list: () => transport.get('/workspaces'),
+            create: (payload) => transport.post('/workspaces', payload),
             get: (workspaceId) => transport.get(workspacePath(workspaceId)),
             update: (workspaceId, payload) => transport.put(workspacePath(workspaceId), payload),
             listMembers: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/members`),
+            findMemberCandidates: (workspaceId, username) => transport.get(`${workspacePath(workspaceId)}/member-candidates`, { username }),
             addMember: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/members`, payload),
             updateMember: (workspaceId, subjectId, role) => transport.put(`${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`, { role }),
             removeMember: (workspaceId, subjectId) => transport.delete(`${workspacePath(workspaceId)}/members/${encodeURIComponent(subjectId)}`)

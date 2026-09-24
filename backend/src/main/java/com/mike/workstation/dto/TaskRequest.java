@@ -13,6 +13,7 @@ public record TaskRequest(
         Long projectId,
         TaskStatus status,
         TaskPriority priority,
-        LocalDate dueDate
+        LocalDate dueDate,
+        Long evidenceNoteId
 ) {
 }

@@ -23,7 +23,10 @@ public interface NoteMapper {
     @Select("""
             <script>
             SELECT n.id, n.workspace_id, n.title, n.folder_id, f.name AS folder_name, n.version,
-                   n.project_id, p.name AS project_name, n.created_at, n.updated_at
+                   n.project_id, p.name AS project_name, n.created_at, n.updated_at,
+                   CASE WHEN #{keyword} IS NULL OR #{keyword} = '' THEN NULL
+                        ELSE SUBSTRING(n.content, GREATEST(1, LOCATE(#{keyword}, n.content) - 60), 200)
+                   END AS excerpt
             FROM notes n
             LEFT JOIN note_folders f ON f.workspace_id = n.workspace_id AND f.id = n.folder_id
             LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
@@ -116,6 +119,13 @@ public interface NoteMapper {
             """)
     Note findDetailById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
+    /** 关联和删除前锁定当前笔记，避免同时变更项目造成失效关联。 */
+    @Select("""
+            SELECT id, workspace_id, project_id, version FROM notes
+            WHERE workspace_id = #{workspaceId} AND id = #{id} FOR UPDATE
+            """)
+    Note lockById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
     /**
      * 插入笔记，并回填自增主键到 note.id。
      */
@@ -137,7 +147,7 @@ public interface NoteMapper {
                 project_id = #{projectId},
                 version = version + 1,
                 updated_at = #{updatedAt}
-            WHERE workspace_id = #{workspaceId} AND id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND version = #{version}
             """)
     int update(Note note);
 

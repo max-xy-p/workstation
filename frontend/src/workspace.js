@@ -36,6 +36,29 @@ async function ensureWorkspace(preferredId = null) {
   return state.current;
 }
 
+async function refreshWorkspaces() {
+  const items = await workspaceApi.list();
+  state.items = items;
+  state.initialized = true;
+  state.current = items.find((item) => item.id === state.current?.id) || items[0] || null;
+  return items;
+}
+
+async function createWorkspace(name) {
+  const created = await workspaceApi.create({ name });
+  await refreshWorkspaces();
+  return created;
+}
+
+async function activateWorkspace(workspaceId) {
+  const selected = await workspaceApi.get(Number(workspaceId));
+  const index = state.items.findIndex((item) => item.id === selected.id);
+  if (index < 0) state.items.push(selected);
+  else state.items[index] = selected;
+  state.current = selected;
+  return selected;
+}
+
 function selectWorkspace(workspaceId) {
   const numericId = Number(workspaceId);
   const selected = state.items.find((item) => item.id === numericId) || null;
@@ -61,6 +84,9 @@ export const workspace = {
   state: readonly(state),
   currentId,
   ensureWorkspace,
+  refreshWorkspaces,
+  createWorkspace,
+  activateWorkspace,
   selectWorkspace,
   hasPermission,
   clear

@@ -7,9 +7,12 @@ import static org.mockito.Mockito.when;
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.domain.Task;
+import com.mike.workstation.domain.Note;
+import com.mike.workstation.domain.Project;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.ProjectMapper;
+import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +29,8 @@ class TaskServiceTests {
     @Mock
     private ProjectMapper projectMapper;
     @Mock
+    private NoteMapper noteMapper;
+    @Mock
     private WorkspaceAuthorizationService authorization;
     @Mock
     private AuditService auditService;
@@ -35,12 +40,29 @@ class TaskServiceTests {
     @Test
     void createRejectsTitleLongerThanDatabaseColumn() {
         TaskRequest request = new TaskRequest(
-                "x".repeat(201), null, 1L, TaskStatus.TODO, TaskPriority.MEDIUM, null
+                "x".repeat(201), null, 1L, TaskStatus.TODO, TaskPriority.MEDIUM, null, null
         );
 
         assertThatThrownBy(() -> taskService.create(WORKSPACE_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("200");
+    }
+
+    @Test
+    void evidenceNoteMustBelongToTaskProject() {
+        Project project = new Project();
+        project.setId(1L);
+        Note note = new Note();
+        note.setId(7L);
+        note.setProjectId(2L);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(project);
+        when(noteMapper.lockById(WORKSPACE_ID, 7L)).thenReturn(note);
+
+        var request = new TaskRequest(
+                "Task", null, 1L, TaskStatus.TODO, TaskPriority.MEDIUM, null, 7L);
+        assertThatThrownBy(() -> taskService.create(WORKSPACE_ID, request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("依据笔记");
     }
 
     @Test
