@@ -165,6 +165,50 @@ class WorkspaceServiceTests {
         verify(auditService).success(WORKSPACE_ID, "WORKSPACE_UPDATE", "WORKSPACE", WORKSPACE_ID);
     }
 
+    @Test
+    void ownerCanPromoteEditorAndReceivesUpdatedMember() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+        when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
+                .thenReturn(member("subject-2", WorkspaceRole.EDITOR),
+                        member("subject-2", WorkspaceRole.ADMIN));
+
+        var updated = workspaceService.updateMemberRole(
+                WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
+
+        assertThat(updated.role()).isEqualTo(WorkspaceRole.ADMIN);
+        verify(workspaceMapper).updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
+        verify(auditService).success(WORKSPACE_ID, "MEMBER_ROLE_UPDATE", "WORKSPACE_MEMBER", null);
+    }
+
+    @Test
+    void removingEditorDeletesOnlyMembership() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.ADMIN));
+        when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
+                .thenReturn(member("subject-2", WorkspaceRole.EDITOR));
+
+        workspaceService.removeMember(WORKSPACE_ID, "subject-2");
+
+        verify(workspaceMapper).deleteMember(WORKSPACE_ID, "subject-2");
+        verify(auditService).success(WORKSPACE_ID, "MEMBER_REMOVE", "WORKSPACE_MEMBER", null);
+    }
+
+    @Test
+    void memberCandidateLookupUsesExactNormalizedUsername() {
+        SecurityPrincipal candidate = new SecurityPrincipal();
+        candidate.setSubjectId("subject-2");
+        candidate.setUsername("alex");
+        candidate.setDisplayName("Alex");
+        when(workspaceMapper.findUsersByUsername("alex")).thenReturn(List.of(candidate));
+
+        var results = workspaceService.findMemberCandidates(WORKSPACE_ID, " alex ");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).subjectId()).isEqualTo("subject-2");
+        verify(workspaceMapper).findUsersByUsername("alex");
+    }
+
     private Workspace workspace(WorkspaceRole role) {
         Workspace workspace = new Workspace();
         workspace.setId(WORKSPACE_ID);
