@@ -20,6 +20,16 @@ mvn.cmd verify
 mvn.cmd package
 ```
 
+## Backend 与 Gateway 综合覆盖率
+
+修改 Backend 或 Gateway 的代码、测试或构建配置后，在最后一次相关修改之后先在两个模块分别执行 `mvn.cmd clean verify`，再从仓库根目录运行：
+
+```powershell
+python scripts/check_java_coverage.py
+```
+
+脚本读取两个模块的 JaCoCo XML 报告；综合行与分支覆盖率低于 80% 或报告缺失时返回非零状态。不得用之前任务留下的报告代替本次构建。单独运行 `mvn.cmd test` 不会生成供检查使用的 XML 报告。
+
 ## TypeScript SDK
 
 ```powershell

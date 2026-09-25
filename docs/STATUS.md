@@ -72,6 +72,8 @@
 
 ## 验证与说明
 
+- 2026-09-26 将 Backend/Gateway 的 80% 覆盖率检查明确为 Agent 交付前的必做项：最后一次相关修改后重新生成两模块报告、执行检查并在最终回复中报告结果。此项仅修改 Agent 指南，未运行新的 Maven 构建；CI 检查仍保留作为提交后的校验。
+- 2026-09-25 在代码验证流程中加入 Backend 与 Gateway 合并覆盖率的 80% 检查，并在 CI 的 SonarQube 扫描前执行。脚本读取两模块 JaCoCo XML 的行与分支计数，报告缺失或低于阈值时失败；本地 3 项脚本测试通过，现有报告的合并结果为 80.55%。CI 尚未执行本次变更。
 - 2026-09-25 将 SonarQube 覆盖率统计限定为 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析；补充 Workspace 成员角色更新、移除与用户名查找测试。Backend `mvn.cmd clean verify` 通过 84 项测试，JaCoCo 行/分支覆盖率为 82.76%/67.44%；Gateway 沿用同日已通过的 16 项测试及干净构建报告，行/分支覆盖率为 88.24%/66.67%。按两个模块的 JaCoCo 行与分支计数估算，综合覆盖率为 80.55%。云端 SonarQube 尚未重新分析本次修改，当前云端指标仍是旧结果；Quality Gate 的新代码覆盖率需在下次 CI 扫描后确认。
 - 2026-09-25 继续补充 Gateway 安全过滤链、Backend 文件夹与标签规则、审计 Outbox 领取与消息发布确认、首页聚合和 Workspace Owner 保护测试。两个模块 `mvn.cmd clean verify` 通过：Backend 81 项，JaCoCo 行/分支覆盖率 81.53%/65.89%；Gateway 16 项，行/分支覆盖率 88.24%/66.67%。两个 Java 模块均在干净构建中达到 80% 行覆盖率；分支覆盖率未达到 80%。本次本地修改尚未进入新的 SonarQube 云端分析。
 - 2026-09-25 增加文件导入、JWT 主体解析、项目和任务关联规则以及 Gateway 认证边界测试。Backend `mvn.cmd verify` 通过 63 项测试，JaCoCo 行/分支覆盖率由 56.6%/39.5% 升至 70.1%/58.5%；Gateway `mvn.cmd verify` 通过 13 项测试，行/分支覆盖率由 60.9%/57.4% 升至 62.0%/66.7%。SonarQube MCP 可读取上次云端扫描的问题列表，本次新增测试尚未进入云端分析。

@@ -230,10 +230,15 @@ jobs:
             frontend/package-lock.json
             clients/typescript/package-lock.json
 
-      - name: Verify Backend and Gateway for Java analysis and coverage
+      - name: Run Java tests and generate JaCoCo reports
         run: |
           mvn --batch-mode --no-transfer-progress -f backend/pom.xml verify
           mvn --batch-mode --no-transfer-progress -f gateway/pom.xml verify
+
+      - name: Enforce 80% combined Backend and Gateway coverage
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_java_coverage.py
 
       - name: Install frontend and TypeScript SDK dependencies
         run: |
