@@ -1,7 +1,10 @@
 package com.mike.workstation.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.NoteFolder;
@@ -58,6 +61,61 @@ class NoteFolderServiceTests {
         folderService.delete(WORKSPACE_ID, 1L);
 
         verify(folderMapper).delete(WORKSPACE_ID, 1L);
+    }
+
+    @Test
+    void createUnderExistingParentTrimsNameAndAudits() {
+        when(folderMapper.findById(WORKSPACE_ID, 2L)).thenReturn(folder(2L, null));
+        org.mockito.Mockito.doAnswer(invocation -> {
+            NoteFolder inserted = invocation.getArgument(0);
+            inserted.setId(3L);
+            return 1;
+        }).when(folderMapper).insert(any(NoteFolder.class));
+        when(folderMapper.findById(WORKSPACE_ID, 3L)).thenReturn(folder(3L, 2L));
+
+        var created = folderService.create(WORKSPACE_ID, new NoteFolderRequest("  新目录  ", 2L));
+
+        assertThat(created.id()).isEqualTo(3L);
+        var captor = org.mockito.ArgumentCaptor.forClass(NoteFolder.class);
+        verify(folderMapper).insert(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("新目录");
+        assertThat(captor.getValue().getParentId()).isEqualTo(2L);
+        verify(auditService).success(WORKSPACE_ID, "FOLDER_CREATE", "NOTE_FOLDER", 3L);
+    }
+
+    @Test
+    void updateAllowsMovingFolderUnderAnotherBranch() {
+        when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
+        when(folderMapper.findById(WORKSPACE_ID, 2L)).thenReturn(folder(2L, null));
+
+        folderService.update(WORKSPACE_ID, 1L, new NoteFolderRequest("  调整后  ", 2L));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(NoteFolder.class);
+        verify(folderMapper).update(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("调整后");
+        assertThat(captor.getValue().getParentId()).isEqualTo(2L);
+        verify(auditService).success(WORKSPACE_ID, "FOLDER_UPDATE", "NOTE_FOLDER", 1L);
+    }
+
+    @Test
+    void duplicateSiblingNameIsRejectedBeforeInsert() {
+        when(folderMapper.countSiblingName(WORKSPACE_ID, "重复", null, null)).thenReturn(1L);
+
+        assertThatThrownBy(() -> folderService.create(WORKSPACE_ID, new NoteFolderRequest(" 重复 ", null)))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("同名");
+        verify(folderMapper, never()).insert(any(NoteFolder.class));
+    }
+
+    @Test
+    void deleteRejectsFolderWithChildren() {
+        when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
+        when(folderMapper.countChildren(WORKSPACE_ID, 1L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> folderService.delete(WORKSPACE_ID, 1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("子文件夹");
+        verify(folderMapper, never()).delete(WORKSPACE_ID, 1L);
     }
 
     private NoteFolder folder(Long id, Long parentId) {

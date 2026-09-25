@@ -5,16 +5,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
+import com.mike.workstation.domain.Note;
 import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.NotFoundException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -83,6 +87,61 @@ class ProjectServiceTests {
         assertThat(result.items()).hasSize(1);
         assertThat(result.total()).isEqualTo(41L);
         assertThat(result.hasMore()).isFalse();
+    }
+
+    @Test
+    void detailLoadsTasksAndNotesOnlyAfterProjectExists() {
+        Project project = project();
+        Note note = new Note();
+        note.setId(3L);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(project);
+        when(noteMapper.listSummariesByProjectId(WORKSPACE_ID, 1L)).thenReturn(List.of(note));
+        when(taskMapper.listByProjectId(WORKSPACE_ID, 1L)).thenReturn(List.of());
+
+        var detail = projectService.detail(WORKSPACE_ID, 1L);
+
+        assertThat(detail.notes()).hasSize(1);
+        verify(noteTagLoader).attachTags(WORKSPACE_ID, List.of(note));
+        verify(taskMapper).listByProjectId(WORKSPACE_ID, 1L);
+    }
+
+    @Test
+    void missingProjectDoesNotLoadAssociatedData() {
+        assertThatThrownBy(() -> projectService.detail(WORKSPACE_ID, 99L))
+                .isInstanceOf(NotFoundException.class);
+        verify(noteMapper, never()).listSummariesByProjectId(WORKSPACE_ID, 99L);
+        verify(taskMapper, never()).listByProjectId(WORKSPACE_ID, 99L);
+    }
+
+    @Test
+    void createTrimsNameAndAuditsPersistedProject() {
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Project inserted = invocation.getArgument(0);
+            inserted.setId(7L);
+            return 1;
+        }).when(projectMapper).insert(any(Project.class));
+        Project persisted = project();
+        persisted.setId(7L);
+        persisted.setName("Workstation");
+        when(projectMapper.findById(WORKSPACE_ID, 7L)).thenReturn(persisted);
+
+        var result = projectService.create(WORKSPACE_ID,
+                new ProjectRequest("  Workstation  ", "描述", ProjectStatus.ACTIVE, null, null, null));
+
+        assertThat(result.id()).isEqualTo(7L);
+        var captor = org.mockito.ArgumentCaptor.forClass(Project.class);
+        verify(projectMapper).insert(captor.capture());
+        assertThat(captor.getValue().getName()).isEqualTo("Workstation");
+        assertThat(captor.getValue().getWorkspaceId()).isEqualTo(WORKSPACE_ID);
+        verify(auditService).success(WORKSPACE_ID, "PROJECT_CREATE", "PROJECT", 7L);
+    }
+
+    @Test
+    void statusChangeRequiresExistingProject() {
+        assertThatThrownBy(() -> projectService.updateStatus(WORKSPACE_ID, 99L, ProjectStatus.ACTIVE))
+                .isInstanceOf(NotFoundException.class);
+        verify(projectMapper, never()).updateStatus(eq(WORKSPACE_ID), eq(99L),
+                eq(ProjectStatus.ACTIVE), any(LocalDateTime.class));
     }
 
     private Project project() {

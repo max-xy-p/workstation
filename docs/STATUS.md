@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-09-22。
+> 核对日期：2026-09-25。
 
 ## 当前状态
 
@@ -72,6 +72,9 @@
 
 ## 验证与说明
 
+- 2026-09-25 继续补充 Gateway 安全过滤链、Backend 文件夹与标签规则、审计 Outbox 领取与消息发布确认、首页聚合和 Workspace Owner 保护测试。两个模块 `mvn.cmd clean verify` 通过：Backend 81 项，JaCoCo 行/分支覆盖率 81.53%/65.89%；Gateway 16 项，行/分支覆盖率 88.24%/66.67%。两个 Java 模块均在干净构建中达到 80% 行覆盖率；分支覆盖率未达到 80%。本次本地修改尚未进入新的 SonarQube 云端分析。
+- 2026-09-25 增加文件导入、JWT 主体解析、项目和任务关联规则以及 Gateway 认证边界测试。Backend `mvn.cmd verify` 通过 63 项测试，JaCoCo 行/分支覆盖率由 56.6%/39.5% 升至 70.1%/58.5%；Gateway `mvn.cmd verify` 通过 13 项测试，行/分支覆盖率由 60.9%/57.4% 升至 62.0%/66.7%。SonarQube MCP 可读取上次云端扫描的问题列表，本次新增测试尚未进入云端分析。
+- 2026-09-24 为 Backend 和 Gateway 接入 JaCoCo，`mvn.cmd verify` 分别通过 46 项与 10 项测试，并生成 HTML/XML 报告；本次本机报告的行覆盖率分别为 56.6% 和 60.9%，分支覆盖率分别为 39.5% 和 57.4%。CI 已配置在 SonarQube 扫描作业中执行两个模块的验证并读取 XML 报告；云端扫描尚未运行，覆盖率导入结果待 CI 验证。
 - 2026-09-22 协作与项目上下文实现：共享空间和成员界面、笔记版本冲突及本地草稿恢复、任务依据笔记、统一搜索；OpenAPI 和 SDK 升为 `3.0.0`。Backend `mvn.cmd verify`、TypeScript SDK 类型检查/构建/2 项测试、Frontend 类型检查/构建、Python 认证层 4 项测试及 SDK 版本检查通过。SonarQube CLI 仅读取到上次云端扫描的问题列表，本次未提交代码尚无分析结果。新增任务关联迁移脚本尚未在真实 MySQL 上执行；本机 Docker daemon 不可用，浏览器双用户与双标签页烟测未执行。
 - 2026-09-22 为 CI 增加仓库级 SonarQube 扫描配置，覆盖 Backend、Gateway、Frontend 和其他源码；Java 分析依赖同一作业编译出的字节码，扫描等待 Quality Gate。CI YAML 解析、两个 Maven 模块的跳过执行但编译测试代码的构建、TypeScript SDK 和 Frontend 的 `npm ci --ignore-scripts` 均通过。配置仍需 SonarQube Cloud 项目关闭自动分析、GitHub Actions 配置 `SONAR_TOKEN`，并由首次 CI 运行验证云端文件索引和规则结果。
 - 2026-09-22 Sonar Issue 定向整改：发布 Job 的写权限收敛到 Job 级别，外部 GitHub Action 固定到已核对的提交 SHA；SDK 发布使用认证层锁文件约束 wheel 依赖，Node 安装禁用生命周期脚本；前端补充筛选控件可访问名称，并调整编辑器工具栏的响应式刷新。TypeScript SDK 构建及 2 项测试、Frontend 类型检查和构建、Python 认证层 4 项测试、SDK 版本检查及独立 wheel 安装导入均通过。Web 镜像构建因 Docker Hub 认证服务无法连接而未完成；本地 Sonar 分析返回 403，云端结果尚未包含本次未提交改动。

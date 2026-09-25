@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.PrincipalType;
@@ -132,6 +133,36 @@ class WorkspaceServiceTests {
         assertThatThrownBy(() -> workspaceService.removeMember(WORKSPACE_ID, "subject-1"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("最后一个 Owner");
+    }
+
+    @Test
+    void lastOwnerCannotBeDemoted() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+        when(workspaceMapper.findMember(WORKSPACE_ID, "subject-1"))
+                .thenReturn(member("subject-1", WorkspaceRole.OWNER));
+        when(workspaceMapper.countOwners(WORKSPACE_ID)).thenReturn(1L);
+
+        assertThatThrownBy(() -> workspaceService.updateMemberRole(
+                WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("最后一个 Owner");
+        verify(workspaceMapper, never()).updateMemberRole(WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR);
+    }
+
+    @Test
+    void workspaceRenamePersistsTrimmedNameWithinAuthorizedWorkspace() {
+        Workspace workspace = workspace(WorkspaceRole.OWNER);
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.WORKSPACE_WRITE))
+                .thenReturn(workspace);
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.WORKSPACE_READ))
+                .thenReturn(workspace);
+
+        var renamed = workspaceService.update(WORKSPACE_ID, new WorkspaceRequest("  Team Space  "));
+
+        assertThat(renamed.name()).isEqualTo("Team Space");
+        verify(workspaceMapper).updateWorkspace(workspace);
+        verify(auditService).success(WORKSPACE_ID, "WORKSPACE_UPDATE", "WORKSPACE", WORKSPACE_ID);
     }
 
     private Workspace workspace(WorkspaceRole role) {

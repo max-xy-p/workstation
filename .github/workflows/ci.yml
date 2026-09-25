@@ -230,10 +230,10 @@ jobs:
             frontend/package-lock.json
             clients/typescript/package-lock.json
 
-      - name: Compile Backend and Gateway for Java analysis
+      - name: Verify Backend and Gateway for Java analysis and coverage
         run: |
-          mvn --batch-mode --no-transfer-progress -f backend/pom.xml -DskipTests test
-          mvn --batch-mode --no-transfer-progress -f gateway/pom.xml -DskipTests test
+          mvn --batch-mode --no-transfer-progress -f backend/pom.xml verify
+          mvn --batch-mode --no-transfer-progress -f gateway/pom.xml verify
 
       - name: Install frontend and TypeScript SDK dependencies
         run: |

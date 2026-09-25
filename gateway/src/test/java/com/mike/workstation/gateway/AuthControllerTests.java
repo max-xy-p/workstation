@@ -99,6 +99,23 @@ class AuthControllerTests {
     }
 
     @Test
+    void logoutWithoutOidcPrincipalDoesNotExposeIdTokenHint() {
+        var properties = new GatewaySsoProperties(
+                "https://example.test", "https://example.test/auth",
+                "http://keycloak:8080/auth", "test-client-secret", "workstation-api");
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/auth/logout").build());
+        var filterExchange = new WebFilterExchange(exchange, ignored -> Mono.empty());
+
+        new SecurityConfig().keycloakLogoutSuccessHandler(properties)
+                .onLogoutSuccess(filterExchange, null).block();
+
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.SEE_OTHER);
+        assertThat(exchange.getResponse().getHeaders().getLocation().toString())
+                .contains("client_id=workstation-gateway")
+                .doesNotContain("id_token_hint");
+    }
+
+    @Test
     void oidcClientValidatesPublicIssuerButUsesInternalBackChannel() {
         var properties = new GatewaySsoProperties(
                 "https://workstation.example.test",

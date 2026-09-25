@@ -26,6 +26,16 @@ class BearerSecurityTests {
     }
 
     @Test
+    void malformedAuthorizationHeadersDoNotMatchBearerChain() {
+        for (String header : List.of("Bearer", "Basic value", "Bearer  ")) {
+            var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/workspaces/9/projects")
+                    .header("Authorization", header).build());
+
+            assertThat(SecurityConfig.bearerRequestMatcher().matches(exchange).block().isMatch()).isFalse();
+        }
+    }
+
+    @Test
     void jwtConverterMapsServiceRealmRole() {
         Jwt jwt = new Jwt(
                 "token-value",
@@ -44,6 +54,20 @@ class BearerSecurityTests {
         assertThat(authentication.getAuthorities())
                 .extracting(authority -> authority.getAuthority())
                 .contains("ROLE_WORKSTATION_SERVICE");
+    }
+
+    @Test
+    void jwtWithoutRealmRolesUsesSubjectAndDoesNotGrantServiceAccess() {
+        Jwt jwt = new Jwt("token-value", Instant.now(), Instant.now().plusSeconds(60),
+                Map.of("alg", "none"), Map.of("sub", "unknown-client"));
+
+        var authentication = SecurityConfig.jwtAuthenticationConverter().convert(jwt).block();
+
+        assertThat(authentication).isNotNull();
+        assertThat(authentication.getName()).isEqualTo("unknown-client");
+        assertThat(authentication.getAuthorities())
+                .extracting(authority -> authority.getAuthority())
+                .doesNotContain("ROLE_WORKSTATION_SERVICE");
     }
 
     @Test

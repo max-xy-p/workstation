@@ -89,6 +89,8 @@ mvn.cmd verify
 mvn.cmd package
 ```
 
+两个 Java 模块执行 `mvn.cmd verify` 后，分别在 `backend/target/site/jacoco/index.html` 和 `gateway/target/site/jacoco/index.html` 查看测试覆盖率。相同目录中的 `jacoco.xml` 供 CI 的 SonarQube 扫描读取。覆盖率只统计本次 Maven 测试实际执行到的代码，不代表功能已得到充分验证。
+
 ```powershell
 # TypeScript SDK
 cd clients/typescript
