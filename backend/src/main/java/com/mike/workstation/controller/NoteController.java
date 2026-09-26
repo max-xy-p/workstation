@@ -1,6 +1,7 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.dto.NoteDetailResponse;
+import com.mike.workstation.dto.DeletedNoteResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
@@ -59,6 +60,17 @@ public class NoteController {
         return noteService.list(workspaceId, keyword, folderId, tagId, projectId, page, size);
     }
 
+    /** 查询回收站中的笔记。 */
+    @GetMapping("/trash")
+    public PageResponse<DeletedNoteResponse> listDeleted(
+            @PathVariable Long workspaceId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return noteService.listDeleted(workspaceId, keyword, page, size);
+    }
+
     /**
      * 查询单篇笔记详情。
      *
@@ -110,9 +122,7 @@ public class NoteController {
     }
 
     /**
-     * 删除笔记。
-     *
-     * <p>删除笔记会先移除笔记与标签的关联，不影响项目、文件夹、标签本身。</p>
+     * 将笔记移入回收站。
      *
      * @param id 笔记 ID
      */
@@ -120,5 +130,18 @@ public class NoteController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
         noteService.delete(workspaceId, id);
+    }
+
+    /** 从回收站恢复笔记。 */
+    @PostMapping("/{id}/restore")
+    public NoteDetailResponse restore(@PathVariable Long workspaceId, @PathVariable Long id) {
+        return noteService.restore(workspaceId, id);
+    }
+
+    /** 永久删除回收站中的笔记。 */
+    @DeleteMapping("/{id}/permanent")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void permanentlyDelete(@PathVariable Long workspaceId, @PathVariable Long id) {
+        noteService.permanentlyDelete(workspaceId, id);
     }
 }

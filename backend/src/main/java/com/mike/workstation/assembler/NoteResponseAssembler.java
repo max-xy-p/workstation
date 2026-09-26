@@ -3,6 +3,7 @@ package com.mike.workstation.assembler;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import com.mike.workstation.dto.DeletedNoteResponse;
 
 public final class NoteResponseAssembler {
     private NoteResponseAssembler() {
@@ -23,6 +24,15 @@ public final class NoteResponseAssembler {
                 note.getProjectId(), note.getProjectName(), note.getVersion(),
                 TagResponseAssembler.toResponses(note.getTags()),
                 ApiTime.toOffset(note.getCreatedAt()), ApiTime.toOffset(note.getUpdatedAt())
+        );
+    }
+
+    public static DeletedNoteResponse toDeleted(Note note) {
+        return new DeletedNoteResponse(
+                note.getId(), note.getTitle(), note.getExcerpt(), note.getFolderId(), note.getFolderName(),
+                note.getProjectId(), note.getProjectName(), note.getVersion(),
+                TagResponseAssembler.toResponses(note.getTags()), ApiTime.toOffset(note.getDeletedAt()),
+                note.getDeletedBySubject(), note.getDeletedByDisplayName()
         );
     }
 }

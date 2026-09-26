@@ -175,8 +175,67 @@ export interface paths {
         /** 完整更新笔记 */
         put: operations["updateNote"];
         post?: never;
-        /** 删除笔记 */
+        /** 将笔记移入回收站 */
         delete: operations["deleteNote"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 分页查询回收站笔记 */
+        get: operations["listDeletedNotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 从回收站恢复笔记 */
+        post: operations["restoreNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 永久删除回收站中的笔记 */
+        delete: operations["permanentlyDeleteNote"];
         options?: never;
         head?: never;
         patch?: never;
@@ -577,6 +636,26 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        DeletedNoteResponse: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            /** @description Markdown 正文开头或关键词附近的片段，最长 200 字符 */
+            excerpt: string | null;
+            /** Format: int64 */
+            folderId: number | null;
+            folderName: string | null;
+            /** Format: int64 */
+            projectId: number | null;
+            projectName: string | null;
+            /** Format: int64 */
+            version: number;
+            tags: components["schemas"]["TagResponse"][];
+            /** Format: date-time */
+            deletedAt: string;
+            deletedBySubject: string;
+            deletedByDisplayName: string | null;
+        };
         NoteImportRequest: {
             /** @description Backend 主机或容器可访问且位于白名单内的路径 */
             sourcePath: string;
@@ -711,6 +790,16 @@ export interface components {
         };
         NotePageResponse: {
             items: components["schemas"]["NoteSummaryResponse"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
+        };
+        DeletedNotePageResponse: {
+            items: components["schemas"]["DeletedNoteResponse"][];
             /** Format: int32 */
             page: number;
             /** Format: int32 */
@@ -1237,7 +1326,89 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 删除成功 */
+            /** @description 已移入回收站 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listDeletedNotes: {
+        parameters: {
+            query?: {
+                /** @description 标题或正文关键字 */
+                keyword?: string;
+                /** @description 从 0 开始的页码 */
+                page?: components["parameters"]["Page"];
+                /** @description 每页数量 */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 按删除时间倒序排列的回收站笔记 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedNotePageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    restoreNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已恢复的笔记详情；version 已递增 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteDetailResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    permanentlyDeleteNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 永久删除成功 */
             204: {
                 headers: {
                     [name: string]: unknown;

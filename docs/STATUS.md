@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-09-25。
+> 核对日期：2026-09-26。
 
 ## 当前状态
 
@@ -18,9 +18,9 @@
 - [x] Keycloak 用户/管理员/机器系统角色分离，Gateway 只做系统准入，Backend 执行业务授权
 - [x] 共享 Workspace 创建、切换、成员设置与服务端已知用户名的精确查找
 - [x] Frontend Workspace 路由和上下文，以及按用户、Workspace、笔记与编辑会话隔离的 IndexedDB 草稿键
-- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `3.0.0` 协作契约
+- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `3.1.0` 笔记回收站契约
 - [x] MySQL 分库保存 Workstation、Keycloak 和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计消息
-- [x] 笔记创建、详情、更新、删除和列表
+- [x] 笔记创建、详情、更新、软删除、回收站恢复、永久删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
 - [x] 手动保存、快捷键保存、8 秒自动保存和 IndexedDB 草稿恢复
 - [x] `notes.version` 条件更新、冲突返回、服务端版本对照与草稿恢复
@@ -46,7 +46,7 @@
 
 ## 进行中
 
-- [ ] 在可运行 Docker 的环境验证双用户成员操作、双标签页笔记冲突、Gateway CSRF 与数据库迁移。
+- [ ] 在目标环境备份后执行笔记回收站等迁移，并验证双用户成员操作、双标签页笔记冲突、Gateway CSRF 与浏览器回收站流程。
 
 ## 后续计划
 
@@ -57,7 +57,7 @@
 
 - 笔记搜索使用 `%keyword%` SQL `LIKE`，没有全文索引或相关度排序；统一搜索页仅对返回的短片段高亮。
 - 自动保存仍更新完整笔记并删除后重建标签，但版本条件更新阻止旧页面覆盖新内容。
-- 笔记删除是物理删除；没有回收站、版本历史或恢复功能。
+- 回收站可以恢复误删笔记，但尚未提供正文版本历史与历史版本恢复。
 - 编辑器和后端没有图片/附件上传能力。
 - Markdown 导入读取后端机器路径，不是浏览器文件上传。
 - `schema.sql` 只适合初始化，没有 Flyway/Liquibase 等自动迁移机制。
@@ -72,6 +72,7 @@
 
 ## 验证与说明
 
+- 2026-09-26 完成笔记回收站：删除改为记录操作者与删除时间的软删除，支持分页检索、恢复和永久删除；普通笔记列表、详情、搜索、概览及项目关联均排除已删除笔记。Backend `mvn.cmd clean verify` 通过 89 项测试，Gateway `mvn.cmd clean verify` 通过 16 项测试；Backend、Gateway 和综合覆盖率分别为 80.98%、83.40% 和 81.31%，80% 检查通过。Frontend 类型检查和生产构建、TypeScript SDK 类型检查/构建/2 项测试、Python 认证层 4 项测试及 SDK `3.1.0` 版本一致性检查通过。隔离 MySQL 8.4 中分别验证全新建库和旧结构执行幂等迁移，两条路径的字段、索引与外键断言均通过。本地 Sonar 规则分析未发现问题，但当前连接不支持 Vortex 分析，云端 Quality Gate 尚待提交后的 CI 扫描；目标数据库迁移和浏览器烟测尚未执行。
 - 2026-09-26 将 Backend/Gateway 的 80% 覆盖率检查明确为 Agent 交付前的必做项：最后一次相关修改后重新生成两模块报告、执行检查并在最终回复中报告结果。此项仅修改 Agent 指南，未运行新的 Maven 构建；CI 检查仍保留作为提交后的校验。
 - 2026-09-25 在代码验证流程中加入 Backend 与 Gateway 合并覆盖率的 80% 检查，并在 CI 的 SonarQube 扫描前执行。脚本读取两模块 JaCoCo XML 的行与分支计数，报告缺失或低于阈值时失败；本地 3 项脚本测试通过，现有报告的合并结果为 80.55%。CI 尚未执行本次变更。
 - 2026-09-25 将 SonarQube 覆盖率统计限定为 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析；补充 Workspace 成员角色更新、移除与用户名查找测试。Backend `mvn.cmd clean verify` 通过 84 项测试，JaCoCo 行/分支覆盖率为 82.76%/67.44%；Gateway 沿用同日已通过的 16 项测试及干净构建报告，行/分支覆盖率为 88.24%/66.67%。按两个模块的 JaCoCo 行与分支计数估算，综合覆盖率为 80.55%。云端 SonarQube 尚未重新分析本次修改，当前云端指标仍是旧结果；Quality Gate 的新代码覆盖率需在下次 CI 扫描后确认。

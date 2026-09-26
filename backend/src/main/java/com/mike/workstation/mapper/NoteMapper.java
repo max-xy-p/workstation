@@ -32,6 +32,7 @@ public interface NoteMapper {
             LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
             <where>
                 n.workspace_id = #{workspaceId}
+                AND n.deleted_at IS NULL
                 <if test="keyword != null and keyword != ''">
                     AND (
                         n.title LIKE CONCAT('%', #{keyword}, '%')
@@ -70,6 +71,7 @@ public interface NoteMapper {
             SELECT COUNT(*) FROM notes n
             <where>
                 n.workspace_id = #{workspaceId}
+                AND n.deleted_at IS NULL
                 <if test="keyword != null and keyword != ''">
                     AND (n.title LIKE CONCAT('%', #{keyword}, '%') OR n.content LIKE CONCAT('%', #{keyword}, '%'))
                 </if>
@@ -99,6 +101,7 @@ public interface NoteMapper {
             LEFT JOIN note_folders f ON f.workspace_id = n.workspace_id AND f.id = n.folder_id
             LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
             WHERE n.workspace_id = #{workspaceId} AND n.project_id = #{projectId}
+              AND n.deleted_at IS NULL
             ORDER BY n.updated_at DESC, n.id DESC
             """)
     List<Note> listSummariesByProjectId(
@@ -115,14 +118,14 @@ public interface NoteMapper {
             FROM notes n
             LEFT JOIN note_folders f ON f.workspace_id = n.workspace_id AND f.id = n.folder_id
             LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
-            WHERE n.workspace_id = #{workspaceId} AND n.id = #{id}
+            WHERE n.workspace_id = #{workspaceId} AND n.id = #{id} AND n.deleted_at IS NULL
             """)
     Note findDetailById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
     /** 关联和删除前锁定当前笔记，避免同时变更项目造成失效关联。 */
     @Select("""
             SELECT id, workspace_id, project_id, version FROM notes
-            WHERE workspace_id = #{workspaceId} AND id = #{id} FOR UPDATE
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NULL FOR UPDATE
             """)
     Note lockById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
@@ -148,14 +151,80 @@ public interface NoteMapper {
                 version = version + 1,
                 updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND id = #{id} AND version = #{version}
+              AND deleted_at IS NULL
             """)
     int update(Note note);
 
-    /**
-     * 根据主键删除笔记。
-     */
-    @Delete("DELETE FROM notes WHERE workspace_id = #{workspaceId} AND id = #{id}")
-    int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+    @Update("""
+            UPDATE notes
+            SET deleted_at = #{deletedAt}, deleted_by_subject = #{deletedBySubject},
+                version = version + 1, updated_at = #{deletedAt}
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NULL
+            """)
+    int softDelete(Note note);
+
+    @Select("""
+            SELECT id, workspace_id, version, deleted_at, deleted_by_subject FROM notes
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NOT NULL FOR UPDATE
+            """)
+    Note lockDeletedById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    @Update("""
+            UPDATE notes
+            SET deleted_at = NULL, deleted_by_subject = NULL,
+                version = version + 1, updated_at = #{updatedAt}
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NOT NULL
+            """)
+    int restore(
+            @Param("workspaceId") Long workspaceId,
+            @Param("id") Long id,
+            @Param("updatedAt") java.time.LocalDateTime updatedAt
+    );
+
+    @Delete("DELETE FROM notes WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NOT NULL")
+    int permanentlyDelete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    /** 清理由导入流程在当前事务内创建但尚未完成的笔记。 */
+    @Delete("DELETE FROM notes WHERE workspace_id = #{workspaceId} AND id = #{id} AND deleted_at IS NULL")
+    int deleteIncompleteImport(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    @Select("""
+            <script>
+            SELECT n.id, n.workspace_id, n.title, n.folder_id, f.name AS folder_name, n.version,
+                   n.project_id, p.name AS project_name, n.deleted_at, n.deleted_by_subject,
+                   COALESCE(sp.display_name, sp.username) AS deleted_by_display_name,
+                   CASE WHEN #{keyword} IS NULL OR #{keyword} = '' THEN LEFT(n.content, 200)
+                        ELSE SUBSTRING(n.content, GREATEST(1, LOCATE(#{keyword}, n.content) - 60), 200)
+                   END AS excerpt
+            FROM notes n
+            LEFT JOIN note_folders f ON f.workspace_id = n.workspace_id AND f.id = n.folder_id
+            LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
+            LEFT JOIN security_principals sp ON sp.subject_id = n.deleted_by_subject
+            WHERE n.workspace_id = #{workspaceId} AND n.deleted_at IS NOT NULL
+            <if test="keyword != null and keyword != ''">
+                AND (n.title LIKE CONCAT('%', #{keyword}, '%') OR n.content LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            ORDER BY n.deleted_at DESC, n.id DESC
+            LIMIT #{size} OFFSET #{offset}
+            </script>
+            """)
+    List<Note> listDeletedPage(
+            @Param("workspaceId") Long workspaceId,
+            @Param("keyword") String keyword,
+            @Param("offset") long offset,
+            @Param("size") int size
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*) FROM notes n
+            WHERE n.workspace_id = #{workspaceId} AND n.deleted_at IS NOT NULL
+            <if test="keyword != null and keyword != ''">
+                AND (n.title LIKE CONCAT('%', #{keyword}, '%') OR n.content LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            </script>
+            """)
+    long countDeleted(@Param("workspaceId") Long workspaceId, @Param("keyword") String keyword);
 
     /**
      * 清空某个项目下所有笔记的项目关联。
@@ -182,7 +251,10 @@ public interface NoteMapper {
     /**
      * 按标题统计笔记数量，用于导入时跳过同标题笔记。
      */
-    @Select("SELECT COUNT(*) FROM notes WHERE workspace_id = #{workspaceId} AND title = #{title}")
+    @Select("""
+            SELECT COUNT(*) FROM notes
+            WHERE workspace_id = #{workspaceId} AND title = #{title} AND deleted_at IS NULL
+            """)
     long countByTitle(@Param("workspaceId") Long workspaceId, @Param("title") String title);
 
     /**
@@ -194,7 +266,7 @@ public interface NoteMapper {
             FROM notes n
             LEFT JOIN note_folders f ON f.workspace_id = n.workspace_id AND f.id = n.folder_id
             LEFT JOIN projects p ON p.workspace_id = n.workspace_id AND p.id = n.project_id
-            WHERE n.workspace_id = #{workspaceId}
+            WHERE n.workspace_id = #{workspaceId} AND n.deleted_at IS NULL
             ORDER BY n.updated_at DESC, n.id DESC
             LIMIT #{limit}
             """)

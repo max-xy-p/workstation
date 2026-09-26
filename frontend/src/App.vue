@@ -87,8 +87,8 @@ const route = useRoute();
 const router = useRouter();
 const loggingOut = ref(false);
 const isBarePage = computed(() => ['login', 'workspace-unavailable', 'root'].includes(route.name));
-const isEditorPage = computed(() => ['notes', 'note-new', 'note-edit'].includes(route.name));
-const isModuleWorkspace = computed(() => ['notes', 'note-new', 'note-edit', 'note-import'].includes(route.name));
+const isEditorPage = computed(() => ['notes', 'note-new', 'note-edit', 'note-trash'].includes(route.name));
+const isModuleWorkspace = computed(() => ['notes', 'note-new', 'note-edit', 'note-import', 'note-trash'].includes(route.name));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
 const workspaceRoleLabel = computed(() => ({
   OWNER: '工作空间所有者',
@@ -109,6 +109,7 @@ const pageMeta = {
   tasks: { section: '任务清单', description: '让正在推进的工作保持清晰。' },
   notes: { section: '个人知识库', description: '检索、整理并继续你的知识积累。' },
   'note-import': { section: '内容迁移', description: '将已有 Markdown 文档加入知识库。' },
+  'note-trash': { section: '笔记回收站', description: '恢复误删笔记或执行永久删除。' },
   'note-new': { section: 'Markdown 编辑器', description: '把刚刚想到的内容写下来。' },
   'note-edit': { section: 'Markdown 编辑器', description: '在一张文稿中书写和阅读。' },
   taxonomy: { section: '知识组织', description: '维护笔记的棬索标签。' },
@@ -119,7 +120,7 @@ const pageMeta = {
 const currentMeta = computed(() => pageMeta[route.name] || { section: 'Workspace', description: '' });
 
 function isNavActive(name) {
-  if (name === 'notes') return ['notes', 'note-new', 'note-edit'].includes(route.name);
+  if (name === 'notes') return ['notes', 'note-new', 'note-edit', 'note-trash'].includes(route.name);
   return route.name === name;
 }
 

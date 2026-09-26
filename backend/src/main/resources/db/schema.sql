@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS notes (
     folder_id BIGINT NULL,
     project_id BIGINT NULL,
     version BIGINT NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    deleted_by_subject VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
@@ -106,13 +108,16 @@ CREATE TABLE IF NOT EXISTS notes (
     INDEX idx_notes_workspace_id (workspace_id),
     INDEX idx_notes_workspace_folder (workspace_id, folder_id),
     INDEX idx_notes_workspace_project (workspace_id, project_id),
+    INDEX idx_notes_workspace_deleted (workspace_id, deleted_at),
     INDEX idx_notes_updated_at (updated_at),
     CONSTRAINT fk_notes_workspace
         FOREIGN KEY (workspace_id) REFERENCES workspaces (id),
     CONSTRAINT fk_notes_folder
         FOREIGN KEY (workspace_id, folder_id) REFERENCES note_folders (workspace_id, id),
     CONSTRAINT fk_notes_project
-        FOREIGN KEY (workspace_id, project_id) REFERENCES projects (workspace_id, id)
+        FOREIGN KEY (workspace_id, project_id) REFERENCES projects (workspace_id, id),
+    CONSTRAINT fk_notes_deleted_by
+        FOREIGN KEY (deleted_by_subject) REFERENCES security_principals (subject_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS tasks (

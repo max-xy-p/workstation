@@ -170,7 +170,7 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
 export const api = {
   get: <T>(path: string, params?: QueryParams, options: ApiRequestOptions = {}) =>
     request<T>(path, { ...options, method: 'GET', params }),
-  post: <T, B>(path: string, body: B, options: ApiRequestOptions = {}) =>
+  post: <T, B = undefined>(path: string, body?: B, options: ApiRequestOptions = {}) =>
     request<T>(path, { ...options, method: 'POST', body }),
   put: <T, B>(path: string, body: B, options: ApiRequestOptions = {}) =>
     request<T>(path, { ...options, method: 'PUT', body }),

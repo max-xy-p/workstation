@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 3.0.0
+  version: 3.1.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -340,10 +340,67 @@ paths:
     delete:
       tags: [notes]
       operationId: deleteNote
-      summary: 删除笔记
+      summary: 将笔记移入回收站
       responses:
         "204":
-          description: 删除成功
+          description: 已移入回收站
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/trash:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [notes]
+      operationId: listDeletedNotes
+      summary: 分页查询回收站笔记
+      parameters:
+        - name: keyword
+          in: query
+          description: 标题或正文关键字
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: 按删除时间倒序排列的回收站笔记
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletedNotePageResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/restore:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+    post:
+      tags: [notes]
+      operationId: restoreNote
+      summary: 从回收站恢复笔记
+      responses:
+        "200":
+          description: 已恢复的笔记详情；version 已递增
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteDetailResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/permanent:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+    delete:
+      tags: [notes]
+      operationId: permanentlyDeleteNote
+      summary: 永久删除回收站中的笔记
+      responses:
+        "204":
+          description: 永久删除成功
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -1085,6 +1142,28 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    DeletedNoteResponse:
+      type: object
+      additionalProperties: false
+      required: [id, title, excerpt, folderId, folderName, projectId, projectName, version, tags, deletedAt, deletedBySubject, deletedByDisplayName]
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        excerpt:
+          type: [string, "null"]
+          description: Markdown 正文开头或关键词附近的片段，最长 200 字符
+        folderId: { type: [integer, "null"], format: int64 }
+        folderName: { type: [string, "null"] }
+        projectId: { type: [integer, "null"], format: int64 }
+        projectName: { type: [string, "null"] }
+        version: { type: integer, format: int64, minimum: 1 }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/TagResponse" }
+        deletedAt: { type: string, format: date-time }
+        deletedBySubject: { type: string }
+        deletedByDisplayName: { type: [string, "null"] }
+
     NoteImportRequest:
       type: object
       additionalProperties: false
@@ -1258,6 +1337,18 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/NoteSummaryResponse" }
+        page: { type: integer, format: int32, minimum: 0 }
+        size: { type: integer, format: int32, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+        hasMore: { type: boolean }
+    DeletedNotePageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, total, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/DeletedNoteResponse" }
         page: { type: integer, format: int32, minimum: 0 }
         size: { type: integer, format: int32, minimum: 1, maximum: 100 }
         total: { type: integer, format: int64, minimum: 0 }

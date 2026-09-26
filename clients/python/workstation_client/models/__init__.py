@@ -5,6 +5,8 @@ from .audit_event_page_response import AuditEventPageResponse
 from .audit_event_response import AuditEventResponse
 from .audit_result import AuditResult
 from .dashboard_response import DashboardResponse
+from .deleted_note_page_response import DeletedNotePageResponse
+from .deleted_note_response import DeletedNoteResponse
 from .note_detail_response import NoteDetailResponse
 from .note_folder_request import NoteFolderRequest
 from .note_folder_response import NoteFolderResponse
@@ -49,6 +51,8 @@ __all__ = (
     "AuditEventResponse",
     "AuditResult",
     "DashboardResponse",
+    "DeletedNotePageResponse",
+    "DeletedNoteResponse",
     "NoteDetailResponse",
     "NoteFolderRequest",
     "NoteFolderResponse",

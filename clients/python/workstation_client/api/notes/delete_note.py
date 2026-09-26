@@ -67,7 +67,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[Any | ApiError]:
-    """删除笔记
+    """将笔记移入回收站
 
     Args:
         workspace_id (int):
@@ -99,7 +99,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
 ) -> Any | ApiError | None:
-    """删除笔记
+    """将笔记移入回收站
 
     Args:
         workspace_id (int):
@@ -126,7 +126,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[Any | ApiError]:
-    """删除笔记
+    """将笔记移入回收站
 
     Args:
         workspace_id (int):
@@ -156,7 +156,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
 ) -> Any | ApiError | None:
-    """删除笔记
+    """将笔记移入回收站
 
     Args:
         workspace_id (int):

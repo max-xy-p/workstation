@@ -141,8 +141,8 @@ class NoteImportServiceTests {
         assertThat(result.importedCount()).isEqualTo(1);
         assertThat(result.items().get(0).message()).contains("关联写入失败");
         verify(tagMapper).deleteNoteTags(WORKSPACE_ID, 11L);
-        verify(noteMapper).delete(WORKSPACE_ID, 11L);
-        verify(noteMapper, never()).delete(WORKSPACE_ID, 12L);
+        verify(noteMapper).deleteIncompleteImport(WORKSPACE_ID, 11L);
+        verify(noteMapper, never()).deleteIncompleteImport(WORKSPACE_ID, 12L);
     }
 
     @Test

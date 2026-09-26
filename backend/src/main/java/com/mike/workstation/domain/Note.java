@@ -20,6 +20,9 @@ public class Note {
     private Long projectId;
     private String projectName;
     private Long version;
+    private LocalDateTime deletedAt;
+    private String deletedBySubject;
+    private String deletedByDisplayName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<Tag> tags = new ArrayList<>();

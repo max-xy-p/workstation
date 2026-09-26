@@ -33,7 +33,7 @@
           <span>{{ characterCount }} 字</span>
           <span v-if="saveState" class="save-state" :data-sync-status="syncStatus" :title="persistenceReceipt">{{ saveState }}</span>
           <span v-if="!canWrite">只读</span>
-          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving" type="button" title="删除笔记" aria-label="删除笔记" @click="removeNote"><Trash2 /></button>
+          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
           <button v-if="canWrite" type="submit" :disabled="saving || conflictActive">保存</button>
         </div>
       </div>
@@ -428,7 +428,7 @@ async function retryWithLatestVersion() {
 }
 
 async function removeNote() {
-  if (!canWrite.value || saving.value || !window.confirm('确认删除笔记？')) return;
+  if (!canWrite.value || saving.value || !window.confirm('确认将笔记移入回收站？之后可以恢复。')) return;
   try {
     await noteApi.delete(workspaceId, noteId);
     persistedSnapshot = snapshotOf(form);

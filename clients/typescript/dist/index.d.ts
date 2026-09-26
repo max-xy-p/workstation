@@ -17,6 +17,8 @@ export type NoteRequest = Schemas['NoteRequest'];
 export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
+export type DeletedNoteResponse = Schemas['DeletedNoteResponse'];
+export type DeletedNotePageResponse = Schemas['DeletedNotePageResponse'];
 export type NoteImportRequest = Schemas['NoteImportRequest'];
 export type NoteImportResponse = Schemas['NoteImportResponse'];
 export type NoteFolderRequest = Schemas['NoteFolderRequest'];
@@ -35,13 +37,14 @@ export type TaskStatus = Schemas['TaskStatus'];
 export type TagRequest = Schemas['TagRequest'];
 export type TagResponse = Schemas['TagResponse'];
 export type NoteListParams = NonNullable<operations['listNotes']['parameters']['query']>;
+export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['parameters']['query']>;
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
 export type QueryParams = object;
 export interface WorkstationTransport {
     get<T>(path: string, params?: QueryParams): Promise<T>;
-    post<T, B>(path: string, body: B): Promise<T>;
+    post<T, B = undefined>(path: string, body?: B): Promise<T>;
     put<T, B>(path: string, body: B): Promise<T>;
     patch<T, B>(path: string, body: B): Promise<T>;
     delete<T = null>(path: string): Promise<T>;
@@ -292,6 +295,13 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             createdAt: string;
             updatedAt: string;
         }[]>;
+        listDeleted: (workspaceId: number, params?: DeletedNoteListParams) => Promise<{
+            items: components["schemas"]["DeletedNoteResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
         get: (workspaceId: number, id: number) => Promise<{
             id: number;
             title: string;
@@ -338,6 +348,20 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             items: components["schemas"]["NoteImportItemResponse"][];
         }>;
         delete: (workspaceId: number, id: number) => Promise<null>;
+        restore: (workspaceId: number, id: number) => Promise<{
+            id: number;
+            title: string;
+            content: string;
+            folderId: number | null;
+            folderName: string | null;
+            projectId: number | null;
+            projectName: string | null;
+            version: number;
+            tags: components["schemas"]["TagResponse"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
+        permanentlyDelete: (workspaceId: number, id: number) => Promise<null>;
     };
     noteFolderApi: {
         list: (workspaceId: number) => Promise<{

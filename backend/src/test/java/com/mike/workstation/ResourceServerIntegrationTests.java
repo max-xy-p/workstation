@@ -15,9 +15,11 @@ import com.mike.workstation.exception.NoteVersionConflictException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -99,5 +101,21 @@ class ResourceServerIntegrationTests {
                         .content("{\"title\":\"标题\",\"content\":\"正文\",\"tagIds\":[],\"expectedVersion\":3}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("NOTE_VERSION_CONFLICT"));
+    }
+
+    @Test
+    void trashOperationsUseDedicatedAuthenticatedEndpoints() throws Exception {
+        var authenticated = jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"));
+
+        mockMvc.perform(get("/api/workspaces/1/notes/trash").with(authenticated))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/workspaces/1/notes/2/restore").with(authenticated))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/workspaces/1/notes/2/permanent").with(authenticated))
+                .andExpect(status().isNoContent());
+
+        verify(noteService).listDeleted(1L, null, 0, 20);
+        verify(noteService).restore(1L, 2L);
+        verify(noteService).permanentlyDelete(1L, 2L);
     }
 }

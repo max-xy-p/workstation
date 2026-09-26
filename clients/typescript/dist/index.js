@@ -52,11 +52,14 @@ export function createWorkstationApi(transport) {
         noteApi: {
             list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/notes`, params),
             listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/notes`, params),
+            listDeleted: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/notes/trash`, params),
             get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/notes/${id}`),
             create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/notes`, payload),
             update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/notes/${id}`, payload),
             importMarkdown: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/notes/import`, payload),
-            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/notes/${id}`)
+            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/notes/${id}`),
+            restore: (workspaceId, id) => transport.post(`${workspacePath(workspaceId)}/notes/${id}/restore`),
+            permanentlyDelete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/notes/${id}/permanent`)
         },
         noteFolderApi: {
             list: (workspaceId) => transport.get(`${workspacePath(workspaceId)}/note-folders`),

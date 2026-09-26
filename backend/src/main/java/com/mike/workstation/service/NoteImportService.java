@@ -134,7 +134,7 @@ public class NoteImportService {
             // importMarkdown 是一个事务；这里清理半成品后继续处理后续文件，让批量导入能返回完整结果。
             if (insertedNoteId != null) {
                 tagMapper.deleteNoteTags(workspaceId, insertedNoteId);
-                noteMapper.delete(workspaceId, insertedNoteId);
+                noteMapper.deleteIncompleteImport(workspaceId, insertedNoteId);
             }
             return new NoteImportItemResponse(filePath, null, STATUS_FAILED, ex.getMessage(), null);
         }

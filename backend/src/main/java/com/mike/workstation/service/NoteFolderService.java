@@ -94,7 +94,7 @@ public class NoteFolderService {
             throw new BusinessException("文件夹下存在子文件夹，不能直接删除");
         }
         if (noteMapper.countByFolderId(workspaceId, id) > 0) {
-            throw new BusinessException("文件夹下存在笔记，不能直接删除");
+            throw new BusinessException("文件夹下存在笔记（可能位于回收站），不能直接删除");
         }
         folderMapper.delete(workspaceId, id);
         auditService.success(workspaceId, "FOLDER_DELETE", NOTE_FOLDER_RESOURCE, id);

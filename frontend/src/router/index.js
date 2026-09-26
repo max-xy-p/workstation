@@ -24,6 +24,7 @@ export const routes = [
   { path: '/w/:workspaceId/tasks', name: 'tasks', component: TasksView, meta: { title: '任务看板' } },
   { path: '/w/:workspaceId/notes', name: 'notes', component: NotesView, meta: { title: '笔记' } },
   { path: '/w/:workspaceId/notes/import', name: 'note-import', component: NotesView, meta: { title: '导入笔记' } },
+  { path: '/w/:workspaceId/notes/trash', name: 'note-trash', component: NotesView, meta: { title: '笔记回收站' } },
   { path: '/w/:workspaceId/notes/new', name: 'note-new', component: NotesView, meta: { title: '新建笔记' } },
   { path: '/w/:workspaceId/notes/:id/edit', name: 'note-edit', component: NotesView, meta: { title: '编辑笔记' } },
   { path: '/w/:workspaceId/taxonomy', name: 'taxonomy', component: TaxonomyView, meta: { title: '标签' } }

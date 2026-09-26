@@ -15,6 +15,7 @@
             <div class="explorer-action-popover">
               <button type="button" @click="openFolderFromMenu"><FolderPlus /><span>新建文件夹</span></button>
               <RouterLink :to="{ name: 'note-import', params: workspaceParams }"><Import /><span>导入 Markdown</span></RouterLink>
+              <RouterLink :to="{ name: 'note-trash', params: workspaceParams }"><Trash2 /><span>回收站</span></RouterLink>
             </div>
           </details>
         </div>
@@ -85,6 +86,7 @@
 
     <main class="note-workspace-editor">
       <NoteImportView v-if="isImportRoute" />
+      <NoteTrashView v-else-if="isTrashRoute" />
       <NoteEditorView v-else-if="isEditorRoute" :key="route.fullPath" @saved="refreshTree" @deleted="refreshTree" />
       <div v-else class="note-workspace-empty">
         <FileText />
@@ -97,7 +99,7 @@
 </template>
 
 <script setup>
-import { Check, Ellipsis, FileText, FolderPlus, Import, ListFilter, Search, SquarePen, X } from '@lucide/vue';
+import { Check, Ellipsis, FileText, FolderPlus, Import, ListFilter, Search, SquarePen, Trash2, X } from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
@@ -106,6 +108,7 @@ import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../u
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 import NoteEditorView from './NoteEditorView.vue';
 import NoteImportView from './NoteImportView.vue';
+import NoteTrashView from './NoteTrashView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -123,7 +126,8 @@ const showFilters = ref(false);
 const folderForm = reactive({ open: false, id: null, name: '', parentId: '' });
 const isEditorRoute = computed(() => ['note-new', 'note-edit'].includes(route.name));
 const isImportRoute = computed(() => route.name === 'note-import');
-const hasWorkspaceContent = computed(() => isEditorRoute.value || isImportRoute.value);
+const isTrashRoute = computed(() => route.name === 'note-trash');
+const hasWorkspaceContent = computed(() => isEditorRoute.value || isImportRoute.value || isTrashRoute.value);
 const selectedNoteId = computed(() => route.name === 'note-edit' ? Number(route.params.id) : null);
 const folderTree = computed(() => buildFolderTree(folders.value, notes.value));
 const unfiledNotes = computed(() => notes.value.filter((note) => !note.folderId));

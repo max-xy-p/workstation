@@ -4,6 +4,7 @@ import com.mike.workstation.assembler.NoteResponseAssembler;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteDetailResponse;
+import com.mike.workstation.dto.DeletedNoteResponse;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
@@ -15,6 +16,7 @@ import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
+import com.mike.workstation.security.CurrentPrincipalResolver;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -36,6 +38,7 @@ public class NoteService {
     private final TagMapper tagMapper;
     private final TaskMapper taskMapper;
     private final NoteTagLoader noteTagLoader;
+    private final CurrentPrincipalResolver principalResolver;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
 
@@ -46,6 +49,7 @@ public class NoteService {
             TagMapper tagMapper,
             TaskMapper taskMapper,
             NoteTagLoader noteTagLoader,
+            CurrentPrincipalResolver principalResolver,
             WorkspaceAuthorizationService authorization,
             AuditService auditService
     ) {
@@ -55,6 +59,7 @@ public class NoteService {
         this.tagMapper = tagMapper;
         this.taskMapper = taskMapper;
         this.noteTagLoader = noteTagLoader;
+        this.principalResolver = principalResolver;
         this.authorization = authorization;
         this.auditService = auditService;
     }
@@ -79,6 +84,18 @@ public class NoteService {
         noteTagLoader.attachTags(workspaceId, notes);
         long total = noteMapper.count(workspaceId, keyword, folderId, tagId, projectId);
         return PageResponse.of(notes.stream().map(NoteResponseAssembler::toSummary).toList(), page, size, total);
+    }
+
+    /** 查询当前工作空间的回收站。 */
+    public PageResponse<DeletedNoteResponse> listDeleted(
+            Long workspaceId, String keyword, int page, int size
+    ) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
+        PageQuery query = PageQuery.of(page, size);
+        List<Note> notes = noteMapper.listDeletedPage(workspaceId, keyword, query.offset(), query.size());
+        noteTagLoader.attachTags(workspaceId, notes);
+        long total = noteMapper.countDeleted(workspaceId, keyword);
+        return PageResponse.of(notes.stream().map(NoteResponseAssembler::toDeleted).toList(), page, size, total);
     }
 
     /**
@@ -155,9 +172,7 @@ public class NoteService {
     }
 
     /**
-     * 删除笔记。
-     *
-     * <p>先删除 note_tag 关联，再删除笔记正文记录。</p>
+     * 将笔记移入回收站。
      *
      * @param id 笔记 ID
      */
@@ -165,10 +180,35 @@ public class NoteService {
     public void delete(Long workspaceId, Long id) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
         RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), NOTE_NOT_FOUND);
-        taskMapper.clearEvidenceNote(workspaceId, id, LocalDateTime.now(ZoneId.systemDefault()));
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        taskMapper.clearEvidenceNote(workspaceId, id, now);
+        Note note = new Note();
+        note.setId(id);
+        note.setWorkspaceId(workspaceId);
+        note.setDeletedAt(now);
+        note.setDeletedBySubject(principalResolver.require().subjectId());
+        noteMapper.softDelete(note);
+        auditService.success(workspaceId, "NOTE_TRASH", "NOTE", id);
+    }
+
+    /** 从回收站恢复笔记，并生成新的持久化版本。 */
+    @Transactional
+    public NoteDetailResponse restore(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        RequestChecks.requiredExisting(noteMapper.lockDeletedById(workspaceId, id), "回收站中不存在该笔记");
+        noteMapper.restore(workspaceId, id, LocalDateTime.now(ZoneId.systemDefault()));
+        auditService.success(workspaceId, "NOTE_RESTORE", "NOTE", id);
+        return get(workspaceId, id);
+    }
+
+    /** 永久删除回收站中的笔记。 */
+    @Transactional
+    public void permanentlyDelete(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        RequestChecks.requiredExisting(noteMapper.lockDeletedById(workspaceId, id), "回收站中不存在该笔记");
         tagMapper.deleteNoteTags(workspaceId, id);
-        noteMapper.delete(workspaceId, id);
-        auditService.success(workspaceId, "NOTE_DELETE", "NOTE", id);
+        noteMapper.permanentlyDelete(workspaceId, id);
+        auditService.success(workspaceId, "NOTE_PERMANENT_DELETE", "NOTE", id);
     }
 
     /**

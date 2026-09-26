@@ -19,6 +19,8 @@ export type NoteRequest = Schemas['NoteRequest'];
 export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
+export type DeletedNoteResponse = Schemas['DeletedNoteResponse'];
+export type DeletedNotePageResponse = Schemas['DeletedNotePageResponse'];
 export type NoteImportRequest = Schemas['NoteImportRequest'];
 export type NoteImportResponse = Schemas['NoteImportResponse'];
 export type NoteFolderRequest = Schemas['NoteFolderRequest'];
@@ -38,6 +40,7 @@ export type TagRequest = Schemas['TagRequest'];
 export type TagResponse = Schemas['TagResponse'];
 
 export type NoteListParams = NonNullable<operations['listNotes']['parameters']['query']>;
+export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['parameters']['query']>;
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
@@ -45,7 +48,7 @@ export type QueryParams = object;
 
 export interface WorkstationTransport {
   get<T>(path: string, params?: QueryParams): Promise<T>;
-  post<T, B>(path: string, body: B): Promise<T>;
+  post<T, B = undefined>(path: string, body?: B): Promise<T>;
   put<T, B>(path: string, body: B): Promise<T>;
   patch<T, B>(path: string, body: B): Promise<T>;
   delete<T = null>(path: string): Promise<T>;
@@ -153,6 +156,8 @@ export function createWorkstationApi(transport: WorkstationTransport) {
       listAll: (workspaceId: number, params?: NoteListParams) =>
         listAllPages<NoteSummaryResponse, NoteListParams>(
           transport, `${workspacePath(workspaceId)}/notes`, params),
+      listDeleted: (workspaceId: number, params?: DeletedNoteListParams) =>
+        transport.get<DeletedNotePageResponse>(`${workspacePath(workspaceId)}/notes/trash`, params),
       get: (workspaceId: number, id: number) =>
         transport.get<NoteDetailResponse>(`${workspacePath(workspaceId)}/notes/${id}`),
       create: (workspaceId: number, payload: NoteRequest) =>
@@ -163,7 +168,11 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         transport.post<NoteImportResponse, NoteImportRequest>(
           `${workspacePath(workspaceId)}/notes/import`, payload),
       delete: (workspaceId: number, id: number) =>
-        transport.delete(`${workspacePath(workspaceId)}/notes/${id}`)
+        transport.delete(`${workspacePath(workspaceId)}/notes/${id}`),
+      restore: (workspaceId: number, id: number) =>
+        transport.post<NoteDetailResponse>(`${workspacePath(workspaceId)}/notes/${id}/restore`),
+      permanentlyDelete: (workspaceId: number, id: number) =>
+        transport.delete(`${workspacePath(workspaceId)}/notes/${id}/permanent`)
     },
     noteFolderApi: {
       list: (workspaceId: number) =>
