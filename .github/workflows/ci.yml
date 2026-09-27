@@ -151,7 +151,9 @@ jobs:
 
       - name: 安装并检查本地 Python wheel
         run: |
-          uv pip install --python clients/python-auth/.venv/bin/python --no-deps --no-build .ci-wheels/*.whl
+          uv pip install --python clients/python-auth/.venv/bin/python --no-deps --no-build --offline \
+            ./.ci-wheels/workstation_api_client-3.1.0-py3-none-any.whl \
+            ./.ci-wheels/workstation_client_credentials-3.1.0-py3-none-any.whl
           uv pip check --python clients/python-auth/.venv/bin/python
 
       - name: Test Client Credentials adapter
