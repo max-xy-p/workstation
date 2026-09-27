@@ -6,16 +6,17 @@ DROP PROCEDURE IF EXISTS migrate_note_trash;
 DELIMITER $$
 CREATE PROCEDURE migrate_note_trash()
 BEGIN
+    DECLARE target_table_name VARCHAR(64) DEFAULT 'notes';
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = DATABASE() AND table_name = 'notes' AND column_name = 'deleted_at'
+        WHERE table_schema = DATABASE() AND table_name = target_table_name AND column_name = 'deleted_at'
     ) THEN
         ALTER TABLE notes ADD COLUMN deleted_at DATETIME NULL AFTER version;
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = DATABASE() AND table_name = 'notes' AND column_name = 'deleted_by_subject'
+        WHERE table_schema = DATABASE() AND table_name = target_table_name AND column_name = 'deleted_by_subject'
     ) THEN
         ALTER TABLE notes ADD COLUMN deleted_by_subject
             VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL AFTER deleted_at;
@@ -23,7 +24,7 @@ BEGIN
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.statistics
-        WHERE table_schema = DATABASE() AND table_name = 'notes'
+        WHERE table_schema = DATABASE() AND table_name = target_table_name
           AND index_name = 'idx_notes_workspace_deleted'
     ) THEN
         ALTER TABLE notes ADD INDEX idx_notes_workspace_deleted (workspace_id, deleted_at);
@@ -31,7 +32,7 @@ BEGIN
 
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_schema = DATABASE() AND table_name = 'notes'
+        WHERE constraint_schema = DATABASE() AND table_name = target_table_name
           AND constraint_name = 'fk_notes_deleted_by' AND constraint_type = 'FOREIGN KEY'
     ) THEN
         ALTER TABLE notes ADD CONSTRAINT fk_notes_deleted_by

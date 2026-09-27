@@ -15,23 +15,29 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 先使用浏览器登录一次，让 Backend 创建个人工作空间，再执行本脚本。
 SET @workspace_id = (SELECT id FROM workspaces WHERE type = 'PERSONAL' ORDER BY id LIMIT 1);
 
+-- 同一批样例资料的更新时间、账本归档时间及任务枚举取值。
+SET @development_update_time = '2026-07-17 18:20:00';
+SET @ledger_archive_time = '2026-06-30 17:00:00';
+SET @task_in_progress = 'IN_PROGRESS';
+SET @medium_priority = 'MEDIUM';
+
 INSERT INTO note_folders (workspace_id, name, parent_id, created_at, updated_at) VALUES
-(@workspace_id, '开发', NULL, '2026-07-01 09:10:00', '2026-07-17 18:20:00'),
+(@workspace_id, '开发', NULL, '2026-07-01 09:10:00', @development_update_time),
 (@workspace_id, '学习', NULL, '2026-07-05 08:45:00', '2026-07-18 09:30:00');
 
 SET @folder_dev = (SELECT id FROM note_folders WHERE workspace_id = @workspace_id AND name = '开发' AND parent_id IS NULL);
 SET @folder_study = (SELECT id FROM note_folders WHERE workspace_id = @workspace_id AND name = '学习' AND parent_id IS NULL);
 
 INSERT INTO note_folders (workspace_id, name, parent_id, created_at, updated_at) VALUES
-(@workspace_id, '后端开发', @folder_dev, '2026-07-01 09:10:00', '2026-07-17 18:20:00'),
+(@workspace_id, '后端开发', @folder_dev, '2026-07-01 09:10:00', @development_update_time),
 (@workspace_id, '前端工程', @folder_dev, '2026-07-02 10:00:00', '2026-07-16 16:35:00'),
 (@workspace_id, '数据库', @folder_dev, '2026-07-03 11:30:00', '2026-07-15 20:15:00'),
 (@workspace_id, '运维部署', @folder_dev, '2026-07-04 14:00:00', '2026-07-18 12:40:00'),
 (@workspace_id, '学习笔记', @folder_study, '2026-07-05 08:45:00', '2026-07-18 09:30:00');
 
 INSERT INTO tags (workspace_id, name, created_at, updated_at) VALUES
-(@workspace_id, 'Spring Boot', '2026-07-01 09:20:00', '2026-07-17 18:20:00'),
-(@workspace_id, 'MyBatis', '2026-07-01 09:25:00', '2026-07-17 18:20:00'),
+(@workspace_id, 'Spring Boot', '2026-07-01 09:20:00', @development_update_time),
+(@workspace_id, 'MyBatis', '2026-07-01 09:25:00', @development_update_time),
 (@workspace_id, 'Vue', '2026-07-02 10:10:00', '2026-07-16 16:35:00'),
 (@workspace_id, 'MySQL', '2026-07-03 11:40:00', '2026-07-15 20:15:00'),
 (@workspace_id, 'Nginx', '2026-07-04 14:10:00', '2026-07-18 12:40:00'),
@@ -47,7 +53,7 @@ INSERT INTO projects (workspace_id, name, description, status, repository_url, t
 (@workspace_id, '个人博客重构', '把旧博客迁移为静态站点，补充技术文章分类、搜索和部署流水线。', 'PLANNING', 'https://github.com/mike/blog-next', 'Vue, Markdown, Nginx', '先整理文章目录，再设计路由和构建脚本。', '2026-06-25 20:00:00', '2026-07-14 21:10:00'),
 (@workspace_id, '代码片段管理器', '收集常用 SQL、Shell、Java 片段，支持按标签快速检索。', 'PAUSED', NULL, 'Spring Boot, MySQL, Vue', '暂停中，后续考虑和个人工作台合并。', '2026-05-18 13:30:00', '2026-07-08 18:00:00'),
 (@workspace_id, '本地开发环境整理', '统一整理 JDK、Maven、Node、MySQL、Nginx 等本机开发环境和启动脚本。', 'COMPLETED', NULL, 'Windows, Maven, Node.js, MySQL, Nginx', '按 README 检查环境变量和端口占用。', '2026-07-01 19:20:00', '2026-07-11 22:30:00'),
-(@workspace_id, '家庭账本 API', '用于记录家庭收支流水和月度预算的小型 REST 服务。', 'ARCHIVED', 'https://github.com/mike/home-ledger-api', 'Java 17, Spring Boot, MySQL', '归档项目，仅保留代码和数据库设计参考。', '2026-04-06 08:40:00', '2026-06-30 17:00:00');
+(@workspace_id, '家庭账本 API', '用于记录家庭收支流水和月度预算的小型 REST 服务。', 'ARCHIVED', 'https://github.com/mike/home-ledger-api', 'Java 17, Spring Boot, MySQL', '归档项目，仅保留代码和数据库设计参考。', '2026-04-06 08:40:00', @ledger_archive_time);
 
 SET @workstation = (SELECT id FROM projects WHERE workspace_id = @workspace_id AND name = '个人工作台');
 SET @notion = (SELECT id FROM projects WHERE workspace_id = @workspace_id AND name = 'Notion 笔记迁移工具');
@@ -59,18 +65,18 @@ SET @ledger = (SELECT id FROM projects WHERE workspace_id = @workspace_id AND na
 INSERT INTO tasks (workspace_id, title, description, project_id, status, priority, due_date, created_at, updated_at) VALUES
 (@workspace_id, '完成项目与任务 CRUD API', '补齐项目列表、详情、创建、编辑、删除和状态更新接口。', @workstation, 'DONE', 'HIGH', '2026-07-16', '2026-07-10 10:00:00', '2026-07-16 18:20:00'),
 (@workspace_id, '接入 Vue 任务看板', '看板按 TODO、IN_PROGRESS、DONE 分列展示，并支持状态流转。', @workstation, 'DONE', 'HIGH', '2026-07-17', '2026-07-11 09:30:00', '2026-07-17 20:10:00'),
-(@workspace_id, '完善 nginx 本地代理配置', '通过 nginx 统一前端和 API 入口，避免浏览器跨域问题。', @workstation, 'IN_PROGRESS', 'MEDIUM', '2026-07-19', '2026-07-18 10:00:00', '2026-07-18 14:30:00'),
-(@workspace_id, '给首页补真实样例数据', '准备一批贴近日常开发场景的项目、任务和笔记，便于验收页面状态。', @workstation, 'IN_PROGRESS', 'LOW', '2026-07-18', '2026-07-18 16:00:00', '2026-07-18 16:10:00'),
-(@workspace_id, '补充导入结果明细展示', '导入后展示成功、跳过、失败列表，方便排查单个文件问题。', @notion, 'IN_PROGRESS', 'HIGH', '2026-07-20', '2026-07-18 15:00:00', '2026-07-18 15:50:00'),
-(@workspace_id, '处理 Markdown 图片资源', '评估 Notion 导出图片是否需要复制到应用资源目录，并改写正文链接。', @notion, 'TODO', 'MEDIUM', '2026-07-24', '2026-07-18 15:10:00', '2026-07-18 15:10:00'),
+(@workspace_id, '完善 nginx 本地代理配置', '通过 nginx 统一前端和 API 入口，避免浏览器跨域问题。', @workstation, @task_in_progress, @medium_priority, '2026-07-19', '2026-07-18 10:00:00', '2026-07-18 14:30:00'),
+(@workspace_id, '给首页补真实样例数据', '准备一批贴近日常开发场景的项目、任务和笔记，便于验收页面状态。', @workstation, @task_in_progress, 'LOW', '2026-07-18', '2026-07-18 16:00:00', '2026-07-18 16:10:00'),
+(@workspace_id, '补充导入结果明细展示', '导入后展示成功、跳过、失败列表，方便排查单个文件问题。', @notion, @task_in_progress, 'HIGH', '2026-07-20', '2026-07-18 15:00:00', '2026-07-18 15:50:00'),
+(@workspace_id, '处理 Markdown 图片资源', '评估 Notion 导出图片是否需要复制到应用资源目录，并改写正文链接。', @notion, 'TODO', @medium_priority, '2026-07-24', '2026-07-18 15:10:00', '2026-07-18 15:10:00'),
 (@workspace_id, '增加导入路径安全校验', '只允许读取 NOTE_IMPORT_ALLOWED_ROOTS 下的 Markdown，避免页面传任意系统路径。', @notion, 'DONE', 'HIGH', '2026-07-18', '2026-07-18 15:05:00', '2026-07-18 15:40:00'),
-(@workspace_id, '确认笔记导入后的去重策略', '比较跳过同标题和总是新建两种策略，决定默认行为。', @notion, 'TODO', 'MEDIUM', NULL, '2026-07-18 16:05:00', '2026-07-18 16:05:00'),
-(@workspace_id, '梳理博客文章分类', '把历史文章按 Java、数据库、部署、问题复盘重新分类。', @blog, 'TODO', 'MEDIUM', '2026-07-28', '2026-07-14 20:00:00', '2026-07-14 20:00:00'),
+(@workspace_id, '确认笔记导入后的去重策略', '比较跳过同标题和总是新建两种策略，决定默认行为。', @notion, 'TODO', @medium_priority, NULL, '2026-07-18 16:05:00', '2026-07-18 16:05:00'),
+(@workspace_id, '梳理博客文章分类', '把历史文章按 Java、数据库、部署、问题复盘重新分类。', @blog, 'TODO', @medium_priority, '2026-07-28', '2026-07-14 20:00:00', '2026-07-14 20:00:00'),
 (@workspace_id, '设计博客列表页信息密度', '避免营销页风格，优先做可扫描的文章列表和标签过滤。', @blog, 'TODO', 'LOW', NULL, '2026-07-14 21:00:00', '2026-07-14 21:00:00'),
-(@workspace_id, '整理 Maven 本地仓库配置', '确认 Maven 不向安装目录写依赖，统一使用项目 target/maven-repo 做验证。', @env, 'DONE', 'MEDIUM', '2026-07-11', '2026-07-05 19:30:00', '2026-07-11 22:00:00'),
+(@workspace_id, '整理 Maven 本地仓库配置', '确认 Maven 不向安装目录写依赖，统一使用项目 target/maven-repo 做验证。', @env, 'DONE', @medium_priority, '2026-07-11', '2026-07-05 19:30:00', '2026-07-11 22:00:00'),
 (@workspace_id, '记录 npm PowerShell 执行策略处理方式', 'Windows 下使用 npm.cmd 避免 npm.ps1 执行策略限制。', @env, 'DONE', 'LOW', '2026-07-10', '2026-07-06 13:20:00', '2026-07-10 15:40:00'),
 (@workspace_id, '抽象代码片段标签模型', '保留标签多对多关系，后续考虑复用笔记标签表。', @snippet, 'TODO', 'LOW', NULL, '2026-07-08 17:30:00', '2026-07-08 18:00:00'),
-(@workspace_id, '归档账本 API 部署说明', '把端口、数据库和历史迁移脚本整理到项目运行说明。', @ledger, 'DONE', 'LOW', '2026-06-30', '2026-06-20 11:00:00', '2026-06-30 17:00:00');
+(@workspace_id, '归档账本 API 部署说明', '把端口、数据库和历史迁移脚本整理到项目运行说明。', @ledger, 'DONE', 'LOW', '2026-06-30', '2026-06-20 11:00:00', @ledger_archive_time);
 
 SET @folder_backend = (SELECT id FROM note_folders WHERE workspace_id = @workspace_id AND name = '后端开发');
 SET @folder_frontend = (SELECT id FROM note_folders WHERE workspace_id = @workspace_id AND name = '前端工程');
@@ -86,7 +92,7 @@ INSERT INTO notes (workspace_id, title, content, folder_id, project_id, created_
 (@workspace_id, 'MySQL 表关系说明', CONCAT('# MySQL 表关系说明', CHAR(10), CHAR(10), '项目和任务是一对多，笔记可选关联项目和文件夹，笔记与标签是多对多。', CHAR(10), CHAR(10), '删除规则要在 service 层显式处理，避免数据库级联造成用户误解。'), @folder_db, @workstation, '2026-07-15 19:45:00', '2026-07-18 10:10:00'),
 (@workspace_id, 'Maven 本地仓库踩坑', CONCAT('# Maven 本地仓库踩坑', CHAR(10), CHAR(10), '系统 Maven 默认仓库指向安装目录时，沙箱或普通用户权限可能无法写入。', CHAR(10), CHAR(10), '验证命令固定为：', CHAR(10), CHAR(10), 'mvn -Dmaven.repo.local=target/maven-repo test'), @folder_notes, @env, '2026-07-11 21:20:00', '2026-07-11 22:20:00'),
 (@workspace_id, '任务看板状态定义', CONCAT('# 任务看板状态定义', CHAR(10), CHAR(10), '- TODO：还没开始但已经明确要做', CHAR(10), '- IN_PROGRESS：正在推进，有下一步动作', CHAR(10), '- DONE：已经完成并通过基本验证', CHAR(10), CHAR(10), '第一版不引入 blocked/review，避免流程变重。'), @folder_notes, @workstation, '2026-07-13 10:30:00', '2026-07-17 20:30:00'),
-(@workspace_id, '家庭账本 API 归档说明', CONCAT('# 家庭账本 API 归档说明', CHAR(10), CHAR(10), '项目已归档，后续只作为 REST API 分层和数据库索引设计参考。', CHAR(10), CHAR(10), '值得保留的内容：预算聚合查询、流水分页、按月统计接口。'), @folder_backend, @ledger, '2026-06-30 16:30:00', '2026-06-30 17:00:00');
+(@workspace_id, '家庭账本 API 归档说明', CONCAT('# 家庭账本 API 归档说明', CHAR(10), CHAR(10), '项目已归档，后续只作为 REST API 分层和数据库索引设计参考。', CHAR(10), CHAR(10), '值得保留的内容：预算聚合查询、流水分页、按月统计接口。'), @folder_backend, @ledger, '2026-06-30 16:30:00', @ledger_archive_time);
 
 SET @tag_spring = (SELECT id FROM tags WHERE workspace_id = @workspace_id AND name = 'Spring Boot');
 SET @tag_mybatis = (SELECT id FROM tags WHERE workspace_id = @workspace_id AND name = 'MyBatis');

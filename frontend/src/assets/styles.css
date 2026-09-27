@@ -79,30 +79,11 @@ button:disabled {
   background: #dbe8f2;
 }
 
-.app-shell {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  min-height: 100vh;
-}
-
 .module-workspace-shell,
 .module-workspace-main {
   width: 100%;
   min-width: 0;
   min-height: 100vh;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  padding: 28px 20px 22px;
-  border-right: 1px solid var(--line);
-  background: rgba(238, 242, 246, 0.94);
-  backdrop-filter: blur(18px);
 }
 
 .brand {
@@ -131,12 +112,6 @@ button:disabled {
   display: block;
 }
 
-.brand-copy strong {
-  margin-bottom: 3px;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-}
-
 .brand-copy span,
 .sidebar-footer span {
   color: var(--muted);
@@ -144,19 +119,6 @@ button:disabled {
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.workspace-chip {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 22px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  color: var(--ink-soft);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
 }
 
 .status-dot {
@@ -242,37 +204,12 @@ button:disabled {
   min-width: 0;
 }
 
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 9;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 84px;
-  padding: 16px clamp(24px, 4vw, 64px);
-  border-bottom: 1px solid rgba(220, 227, 235, 0.86);
-  background: rgba(245, 247, 250, 0.9);
-  backdrop-filter: blur(18px);
-}
-
 .topbar-copy {
   min-width: 0;
 }
 
 .page-context {
   min-width: 0;
-}
-
-.page-context h1 {
-  margin: 0 0 5px;
-  font-size: clamp(27px, 3vw, 39px);
-}
-
-.page-context p {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 13px;
 }
 
 .eyebrow,
@@ -402,12 +339,6 @@ button.secondary:hover,
   padding: clamp(28px, 4vw, 58px) clamp(24px, 4vw, 64px) 80px;
 }
 
-.main > .page {
-  width: min(1480px, 100%);
-  margin: 0 auto;
-  padding: clamp(28px, 4vw, 58px) clamp(24px, 4vw, 64px) 80px;
-}
-
 .page-enter-active,
 .page-leave-active {
   transition: opacity 160ms ease, transform 160ms ease;
@@ -428,14 +359,6 @@ button.secondary:hover,
 .page-fade-leave-to {
   opacity: 0;
   transform: translateY(4px);
-}
-
-.page,
-.dashboard-page,
-.notes-page,
-.editor-page {
-  display: grid;
-  gap: 24px;
 }
 
 h1,
@@ -708,26 +631,6 @@ textarea:focus {
   border-top: 1px solid rgba(255, 255, 255, 0.13);
 }
 
-.stat {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  padding: 20px 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
-}
-
-.stat span,
-.stat small {
-  color: #9faca5;
-  font-size: 12px;
-}
-
-.stat strong {
-  color: #fff;
-  font-family: "Songti SC", SimSun, serif;
-  font-size: 34px;
-}
-
 .search-strip,
 .quick-search {
   display: flex;
@@ -780,12 +683,6 @@ textarea:focus {
   background: var(--canvas);
   font-size: 10px;
   white-space: nowrap;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
 }
 
 .indexed-panel {
@@ -890,18 +787,6 @@ textarea:focus {
   font-size: 13px;
 }
 
-.library-summary {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.library-summary p {
-  max-width: 640px;
-  margin-bottom: 0;
-}
-
 .note-count {
   display: flex;
   align-items: baseline;
@@ -914,14 +799,6 @@ textarea:focus {
   color: var(--ink);
   font-family: "Songti SC", SimSun, serif;
   font-size: 38px;
-}
-
-.filter-panel {
-  padding: 18px;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .filter-search {
@@ -968,24 +845,6 @@ textarea:focus {
 
 .search-field input {
   padding-left: 42px;
-}
-
-.import-drawer {
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.import-drawer summary {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-  list-style: none;
 }
 
 .import-drawer summary::-webkit-details-marker {
@@ -1035,22 +894,6 @@ textarea:focus {
   font-size: 11px;
 }
 
-.note-list {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fff;
-}
-
-.note-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
-  gap: 18px;
-  padding: 22px 24px;
-  border-bottom: 1px solid var(--line);
-  transition: background 150ms ease;
-}
-
 .note-row:last-child {
   border-bottom: 0;
 }
@@ -1082,13 +925,6 @@ textarea:focus {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
-}
-
-.note-title-line h3 {
-  overflow: hidden;
-  margin: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .note-excerpt {
@@ -1168,12 +1004,6 @@ textarea:focus {
   align-items: center;
 }
 
-.editor-workspace > .editor-toolbar {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--line);
-  background: #fafcfa;
-}
-
 .editor-back,
 .back-link {
   display: inline-flex;
@@ -1191,11 +1021,6 @@ textarea:focus {
   color: var(--muted);
   font-family: Consolas, "Cascadia Code", monospace;
   font-size: 10px;
-}
-
-.editor-workspace {
-  overflow: hidden;
-  box-shadow: 0 24px 70px rgba(35, 61, 49, 0.1);
 }
 
 .editor-title,
@@ -1243,15 +1068,6 @@ textarea:focus {
   color: var(--muted);
   font-size: 9px;
   font-weight: 700;
-}
-
-.metadata-grid label > span {
-  color: var(--muted);
-  font-family: Consolas, "Cascadia Code", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 .meta-field input,
@@ -1724,12 +1540,6 @@ textarea:focus {
 }
 
 /* Authentication */
-.login-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(420px, 0.82fr);
-  min-height: 100vh;
-  background: var(--paper);
-}
 
 .login-atmosphere {
   position: relative;
@@ -1740,39 +1550,6 @@ textarea:focus {
   padding: clamp(30px, 5vw, 72px);
   color: #e8efeb;
   background: #1b2822;
-}
-
-.login-brand {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-
-.login-brand .brand-mark {
-  color: var(--ink);
-  background: #eef3ef;
-}
-
-.login-brand strong,
-.login-brand small {
-  display: block;
-}
-
-.login-brand strong {
-  margin-bottom: 4px;
-  color: #fff;
-  font-size: 14px;
-  letter-spacing: 0.06em;
-}
-
-.login-brand small {
-  color: #84958c;
-  font-family: Consolas, "Cascadia Code", monospace;
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
 
 .login-statement {
@@ -1843,86 +1620,8 @@ textarea:focus {
   background-size: 100% 32px;
 }
 
-.login-form {
-  display: grid;
-  width: min(390px, 100%);
-  gap: 20px;
-}
-
-.login-form-heading {
-  margin-bottom: 16px;
-  padding-bottom: 28px;
-  border-bottom: 1px solid var(--line);
-}
-
-.login-form-heading h2 {
-  margin-bottom: 12px;
-  font-size: clamp(34px, 4vw, 48px);
-  letter-spacing: -0.05em;
-}
-
-.login-form-heading p {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.login-field {
-  display: grid;
-  gap: 9px;
-}
-
-.login-field > span {
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.login-field input {
-  min-height: 50px;
-  padding-inline: 15px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.login-submit {
-  justify-content: space-between;
-  min-height: 52px;
-  margin-top: 4px;
-  padding-inline: 18px;
-  border-radius: 8px;
-}
-
-.login-notice {
-  margin: 0;
-  padding: 11px 13px;
-  border-left: 3px solid var(--moss);
-  color: var(--moss-dark);
-  background: var(--moss-soft);
-  font-size: 12px;
-}
-
-.login-footnote {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.5;
-}
-
 .login-footnote .status-dot {
   flex: 0 0 auto;
-}
-
-.brand-copy small {
-  color: var(--muted);
-  font-family: Consolas, "Cascadia Code", monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .owner-chip {
@@ -1962,18 +1661,6 @@ textarea:focus {
 .owner-chip small {
   color: var(--muted);
   font-size: 9px;
-}
-
-.logout-button {
-  justify-content: flex-start;
-  width: 100%;
-  min-height: 36px;
-  padding: 0 9px;
-  border-color: var(--line);
-  color: var(--ink-soft);
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: none;
-  font-size: 11px;
 }
 
 .logout-button:hover {
@@ -2135,6 +1822,7 @@ textarea:focus {
 }
 
 .login-brand small {
+  text-transform: uppercase;
   color: var(--muted);
   font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
   font-size: 10px;
@@ -2388,6 +2076,8 @@ textarea:focus {
 }
 
 .login-footnote {
+  align-items: center;
+  gap: 9px;
   display: block;
   margin: 2px 0 0;
   color: var(--muted);
@@ -2508,11 +2198,21 @@ textarea:focus {
 
 /* Internal workspace refresh */
 .app-shell {
+  display: grid;
+  min-height: 100vh;
   grid-template-columns: 232px minmax(0, 1fr);
   background: var(--canvas);
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-right: 1px solid var(--line);
+  backdrop-filter: blur(18px);
   padding: 24px 16px 18px;
   border-color: var(--line);
   background: rgba(238, 242, 246, 0.96);
@@ -2531,17 +2231,26 @@ textarea:focus {
 }
 
 .brand-copy strong {
+  letter-spacing: 0.04em;
   margin-bottom: 2px;
   font-size: 14px;
 }
 
 .brand-copy small {
+  color: var(--muted);
+  text-transform: uppercase;
   font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
   font-size: 9px;
   letter-spacing: 0.04em;
 }
 
 .workspace-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12px;
   margin: 0 6px 22px;
   padding: 9px 10px;
   border-color: rgba(198, 208, 220, 0.8);
@@ -2591,10 +2300,28 @@ textarea:focus {
 }
 
 .logout-button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border-color: var(--line);
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+  font-size: 11px;
   border-radius: 7px;
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(220, 227, 235, 0.86);
+  background: rgba(245, 247, 250, 0.9);
+  backdrop-filter: blur(18px);
   min-height: 76px;
   padding: 13px clamp(24px, 3.6vw, 54px);
 }
@@ -2607,6 +2334,7 @@ textarea:focus {
 }
 
 .page-context h1 {
+  margin: 0 0 5px;
   margin-bottom: 3px;
   font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
   font-size: clamp(23px, 2.4vw, 30px);
@@ -2615,10 +2343,13 @@ textarea:focus {
 }
 
 .page-context p {
+  margin: 0;
+  color: var(--ink-soft);
   font-size: 12px;
 }
 
 .main > .page {
+  margin: 0 auto;
   width: min(1440px, 100%);
   padding: clamp(24px, 3.2vw, 44px) clamp(24px, 3.6vw, 54px) 72px;
 }
@@ -2627,6 +2358,7 @@ textarea:focus {
 .dashboard-page,
 .notes-page,
 .editor-page {
+  display: grid;
   gap: 20px;
 }
 
@@ -2890,6 +2622,7 @@ textarea:focus {
 }
 
 .stat {
+  grid-template-columns: 1fr auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2931,6 +2664,8 @@ textarea:focus {
 }
 
 .dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -2988,6 +2723,9 @@ textarea:focus {
 }
 
 .library-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
   align-items: center;
   min-height: 86px;
   padding: 4px 2px;
@@ -3001,11 +2739,16 @@ textarea:focus {
 }
 
 .library-summary p {
+  max-width: 640px;
+  margin-bottom: 0;
   color: var(--muted);
   font-size: 12px;
 }
 
 .filter-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 12px;
   border-radius: 10px;
   box-shadow: none;
@@ -3027,11 +2770,21 @@ textarea:focus {
 }
 
 .import-drawer {
+  border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.78);
 }
 
 .import-drawer summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
   min-height: 52px;
 }
 
@@ -3046,6 +2799,9 @@ textarea:focus {
 }
 
 .note-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #fff;
   position: relative;
   border-radius: 10px;
   box-shadow: 0 8px 28px rgba(35, 55, 79, 0.045);
@@ -3064,6 +2820,9 @@ textarea:focus {
 }
 
 .note-row {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+  transition: background 150ms ease;
   position: relative;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 20px;
@@ -3089,10 +2848,15 @@ textarea:focus {
 }
 
 .note-title-line h3 {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 16px;
 }
 
 .editor-workspace {
+  overflow: hidden;
   position: relative;
   border-radius: 10px;
   box-shadow: 0 12px 38px rgba(35, 55, 79, 0.07);
@@ -3111,6 +2875,7 @@ textarea:focus {
 }
 
 .editor-workspace > .editor-toolbar {
+  border-bottom: 1px solid var(--line);
   min-height: 56px;
   padding: 10px 16px;
   background: #f8fafc;
@@ -3139,6 +2904,10 @@ textarea:focus {
 }
 
 .metadata-grid label > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
   font-family: "Segoe UI Variable", "Microsoft YaHei UI", sans-serif;
   letter-spacing: 0.04em;
 }
@@ -3689,6 +3458,26 @@ textarea:focus {
 @media (max-width: 620px) {
   .app-shell {
     display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: block;
+    width: 100%;
+    height: 66px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--line);
+    border-right: 0;
+  }
+
+  .workspace-chip,
+  .sidebar-foot {
+    display: none;
   }
 
   .topbar {

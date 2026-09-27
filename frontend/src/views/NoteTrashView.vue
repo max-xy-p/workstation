@@ -12,7 +12,7 @@
     </form>
 
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="loading" role="status">正在读取回收站…</p>
+    <output v-if="loading" class="trash-loading">正在读取回收站…</output>
     <div v-else-if="items.length" class="collection-panel panel">
       <article v-for="note in items" :key="note.id" class="record-row">
         <div class="record-main">
@@ -134,6 +134,7 @@ onMounted(load);
 </script>
 
 <style scoped>
+.trash-loading { display: block; margin: 1em 0; }
 .note-trash-page { max-width: 980px; margin: 0 auto; }
 .note-trash-page .record-row { align-items: flex-start; }
 .note-trash-page .record-main { flex: 1; min-width: 0; }

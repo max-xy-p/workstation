@@ -141,11 +141,21 @@ jobs:
           git diff --exit-code -- clients/python
           test -z "$(git status --short --untracked-files=all -- clients/python)"
 
-      - name: 安装锁定的 Python SDK 与认证层依赖
-        run: uv sync --project clients/python-auth --locked
+      - name: 安装锁定的第三方 Python 依赖
+        run: uv sync --project clients/python-auth --locked --no-build --no-install-local
+
+      - name: 构建仓库内的 Python SDK 与认证层
+        run: |
+          uv build --wheel clients/python --out-dir .ci-wheels
+          uv build --wheel clients/python-auth --out-dir .ci-wheels
+
+      - name: 安装并检查本地 Python wheel
+        run: |
+          uv pip install --python clients/python-auth/.venv/bin/python --no-deps --no-build .ci-wheels/*.whl
+          uv pip check --python clients/python-auth/.venv/bin/python
 
       - name: Test Client Credentials adapter
-        run: uv run --project clients/python-auth --locked --no-sync python -m unittest discover -s clients/python-auth/tests -v
+        run: uv run --project clients/python-auth --locked --no-sync --no-build python -m unittest discover -s clients/python-auth/tests -v
 
   frontend:
     name: TypeScript SDK and frontend
