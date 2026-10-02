@@ -63,13 +63,17 @@ const submitting = ref(false);
 const expired = computed(() => route.query.reason === 'expired');
 
 function safeRedirect() {
-  const target = typeof route.query.redirect === 'string' ? route.query.redirect : '/notes';
-  return target.startsWith('/') && !target.startsWith('//') ? target : '/notes';
+  const target = route.query.redirect;
+  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
+    ? target
+    : null;
 }
 
 function submit() {
   submitting.value = true;
-  sessionStorage.setItem('workstation:login-redirect', safeRedirect());
+  const redirect = safeRedirect();
+  if (redirect) sessionStorage.setItem('workstation:login-redirect', redirect);
+  else sessionStorage.removeItem('workstation:login-redirect');
   auth.login();
 }
 </script>

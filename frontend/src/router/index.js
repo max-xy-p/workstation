@@ -38,7 +38,10 @@ const router = createRouter({
 async function resolveLoginRoute() {
   const redirect = sessionStorage.getItem('workstation:login-redirect');
   sessionStorage.removeItem('workstation:login-redirect');
-  if (redirect?.startsWith('/') && !redirect.startsWith('//')) return redirect;
+  if (redirect?.startsWith('/') && !redirect.startsWith('//')) {
+    const target = router.resolve(redirect);
+    if (target.matched.length && target.name !== 'login') return redirect;
+  }
   const defaultWorkspace = await workspace.ensureWorkspace();
   return defaultWorkspace
     ? { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } }
@@ -53,8 +56,12 @@ async function resolveSignedInRoute(to) {
     return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };
   }
   if (to.name === 'workspace-unavailable') return true;
+  const workspaceId = Number(to.params.workspaceId);
+  if (!Number.isSafeInteger(workspaceId) || workspaceId <= 0) {
+    return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };
+  }
   try {
-    await workspace.activateWorkspace(to.params.workspaceId);
+    await workspace.activateWorkspace(workspaceId);
   } catch (err) {
     if (err.status !== 404 && err.status !== 403) throw err;
     await workspace.refreshWorkspaces();
