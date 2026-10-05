@@ -44,6 +44,27 @@ export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
+export type IntegrationProvider = Schemas['IntegrationProvider'];
+export type IntegrationScope = Schemas['IntegrationScope'];
+export type IntegrationConnectionRequest = Schemas['IntegrationConnectionRequest'];
+export type IntegrationConnectionResponse = Schemas['IntegrationConnectionResponse'];
+export type IntegrationTriggerRequest = Schemas['IntegrationTriggerRequest'];
+export type IntegrationImportItemRequest = Schemas['IntegrationImportItemRequest'];
+export type IntegrationImportRequest = Schemas['IntegrationImportRequest'];
+export type RepositoryResponse = Schemas['RepositoryResponse'];
+export type IntegrationRunResponse = Schemas['IntegrationRunResponse'];
+export type IntegrationRunItemResponse = Schemas['IntegrationRunItemResponse'];
+export type RepositoryBindRequest = Schemas['RepositoryBindRequest'];
+export type IntegrationEnableRequest = Schemas['IntegrationEnableRequest'];
+export type DevelopmentKind = Schemas['DevelopmentKind'];
+export type DevelopmentSnapshotResponse = Schemas['DevelopmentSnapshotResponse'];
+export type DevelopmentItemResponse = Schemas['DevelopmentItemResponse'];
+export type ProjectDevelopmentResponse = Schemas['ProjectDevelopmentResponse'];
+export type RepositoryPageResponse = Schemas['RepositoryPageResponse'];
+export type IntegrationConnectionPageResponse = Schemas['IntegrationConnectionPageResponse'];
+export type IntegrationRunPageResponse = Schemas['IntegrationRunPageResponse'];
+export type IntegrationRunItemPageResponse = Schemas['IntegrationRunItemPageResponse'];
+export type DevelopmentItemPageResponse = Schemas['DevelopmentItemPageResponse'];
 export type QueryParams = object;
 
 export interface WorkstationTransport {
@@ -78,6 +99,27 @@ async function listAllPages<T, P extends QueryParams>(
 export function createWorkstationApi(transport: WorkstationTransport) {
   const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
+    integrationApi: {
+      list: (w: number, page = 0, size = 20) => transport.get<IntegrationConnectionPageResponse>(`${workspacePath(w)}/integrations`, { page, size }),
+      create: (w: number, body: IntegrationConnectionRequest) => transport.post<IntegrationConnectionResponse, IntegrationConnectionRequest>(`${workspacePath(w)}/integrations`, body),
+      update: (w: number, id: number, body: IntegrationConnectionRequest) => transport.patch<IntegrationConnectionResponse, IntegrationConnectionRequest>(`${workspacePath(w)}/integrations/${id}`, body),
+      validate: (w: number, id: number) => transport.post<IntegrationConnectionResponse>(`${workspacePath(w)}/integrations/${id}/validate`),
+      enabled: (w: number, id: number, body: IntegrationEnableRequest) => transport.put<IntegrationConnectionResponse, IntegrationEnableRequest>(`${workspacePath(w)}/integrations/${id}/enabled`, body),
+      delete: (w: number, id: number) => transport.delete<null>(`${workspacePath(w)}/integrations/${id}`),
+      discover: (w: number, id: number, requestKey: string) => transport.post<IntegrationRunResponse, IntegrationTriggerRequest>(`${workspacePath(w)}/integrations/${id}/discoveries`, { requestKey }),
+      sync: (w: number, id: number, requestKey: string) => transport.post<IntegrationRunResponse, IntegrationTriggerRequest>(`${workspacePath(w)}/integrations/${id}/sync-runs`, { requestKey }),
+      imports: (w: number, id: number, body: IntegrationImportRequest) => transport.post<IntegrationRunResponse, IntegrationImportRequest>(`${workspacePath(w)}/integrations/${id}/imports`, body),
+      repositories: (w: number, id: number, page = 0, size = 20) => transport.get<RepositoryPageResponse>(`${workspacePath(w)}/integrations/${id}/repositories`, { page, size }),
+      runs: (w: number, id: number, page = 0, size = 20) => transport.get<IntegrationRunPageResponse>(`${workspacePath(w)}/integrations/${id}/sync-runs`, { page, size }),
+      run: (w: number, id: number, runId: number) => transport.get<IntegrationRunResponse>(`${workspacePath(w)}/integrations/${id}/sync-runs/${runId}`),
+      items: (w: number, id: number, runId: number, page = 0, size = 20) => transport.get<IntegrationRunItemPageResponse>(`${workspacePath(w)}/integrations/${id}/sync-runs/${runId}/items`, { page, size }),
+      projectRepositories: (w: number, project: number, page = 0, size = 20) => transport.get<RepositoryPageResponse>(`${workspacePath(w)}/projects/${project}/repositories`, { page, size }),
+      bind: (w: number, project: number, body: RepositoryBindRequest) => transport.post<RepositoryResponse, RepositoryBindRequest>(`${workspacePath(w)}/projects/${project}/repositories`, body),
+      unbind: (w: number, project: number, repository: number) => transport.delete<null>(`${workspacePath(w)}/projects/${project}/repositories/${repository}`),
+      development: (w: number, project: number) => transport.get<ProjectDevelopmentResponse>(`${workspacePath(w)}/projects/${project}/development`),
+      developmentItems: (w: number, project: number, kind: DevelopmentKind, page = 0, size = 20) => transport.get<DevelopmentItemPageResponse>(`${workspacePath(w)}/projects/${project}/development/items`, { kind, page, size }),
+      workspaceDevelopment: (w: number, page = 0, size = 20) => transport.get<RepositoryPageResponse>(`${workspacePath(w)}/development/repositories`, { page, size }),
+    },
     workspaceApi: {
       list: () => transport.get<WorkspaceResponse[]>('/workspaces'),
       create: (payload: WorkspaceRequest) =>

@@ -32,6 +32,8 @@ class ProjectServiceTests {
     @Mock
     private ProjectMapper projectMapper;
     @Mock
+    private com.mike.workstation.mapper.IntegrationMapper integrationMapper;
+    @Mock
     private TaskMapper taskMapper;
     @Mock
     private NoteMapper noteMapper;
@@ -68,7 +70,7 @@ class ProjectServiceTests {
     @Test
     void createRejectsRepositoryUrlLongerThanDatabaseColumn() {
         ProjectRequest request = new ProjectRequest(
-                "Workstation", null, ProjectStatus.ACTIVE, "x".repeat(501), null, null
+                "Workstation", null, ProjectStatus.ACTIVE, "x".repeat(501), null, null, null
         );
 
         assertThatThrownBy(() -> projectService.create(WORKSPACE_ID, request))
@@ -126,7 +128,7 @@ class ProjectServiceTests {
         when(projectMapper.findById(WORKSPACE_ID, 7L)).thenReturn(persisted);
 
         var result = projectService.create(WORKSPACE_ID,
-                new ProjectRequest("  Workstation  ", "描述", ProjectStatus.ACTIVE, null, null, null));
+                new ProjectRequest("  Workstation  ", "描述", ProjectStatus.ACTIVE, null, null, null, null));
 
         assertThat(result.id()).isEqualTo(7L);
         var captor = org.mockito.ArgumentCaptor.forClass(Project.class);

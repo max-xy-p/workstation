@@ -8,6 +8,8 @@
           <span class="badge">{{ projectStatusLabel(detail.project.status) }}</span>
         </div>
         <p>{{ detail.project.description || '未填写描述' }}</p>
+        <p v-if="detail.project.homepageUrl" class="meta">项目入口：<a :href="detail.project.homepageUrl" target="_blank" rel="noopener noreferrer">{{ detail.project.homepageUrl }}</a></p>
+        <ProjectDevelopment :workspace-id="workspaceId" :project-id="detail.project.id" />
         <p class="meta">仓库：{{ detail.project.repositoryUrl || '未填写' }}</p>
         <p class="meta">技术栈：{{ detail.project.techStack || '未填写' }}</p>
         <pre class="markdown-body">{{ detail.project.runGuide || '未填写运行说明' }}</pre>
@@ -60,6 +62,7 @@
             </select>
           </label>
           <label class="wide">描述<textarea v-model="projectForm.description" /></label>
+          <label class="wide">项目入口<input v-model="projectForm.homepageUrl" type="url" maxlength="500" /></label>
           <label class="wide">仓库地址<input v-model="projectForm.repositoryUrl" /></label>
           <label class="wide">技术栈<input v-model="projectForm.techStack" /></label>
           <label class="wide">运行说明<textarea v-model="projectForm.runGuide" /></label>
@@ -103,6 +106,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import ProjectDevelopment from '../components/ProjectDevelopment.vue';
 import { projectApi, taskApi } from '../api/workstation';
 import { PROJECT_STATUSES, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
@@ -130,6 +134,7 @@ function syncProjectForm(project) {
     description: project.description || '',
     status: project.status,
     repositoryUrl: project.repositoryUrl || '',
+    homepageUrl: project.homepageUrl || '',
     techStack: project.techStack || '',
     runGuide: project.runGuide || ''
   });
@@ -142,6 +147,7 @@ function projectPayload() {
     description: projectForm.description || null,
     status: projectForm.status,
     repositoryUrl: projectForm.repositoryUrl || null,
+    homepageUrl: projectForm.homepageUrl || null,
     techStack: projectForm.techStack || null,
     runGuide: projectForm.runGuide || null
   };

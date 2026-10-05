@@ -59,6 +59,7 @@
             </select>
           </label>
           <label class="wide">描述<textarea v-model="form.description" /></label>
+          <label>项目入口<input v-model="form.homepageUrl" type="url" maxlength="500" /></label>
           <label>仓库地址<input v-model="form.repositoryUrl" /></label>
           <label>技术栈<input v-model="form.techStack" /></label>
           <label class="wide">运行说明<textarea v-model="form.runGuide" /></label>
@@ -89,7 +90,7 @@ const filters = reactive({ keyword: route.query.keyword || '', status: '' });
 const form = reactive(emptyForm());
 
 function emptyForm() {
-  return { id: null, name: '', description: '', status: '', repositoryUrl: '', techStack: '', runGuide: '' };
+  return { id: null, name: '', description: '', status: '', repositoryUrl: '', techStack: '', runGuide: '', homepageUrl: '' };
 }
 
 function statusLabel(value) {
@@ -129,6 +130,7 @@ async function edit(project) {
     description: project.description || '',
     status: project.status,
     repositoryUrl: project.repositoryUrl || '',
+    homepageUrl: project.homepageUrl || '',
     techStack: project.techStack || '',
     runGuide: project.runGuide || ''
   });
@@ -141,6 +143,7 @@ function payload() {
     description: form.description || null,
     status: form.status,
     repositoryUrl: form.repositoryUrl || null,
+    homepageUrl: form.homepageUrl || null,
     techStack: form.techStack || null,
     runGuide: form.runGuide || null
   };

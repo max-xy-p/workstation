@@ -9,10 +9,12 @@ import LoginView from '../views/LoginView.vue';
 import WorkspaceUnavailableView from '../views/WorkspaceUnavailableView.vue';
 import WorkspaceSettingsView from '../views/WorkspaceSettingsView.vue';
 import SearchView from '../views/SearchView.vue';
+import IntegrationsView from '../views/IntegrationsView.vue';
 import { auth } from '../auth';
 import { workspace } from '../workspace';
 
 export const routes = [
+  { path: '/w/:workspaceId/integrations', name: 'integrations', component: IntegrationsView, meta: { title: '数据源' } },
   { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },
   { path: '/', name: 'root', component: WorkspaceUnavailableView, meta: { title: '工作空间' } },
   { path: '/workspace-unavailable', name: 'workspace-unavailable', component: WorkspaceUnavailableView, meta: { title: '工作空间不可用' } },

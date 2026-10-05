@@ -21,6 +21,8 @@ public enum WorkspacePermission {
     PROJECT_WRITE,
     TASK_READ,
     TASK_WRITE,
+    INTEGRATION_MANAGE,
+    INTEGRATION_SYNC,
     AUDIT_READ;
 
     private static final Set<WorkspacePermission> OWNER_PERMISSIONS = EnumSet.allOf(WorkspacePermission.class);

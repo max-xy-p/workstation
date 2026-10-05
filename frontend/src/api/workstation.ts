@@ -2,6 +2,27 @@ import { createWorkstationApi } from '@workstation/api-client';
 import { api, resetCsrfToken, submitWithCsrf } from './client';
 
 export type {
+  IntegrationProvider,
+  IntegrationScope,
+  IntegrationConnectionRequest,
+  IntegrationConnectionResponse,
+  IntegrationTriggerRequest,
+  IntegrationImportItemRequest,
+  IntegrationImportRequest,
+  RepositoryResponse,
+  IntegrationRunResponse,
+  IntegrationRunItemResponse,
+  RepositoryBindRequest,
+  IntegrationEnableRequest,
+  DevelopmentKind,
+  DevelopmentSnapshotResponse,
+  DevelopmentItemResponse,
+  ProjectDevelopmentResponse,
+  RepositoryPageResponse,
+  IntegrationConnectionPageResponse,
+  IntegrationRunPageResponse,
+  IntegrationRunItemPageResponse,
+  DevelopmentItemPageResponse,
   ApiErrorResponse,
   AuditEventListParams,
   AuditEventPageResponse,
@@ -22,6 +43,7 @@ export type {
   ProjectDetailResponse,
   ProjectListParams,
   ProjectPageResponse,
+  ProjectSummaryResponse,
   ProjectRequest,
   ProjectResponse,
   ProjectStatus,
@@ -65,6 +87,7 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  integrationApi,
   workspaceApi,
   auditApi,
   dashboardApi,

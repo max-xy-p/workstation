@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-09-27。
+> 核对日期：2026-10-02。
 
 ## 当前状态
 
@@ -8,6 +8,9 @@
 
 ## 已完成
 
+- [x] GitHub/GitLab Token 连接、平台实例允许范围、加密凭证、Workspace 数据源权限与多仓库项目关联
+- [x] 仓库发现、幂等批量导入、持久化队列、租约恢复、手动及定时同步和逐项失败重试
+- [x] 近期 Issue、PR/MR、默认分支提交及流水线快照，项目详情与概览展示采集范围和状态
 - [x] Keycloak 单点登录、Gateway/BFF 服务端 Session、OIDC 全局退出和 CSRF 防护
 - [x] Backend 无状态 JWT Resource Server、Issuer/Audience 校验和 `WORKSTATION_*` 系统角色准入
 - [x] Workspace、稳定安全主体、成员关系以及 `OWNER`/`ADMIN`/`EDITOR`/`VIEWER` 权限模型
@@ -18,7 +21,7 @@
 - [x] Keycloak 用户/管理员/机器系统角色分离，Gateway 只做系统准入，Backend 执行业务授权
 - [x] 共享 Workspace 创建、切换、成员设置与服务端已知用户名的精确查找
 - [x] Frontend Workspace 路由和上下文，以及按用户、Workspace、笔记与编辑会话隔离的 IndexedDB 草稿键
-- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `3.1.0` 笔记回收站契约
+- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `4.0.0` 项目数据源契约
 - [x] MySQL 分库保存 Workstation、Keycloak 和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计消息
 - [x] 笔记创建、详情、更新、软删除、回收站恢复、永久删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
@@ -46,16 +49,19 @@
 
 ## 进行中
 
+- [ ] 目标环境备份后执行项目数据源迁移，配置凭证加密密钥和只读平台 Token，验证真实账号导入及浏览器操作；当前仅验证隔离数据库，未迁移部署数据库。
+- [ ] 本次源码的 Sonar 分析待授权：自动审批拒绝向分析服务外发源码，尚未确认本次静态分析及云端 Quality Gate。
 - [ ] 在目标环境备份后执行笔记回收站等迁移，并验证双用户成员操作、双标签页笔记冲突、Gateway CSRF 与浏览器回收站流程。
 
 ## 后续计划
 
-- [ ] 按[多数据源项目同步方案](plans/project-data-integrations.md)实施项目字段扩展、GitHub/GitLab 数据源连接、仓库导入与开发情况同步。
+- [ ] 按实际使用需求扩展 GitHub App/OAuth、Webhook 和外部 Issue 与工作台任务关联；当前仅支持 Token 与单向同步。
 - [ ] 文件夹拖拽排序与移动笔记，尚未确定实现时间
 - [ ] 根据真实查询量评估中文全文检索；当前仍使用 SQL `LIKE`
 
 ## 已知问题
 
+- 数据源执行历史与未绑定候选仓库目前没有自动清理任务；需结合实际使用量确定保留周期。
 - 笔记搜索使用 `%keyword%` SQL `LIKE`，没有全文索引或相关度排序；统一搜索页仅对返回的短片段高亮。
 - 自动保存仍更新完整笔记并删除后重建标签，但版本条件更新阻止旧页面覆盖新内容。
 - 回收站可以恢复误删笔记，但尚未提供正文版本历史与历史版本恢复。
@@ -73,6 +79,7 @@
 
 ## 验证与说明
 
+- 2026-10-02 实现 GitHub/GitLab 项目数据源接入、多仓库关联、幂等导入、持久化同步队列与近期开发情况快照；项目增加 homepageUrl，契约和 SDK 统一升级到 4.0.0，不保留旧客户端缺少新字段的兼容更新行为。最后一次相关修改后，Backend 与 Gateway 的 mvn.cmd clean verify 分别通过 147 项和 16 项测试（无失败、错误或跳过）；Backend 本次还连接隔离 MySQL 执行真实 Mapper 测试。亲自执行 python scripts/check_java_coverage.py，Backend 83.93%、Gateway 83.40%、综合 83.89%，80% 检查通过。Frontend 类型检查与生产构建、TypeScript SDK 类型检查/构建/3 项测试、Python 4 项测试、SDK 版本一致性与重复生成无漂移检查、开发和生产 Compose 配置校验、文档链接及空白检查通过；隔离 MySQL 8.4 验证新建库、旧结构重复迁移、外键与唯一约束、运行租约及自动导入抑制标记，临时容器已清理。Sonar 分析被自动审批拒绝，原因是向分析服务外发源码未获授权，当前静态分析及云端 Quality Gate 未验证；真实平台账号连接、目标数据库迁移、完整浏览器回归与应用镜像构建尚未执行。
 - 2026-10-02 整理多数据源项目同步实现方案，明确项目与外部仓库关系、连接授权、数据快照、后台同步、接口页面和分阶段验收范围。本次仅新增方案并更新文档导航与计划，文档本地链接检查与 Git 差异空白检查通过；未实现功能、执行数据库迁移或运行代码验证。
 - 2026-09-27 修复本地首次登录停留在 `/login?login=success`：登录页不再保存已失效的 `/notes` 默认回跳地址，路由守卫会忽略无效回跳并拒绝非数字 Workspace ID。现有 MySQL 数据卷缺少任务依据笔记和回收站字段，已先将 `workstation` 数据库备份到本机临时目录，再执行仓库中的两份幂等迁移脚本；字段与索引检查通过，原先报错的 SQL 条件可执行。Frontend 类型检查、生产构建和 Web 镜像重建通过，`/login` 及新静态资源返回 200；浏览器会话下的完整登录回归仍待确认。
 - 2026-09-27 SonarQube Cloud 对 `master` 的 14:39 分析只剩 CI 工作流一条 `githubactions:S8544`，Quality Gate 因新代码安全评级未通过；新代码覆盖率为 89.7%，重复行密度为 0%。已将本地 wheel 安装改为明确列出两份版本一致的文件，并禁止依赖安装、源码构建和联网；两份 wheel 构建及临时虚拟环境中的离线安装通过。此次工作流修改尚未经过新的云端分析，Quality Gate 待下次 CI 确认。

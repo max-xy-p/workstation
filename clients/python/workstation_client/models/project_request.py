@@ -17,6 +17,7 @@ class ProjectRequest:
     Attributes:
         name (str):
         status (ProjectStatus):
+        homepage_url (None | str):
         description (None | str | Unset):
         repository_url (None | str | Unset):
         tech_stack (None | str | Unset):
@@ -25,6 +26,7 @@ class ProjectRequest:
 
     name: str
     status: ProjectStatus
+    homepage_url: None | str
     description: None | str | Unset = UNSET
     repository_url: None | str | Unset = UNSET
     tech_stack: None | str | Unset = UNSET
@@ -34,6 +36,9 @@ class ProjectRequest:
         name = self.name
 
         status = self.status.value
+
+        homepage_url: None | str
+        homepage_url = self.homepage_url
 
         description: None | str | Unset
         if isinstance(self.description, Unset):
@@ -65,6 +70,7 @@ class ProjectRequest:
             {
                 "name": name,
                 "status": status,
+                "homepageUrl": homepage_url,
             }
         )
         if description is not UNSET:
@@ -84,6 +90,13 @@ class ProjectRequest:
         name = d.pop("name")
 
         status = ProjectStatus(d.pop("status"))
+
+        def _parse_homepage_url(data: object) -> None | str:
+            if data is None:
+                return data
+            return cast(None | str, data)
+
+        homepage_url = _parse_homepage_url(d.pop("homepageUrl"))
 
         def _parse_description(data: object) -> None | str | Unset:
             if data is None:
@@ -124,6 +137,7 @@ class ProjectRequest:
         project_request = cls(
             name=name,
             status=status,
+            homepage_url=homepage_url,
             description=description,
             repository_url=repository_url,
             tech_stack=tech_stack,

@@ -12,6 +12,27 @@ async function listAllPages(transport, path, params) {
 export function createWorkstationApi(transport) {
     const workspacePath = (workspaceId) => `/workspaces/${workspaceId}`;
     return {
+        integrationApi: {
+            list: (w, page = 0, size = 20) => transport.get(`${workspacePath(w)}/integrations`, { page, size }),
+            create: (w, body) => transport.post(`${workspacePath(w)}/integrations`, body),
+            update: (w, id, body) => transport.patch(`${workspacePath(w)}/integrations/${id}`, body),
+            validate: (w, id) => transport.post(`${workspacePath(w)}/integrations/${id}/validate`),
+            enabled: (w, id, body) => transport.put(`${workspacePath(w)}/integrations/${id}/enabled`, body),
+            delete: (w, id) => transport.delete(`${workspacePath(w)}/integrations/${id}`),
+            discover: (w, id, requestKey) => transport.post(`${workspacePath(w)}/integrations/${id}/discoveries`, { requestKey }),
+            sync: (w, id, requestKey) => transport.post(`${workspacePath(w)}/integrations/${id}/sync-runs`, { requestKey }),
+            imports: (w, id, body) => transport.post(`${workspacePath(w)}/integrations/${id}/imports`, body),
+            repositories: (w, id, page = 0, size = 20) => transport.get(`${workspacePath(w)}/integrations/${id}/repositories`, { page, size }),
+            runs: (w, id, page = 0, size = 20) => transport.get(`${workspacePath(w)}/integrations/${id}/sync-runs`, { page, size }),
+            run: (w, id, runId) => transport.get(`${workspacePath(w)}/integrations/${id}/sync-runs/${runId}`),
+            items: (w, id, runId, page = 0, size = 20) => transport.get(`${workspacePath(w)}/integrations/${id}/sync-runs/${runId}/items`, { page, size }),
+            projectRepositories: (w, project, page = 0, size = 20) => transport.get(`${workspacePath(w)}/projects/${project}/repositories`, { page, size }),
+            bind: (w, project, body) => transport.post(`${workspacePath(w)}/projects/${project}/repositories`, body),
+            unbind: (w, project, repository) => transport.delete(`${workspacePath(w)}/projects/${project}/repositories/${repository}`),
+            development: (w, project) => transport.get(`${workspacePath(w)}/projects/${project}/development`),
+            developmentItems: (w, project, kind, page = 0, size = 20) => transport.get(`${workspacePath(w)}/projects/${project}/development/items`, { kind, page, size }),
+            workspaceDevelopment: (w, page = 0, size = 20) => transport.get(`${workspacePath(w)}/development/repositories`, { page, size }),
+        },
         workspaceApi: {
             list: () => transport.get('/workspaces'),
             create: (payload) => transport.post('/workspaces', payload),

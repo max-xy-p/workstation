@@ -23,7 +23,7 @@ public interface ProjectMapper {
      */
     @Select("""
             <script>
-            SELECT id, workspace_id, name, description, status, repository_url, tech_stack, created_at, updated_at
+            SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, created_at, updated_at
             FROM projects
             <where>
                 workspace_id = #{workspaceId}
@@ -66,7 +66,7 @@ public interface ProjectMapper {
      * 根据主键查询项目。
      */
     @Select("""
-            SELECT id, workspace_id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at
+            SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, run_guide, created_at, updated_at
             FROM projects
             WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
@@ -77,9 +77,9 @@ public interface ProjectMapper {
      */
     @Insert("""
             INSERT INTO projects
-                (workspace_id, name, description, status, repository_url, tech_stack, run_guide, created_at, updated_at)
+                (workspace_id, name, description, status, repository_url, homepage_url, tech_stack, run_guide, created_at, updated_at)
             VALUES
-                (#{workspaceId}, #{name}, #{description}, #{status}, #{repositoryUrl}, #{techStack}, #{runGuide}, #{createdAt}, #{updatedAt})
+                (#{workspaceId}, #{name}, #{description}, #{status}, #{repositoryUrl}, #{homepageUrl}, #{techStack}, #{runGuide}, #{createdAt}, #{updatedAt})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Project project);
@@ -93,6 +93,7 @@ public interface ProjectMapper {
                 description = #{description},
                 status = #{status},
                 repository_url = #{repositoryUrl},
+                homepage_url = #{homepageUrl},
                 tech_stack = #{techStack},
                 run_guide = #{runGuide},
                 updated_at = #{updatedAt}
@@ -131,7 +132,7 @@ public interface ProjectMapper {
      * 查询最近更新的项目，用于首页概览。
      */
     @Select("""
-            SELECT id, workspace_id, name, description, status, repository_url, tech_stack, created_at, updated_at
+            SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, created_at, updated_at
             FROM projects
             WHERE workspace_id = #{workspaceId}
             ORDER BY updated_at DESC, id DESC

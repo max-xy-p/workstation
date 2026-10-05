@@ -52,7 +52,8 @@ Gateway 中的认证状态用于浏览器会话和系统级准入，Backend 中�
 
 - Workspaces：个人工作空间幂等初始化、共享空间创建、成员管理、角色权限和审计查询。
 - Notes：Markdown 笔记 CRUD、版本条件更新、软删除与恢复、多级文件夹、搜索、标签/项目筛选和文件导入。
-- Projects：项目资料、状态以及关联任务和笔记。
+- Projects：项目资料、状态、项目入口以及关联任务、笔记和多个外部仓库。
+- Integrations：Workspace 内的 GitHub/GitLab Token 连接、仓库发现导入、持久化任务队列、手动和定时同步，以及近期 Issue、PR/MR、默认分支提交和流水线快照；流程见 [`docs/integrations.md`](docs/integrations.md)。
 - Tasks：任务 CRUD、依据笔记、优先级、截止日期和看板状态。
 - Dashboard：活跃项目、任务数量和最近记录。
 - Frontend shell：概览、项目、任务和标签使用全局侧栏；笔记使用独立工作区外壳。

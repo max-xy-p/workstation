@@ -39,6 +39,13 @@
       </div>
     </section>
 
+    <section class="panel collection-panel">
+      <div class="card-title"><h2>开发数据快照</h2><RouterLink :to="{ name: 'integrations', params: workspaceParams }">数据源设置</RouterLink></div>
+      <p v-if="developmentError" class="error">{{ developmentError }}</p>
+      <p v-if="!development.items.length" class="empty">连接 GitHub 或 GitLab 后，可在这里查看已关联仓库。</p>
+      <div v-for="r in development.items" :key="r.id" class="record-row"><RouterLink :to="{ name: 'project-detail', params: { ...workspaceParams, id: r.projectId } }">{{ r.provider }} · {{ r.namespace }}/{{ r.name }}</RouterLink><span class="meta">近期采集的开放 Issue：{{ r.collectedOpenIssues ?? '未采集' }} · PR/MR：{{ r.collectedOpenChangeRequests ?? '未采集' }} · 最近流水线：{{ pipelineLabel(r.latestPipelineStatus) }} · 资料同步：{{ formatDate(r.lastSyncedAt) }} · {{ r.lastError || (r.connectionId ? '已连接' : '已断开') }}</span></div>
+      <nav class="pagination" aria-label="开发快照分页"><button class="secondary" :disabled="development.page === 0" @click="loadDevelopment(development.page - 1)">上一页</button><button class="secondary" :disabled="!development.hasMore" @click="loadDevelopment(development.page + 1)">下一页</button></nav>
+    </section>
     <div class="dashboard-grid">
       <section class="panel collection-panel">
         <div class="section-heading">
@@ -88,7 +95,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { dashboardApi } from '../api/workstation';
+import { integrationApi, dashboardApi } from '../api/workstation';
 import { PROJECT_STATUSES, optionLabel } from '../constants/options';
 import AppIcon from '../components/AppIcon.vue';
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
@@ -98,6 +105,12 @@ const router = useRouter();
 const workspaceParams = workspaceRouteParams(route);
 const keyword = ref('');
 const error = ref('');
+const developmentError = ref('');
+const development = reactive({ items: [], page: 0, hasMore: false });
+async function loadDevelopment(page = 0) {
+  try { developmentError.value = ''; Object.assign(development, await integrationApi.workspaceDevelopment(workspaceIdFromRoute(route), page, 5)); }
+  catch (err) { developmentError.value = err.message; }
+}
 const summary = reactive({
   activeProjectCount: 0,
   todoTaskCount: 0,
@@ -105,6 +118,8 @@ const summary = reactive({
   recentProjects: [],
   recentNotes: []
 });
+
+const pipelineLabel = (value) => ({ SUCCESS: '成功', SKIPPED: '已跳过', NEUTRAL: '中性结果', FAILED: '失败', CANCELLED: '取消', RUNNING: '运行中', PENDING: '等待', UNKNOWN: '未知' }[value] || '未采集');
 
 function projectStatusLabel(value) {
   return optionLabel(PROJECT_STATUSES, value);
@@ -130,5 +145,5 @@ async function load() {
   }
 }
 
-onMounted(load);
+onMounted(() => { load(); loadDevelopment(); });
 </script>

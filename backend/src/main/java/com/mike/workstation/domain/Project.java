@@ -14,6 +14,7 @@ public class Project {
     private String description;
     private ProjectStatus status;
     private String repositoryUrl;
+    private String homepageUrl;
     private String techStack;
     private String runGuide;
     private LocalDateTime createdAt;

@@ -9,7 +9,10 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <template v-if="name === 'dashboard'">
+    <template v-if="name === 'integrations'">
+      <ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0" />
+    </template>
+    <template v-else-if="name === 'dashboard'">
       <path d="M4 5.5h6.5V12H4zM13.5 5.5H20V9h-6.5zM13.5 12H20v6.5h-6.5zM4 15h6.5v3.5H4z" />
     </template>
     <template v-else-if="name === 'projects'">

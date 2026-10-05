@@ -10,6 +10,7 @@ public record ProjectRequest(
         String description,
         ProjectStatus status,
         String repositoryUrl,
+        @com.fasterxml.jackson.annotation.JsonProperty(required=true) String homepageUrl,
         String techStack,
         String runGuide
 ) {

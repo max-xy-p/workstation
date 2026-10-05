@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
     private static final String PROJECT_RESOURCE = "PROJECT";
     private final ProjectMapper projectMapper;
+    private final com.mike.workstation.mapper.IntegrationMapper integrationMapper;
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
     private final NoteTagLoader noteTagLoader;
@@ -38,6 +39,7 @@ public class ProjectService {
     private final AuditService auditService;
 
     public ProjectService(
+            com.mike.workstation.mapper.IntegrationMapper integrationMapper,
             ProjectMapper projectMapper,
             TaskMapper taskMapper,
             NoteMapper noteMapper,
@@ -46,6 +48,7 @@ public class ProjectService {
             AuditService auditService
     ) {
         this.projectMapper = projectMapper;
+        this.integrationMapper = integrationMapper;
         this.taskMapper = taskMapper;
         this.noteMapper = noteMapper;
         this.noteTagLoader = noteTagLoader;
@@ -186,6 +189,7 @@ public class ProjectService {
 
         // 项目仅被笔记引用时允许删除，同时解除这些笔记的项目关联。
         noteMapper.clearProject(workspaceId, id, LocalDateTime.now(ZoneId.systemDefault()));
+        integrationMapper.suppressProject(workspaceId, id);
         projectMapper.delete(workspaceId, id);
         auditService.success(workspaceId, "PROJECT_DELETE", PROJECT_RESOURCE, id);
     }
@@ -201,6 +205,12 @@ public class ProjectService {
         RequestChecks.requiredObject(request.status(), "项目状态");
         RequestChecks.maxLength(request.name().trim(), 200, "项目名称");
         RequestChecks.maxLength(request.repositoryUrl(), 500, "仓库地址");
+        RequestChecks.maxLength(request.homepageUrl(), 500, "项目入口");
+        if (request.homepageUrl() != null && !request.homepageUrl().isBlank()) {
+            java.net.URI url = java.net.URI.create(request.homepageUrl());
+            if ((!"https".equals(url.getScheme()) && !"http".equals(url.getScheme())) || url.getHost() == null)
+                throw new BusinessException("项目入口必须为 HTTP 或 HTTPS 地址");
+        }
         RequestChecks.maxLength(request.techStack(), 500, "技术栈");
     }
 
@@ -214,6 +224,7 @@ public class ProjectService {
         project.setDescription(request.description());
         project.setStatus(request.status());
         project.setRepositoryUrl(request.repositoryUrl());
+        project.setHomepageUrl(request.homepageUrl());
         project.setTechStack(request.techStack());
         project.setRunGuide(request.runGuide());
     }

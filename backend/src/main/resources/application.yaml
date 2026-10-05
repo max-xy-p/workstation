@@ -43,6 +43,18 @@ workstation:
       issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8088/auth/realms/workstation}
       jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8090/auth/realms/workstation/protocol/openid-connect/certs}
       audience: ${OAUTH2_AUDIENCE:workstation-api}
+  integrations:
+    enabled: ${INTEGRATIONS_ENABLED:false}
+    key-version: ${INTEGRATIONS_KEY_VERSION:v1}
+    encryption-keys:
+      v1: ${INTEGRATIONS_ENCRYPTION_KEY:}
+      v0: ${INTEGRATIONS_PREVIOUS_ENCRYPTION_KEY:}
+    allowed-gitlab-instances: ${INTEGRATIONS_ALLOWED_GITLAB_INSTANCES:https://gitlab.com}
+    request-timeout-seconds: ${INTEGRATIONS_REQUEST_TIMEOUT_SECONDS:15}
+    max-pages: ${INTEGRATIONS_MAX_PAGES:500}
+    max-items: ${INTEGRATIONS_MAX_ITEMS:300}
+    lease-seconds: ${INTEGRATIONS_LEASE_SECONDS:180}
+    recent-days: ${INTEGRATIONS_RECENT_DAYS:30}
   dashboard:
     recent-limit: ${DASHBOARD_RECENT_LIMIT}
   note-import:

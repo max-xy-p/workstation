@@ -20,6 +20,7 @@ class ProjectSummaryResponse:
         description (None | str):
         status (ProjectStatus):
         repository_url (None | str):
+        homepage_url (None | str):
         tech_stack (None | str):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
@@ -30,6 +31,7 @@ class ProjectSummaryResponse:
     description: None | str
     status: ProjectStatus
     repository_url: None | str
+    homepage_url: None | str
     tech_stack: None | str
     created_at: datetime.datetime
     updated_at: datetime.datetime
@@ -47,6 +49,9 @@ class ProjectSummaryResponse:
         repository_url: None | str
         repository_url = self.repository_url
 
+        homepage_url: None | str
+        homepage_url = self.homepage_url
+
         tech_stack: None | str
         tech_stack = self.tech_stack
 
@@ -63,6 +68,7 @@ class ProjectSummaryResponse:
                 "description": description,
                 "status": status,
                 "repositoryUrl": repository_url,
+                "homepageUrl": homepage_url,
                 "techStack": tech_stack,
                 "createdAt": created_at,
                 "updatedAt": updated_at,
@@ -94,6 +100,13 @@ class ProjectSummaryResponse:
 
         repository_url = _parse_repository_url(d.pop("repositoryUrl"))
 
+        def _parse_homepage_url(data: object) -> None | str:
+            if data is None:
+                return data
+            return cast(None | str, data)
+
+        homepage_url = _parse_homepage_url(d.pop("homepageUrl"))
+
         def _parse_tech_stack(data: object) -> None | str:
             if data is None:
                 return data
@@ -111,6 +124,7 @@ class ProjectSummaryResponse:
             description=description,
             status=status,
             repository_url=repository_url,
+            homepage_url=homepage_url,
             tech_stack=tech_stack,
             created_at=created_at,
             updated_at=updated_at,

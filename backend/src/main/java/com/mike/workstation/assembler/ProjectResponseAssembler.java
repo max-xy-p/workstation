@@ -11,7 +11,7 @@ public final class ProjectResponseAssembler {
     public static ProjectSummaryResponse toSummary(Project project) {
         return new ProjectSummaryResponse(
                 project.getId(), project.getName(), project.getDescription(), project.getStatus(),
-                project.getRepositoryUrl(), project.getTechStack(),
+                project.getRepositoryUrl(), project.getHomepageUrl(), project.getTechStack(),
                 ApiTime.toOffset(project.getCreatedAt()), ApiTime.toOffset(project.getUpdatedAt())
         );
     }
@@ -19,7 +19,7 @@ public final class ProjectResponseAssembler {
     public static ProjectResponse toResponse(Project project) {
         return new ProjectResponse(
                 project.getId(), project.getName(), project.getDescription(), project.getStatus(),
-                project.getRepositoryUrl(), project.getTechStack(), project.getRunGuide(),
+                project.getRepositoryUrl(), project.getHomepageUrl(), project.getTechStack(), project.getRunGuide(),
                 ApiTime.toOffset(project.getCreatedAt()), ApiTime.toOffset(project.getUpdatedAt())
         );
     }

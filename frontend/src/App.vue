@@ -96,13 +96,14 @@ const workspaceRoleLabel = computed(() => ({
   EDITOR: '编辑者',
   VIEWER: '只读成员'
 }[workspace.state.current?.role] || '工作空间成员'));
-const navOrder = ['notes', 'projects', 'tasks', 'search', 'taxonomy', 'dashboard'];
+const navOrder = ['integrations', 'notes', 'projects', 'tasks', 'search', 'taxonomy', 'dashboard'];
 const navItems = computed(() => navOrder.map((name) => {
   const item = routes.find((routeItem) => routeItem.name === name);
   return { name, title: item.meta.title, icon: name === 'note-import' ? 'import' : name };
 }));
 
 const pageMeta = {
+  integrations: { section: '项目数据', description: '连接代码托管平台，将开发情况汇总到工作台。' },
   dashboard: { section: '今日工作台', description: '回到最重要的项目、任务与笔记。' },
   projects: { section: '项目资料', description: '沉淀项目背景、技术栈和推进上下文。' },
   'project-detail': { section: '项目资料', description: '查看一个项目的任务与知识记录。' },

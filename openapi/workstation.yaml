@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 3.1.0
+  version: 4.0.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -13,6 +13,7 @@ tags:
   - name: workspaces
   - name: workspace-members
   - name: audit
+  - name: integrations
   - name: dashboard
   - name: notes
   - name: note-folders
@@ -830,6 +831,692 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/workspaces/{workspaceId}/integrations:
+    get:
+      tags: [integrations]
+      operationId: listIntegrationConnections
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationConnectionPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+    post:
+      tags: [integrations]
+      operationId: createIntegrationConnection
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationConnectionRequest" }
+      responses:
+        "201":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationConnectionResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}:
+    patch:
+      tags: [integrations]
+      operationId: updateIntegrationConnection
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationConnectionRequest" }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationConnectionResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+    delete:
+      tags: [integrations]
+      operationId: deleteIntegrationConnection
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204":
+          description: 操作成功
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/validate:
+    post:
+      tags: [integrations]
+      operationId: validateIntegrationConnection
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationConnectionResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/enabled:
+    put:
+      tags: [integrations]
+      operationId: setIntegrationConnectionEnabled
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationEnableRequest" }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationConnectionResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/discoveries:
+    post:
+      tags: [integrations]
+      operationId: discoverIntegrationRepositories
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationTriggerRequest" }
+      responses:
+        "202":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/repositories:
+    get:
+      tags: [integrations]
+      operationId: listIntegrationRepositories
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepositoryPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/imports:
+    post:
+      tags: [integrations]
+      operationId: importIntegrationRepositories
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationImportRequest" }
+      responses:
+        "202":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/sync-runs:
+    post:
+      tags: [integrations]
+      operationId: triggerIntegrationSync
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationTriggerRequest" }
+      responses:
+        "202":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+    get:
+      tags: [integrations]
+      operationId: listIntegrationRuns
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/sync-runs/{runId}:
+    get:
+      tags: [integrations]
+      operationId: getIntegrationRun
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: runId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/integrations/{connectionId}/sync-runs/{runId}/items:
+    get:
+      tags: [integrations]
+      operationId: listIntegrationRunItems
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: connectionId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: runId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationRunItemPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/projects/{projectId}/repositories:
+    get:
+      tags: [integrations]
+      operationId: listProjectRepositories
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: projectId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepositoryPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+    post:
+      tags: [integrations]
+      operationId: bindProjectRepository
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: projectId, in: path, required: true, schema: { type: integer, format: int64 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RepositoryBindRequest" }
+      responses:
+        "201":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepositoryResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/projects/{projectId}/repositories/{repositoryId}:
+    delete:
+      tags: [integrations]
+      operationId: unbindProjectRepository
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: projectId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: repositoryId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204":
+          description: 操作成功
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/projects/{projectId}/development:
+    get:
+      tags: [integrations]
+      operationId: getProjectDevelopment
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: projectId, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectDevelopmentResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/projects/{projectId}/development/items:
+    get:
+      tags: [integrations]
+      operationId: listProjectDevelopmentItems
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: projectId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: kind, in: query, required: true, schema: { $ref: "#/components/schemas/DevelopmentKind" } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DevelopmentItemPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /api/workspaces/{workspaceId}/development/repositories:
+    get:
+      tags: [integrations]
+      operationId: listWorkspaceDevelopment
+      summary: 外部数据源与仓库同步
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: 操作成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RepositoryPageResponse" }
+        "400":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "404":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "409":
+          description: 请求失败
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
 components:
   securitySchemes:
     workstationOAuth:
@@ -942,6 +1629,8 @@ components:
         - PROJECT_WRITE
         - TASK_READ
         - TASK_WRITE
+        - INTEGRATION_MANAGE
+        - INTEGRATION_SYNC
         - AUDIT_READ
     AuditResult:
       type: string
@@ -1221,40 +1910,64 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    IntegrationProvider: {"type":"string","enum":["GITHUB","GITLAB"]}
+    IntegrationScope: {"type":"string","enum":["OWNED","ACCESSIBLE"]}
+    IntegrationConnectionRequest: {"type":"object","additionalProperties":false,"required":["name","provider","baseUrl","token","scope","includeForks","includeArchived","autoImport","scheduleMinutes","expectedVersion","sharingConfirmed"],"properties":{"name":{"type":"string","minLength":1,"maxLength":120},"provider":{"$ref":"#/components/schemas/IntegrationProvider"},"baseUrl":{"type":"string"},"token":{"type":["string","null"],"writeOnly":true,"maxLength":4096},"scope":{"$ref":"#/components/schemas/IntegrationScope"},"includeForks":{"type":"boolean"},"includeArchived":{"type":"boolean"},"autoImport":{"type":"boolean"},"scheduleMinutes":{"type":"integer","minimum":0,"maximum":10080},"expectedVersion":{"type":["integer","null"]},"sharingConfirmed":{"type":"boolean"}}}
+    IntegrationConnectionResponse: {"type":"object","additionalProperties":false,"required":["id","name","provider","baseUrl","account","scope","includeForks","includeArchived","autoImport","scheduleMinutes","enabled","version","lastError","lastSyncedAt"],"properties":{"id":{"type":"integer","format":"int64"},"name":{"type":"string"},"provider":{"$ref":"#/components/schemas/IntegrationProvider"},"baseUrl":{"type":"string"},"account":{"type":"string"},"scope":{"$ref":"#/components/schemas/IntegrationScope"},"includeForks":{"type":"boolean"},"includeArchived":{"type":"boolean"},"autoImport":{"type":"boolean"},"scheduleMinutes":{"type":"integer"},"enabled":{"type":"boolean"},"version":{"type":"integer"},"lastError":{"type":["string","null"]},"lastSyncedAt":{"type":["string","null"],"format":"date-time"}}}
+    IntegrationTriggerRequest: {"type":"object","additionalProperties":false,"required":["requestKey"],"properties":{"requestKey":{"type":"string","minLength":1,"maxLength":80}}}
+    IntegrationImportItemRequest: {"type":"object","additionalProperties":false,"required":["repositoryId","projectId","status"],"properties":{"repositoryId":{"type":"integer","format":"int64"},"projectId":{"type":["integer","null"],"format":"int64"},"status":{"$ref":"#/components/schemas/ProjectStatus"}}}
+    IntegrationImportRequest: {"type":"object","additionalProperties":false,"required":["requestKey","items","sharingConfirmed"],"properties":{"requestKey":{"type":"string","minLength":1,"maxLength":80},"items":{"type":"array","minItems":1,"maxItems":100,"items":{"$ref":"#/components/schemas/IntegrationImportItemRequest"}},"sharingConfirmed":{"type":"boolean"}}}
+    RepositoryResponse: {"type":"object","additionalProperties":false,"required":["id","provider","namespace","name","url","description","defaultBranch","language","visibility","archived","projectId","connectionId","lastPushedAt","lastSyncedAt","lastError","collectedOpenIssues","collectedOpenChangeRequests","latestPipelineStatus"],"properties":{"id":{"type":"integer","format":"int64"},"provider":{"$ref":"#/components/schemas/IntegrationProvider"},"namespace":{"type":"string"},"name":{"type":"string"},"url":{"type":"string"},"description":{"type":["string","null"]},"defaultBranch":{"type":["string","null"]},"language":{"type":["string","null"]},"visibility":{"type":"string"},"archived":{"type":"boolean"},"projectId":{"type":["integer","null"],"format":"int64"},"connectionId":{"type":["integer","null"],"format":"int64"},"lastPushedAt":{"type":["string","null"],"format":"date-time"},"lastSyncedAt":{"type":["string","null"],"format":"date-time"},"lastError":{"type":["string","null"]},"collectedOpenIssues":{"type":["integer","null"]},"collectedOpenChangeRequests":{"type":["integer","null"]},"latestPipelineStatus":{"type":["string","null"]}}}
+    IntegrationRunResponse: {"type":"object","additionalProperties":false,"required":["id","kind","status","processed","failed","lastError","createdAt","finishedAt"],"properties":{"id":{"type":"integer","format":"int64"},"kind":{"type":"string","enum":["DISCOVER","IMPORT","SYNC"]},"status":{"type":"string","enum":["QUEUED","RUNNING","SUCCEEDED","PARTIAL","FAILED","CANCELLED"]},"processed":{"type":"integer"},"failed":{"type":"integer"},"lastError":{"type":["string","null"]},"createdAt":{"type":["string","null"],"format":"date-time"},"finishedAt":{"type":["string","null"],"format":"date-time"}}}
+    IntegrationRunItemResponse: {"type":"object","additionalProperties":false,"required":["id","repositoryId","projectId","status","lastError","projectStatus"],"properties":{"id":{"type":"integer","format":"int64"},"repositoryId":{"type":"integer","format":"int64"},"projectId":{"type":["integer","null"],"format":"int64"},"status":{"type":"string"},"lastError":{"type":["string","null"]},"projectStatus":{"$ref":"#/components/schemas/ProjectStatus"}}}
+    RepositoryBindRequest: {"type":"object","additionalProperties":false,"required":["repositoryId","sharingConfirmed"],"properties":{"repositoryId":{"type":"integer","format":"int64"},"sharingConfirmed":{"type":"boolean"}}}
+    IntegrationEnableRequest: {"type":"object","additionalProperties":false,"required":["enabled","expectedVersion","sharingConfirmed"],"properties":{"enabled":{"type":"boolean"},"expectedVersion":{"type":"integer"},"sharingConfirmed":{"type":"boolean"}}}
+    DevelopmentKind: {"type":"string","enum":["ISSUE","CHANGE_REQUEST","COMMIT","PIPELINE"]}
+    DevelopmentSnapshotResponse: {"type":"object","additionalProperties":false,"required":["repositoryId","kind","available","truncated","message","since","syncedAt","collected","openCount"],"properties":{"repositoryId":{"type":"integer","format":"int64"},"kind":{"$ref":"#/components/schemas/DevelopmentKind"},"available":{"type":"boolean"},"truncated":{"type":"boolean"},"message":{"type":["string","null"]},"since":{"type":["string","null"],"format":"date-time"},"syncedAt":{"type":["string","null"],"format":"date-time"},"collected":{"type":"integer"},"openCount":{"type":"integer"}}}
+    DevelopmentItemResponse: {"type":"object","additionalProperties":false,"required":["id","repositoryId","kind","externalId","title","url","status","rawStatus","author","branch","sourceUpdatedAt"],"properties":{"id":{"type":"integer","format":"int64"},"repositoryId":{"type":"integer","format":"int64"},"kind":{"$ref":"#/components/schemas/DevelopmentKind"},"externalId":{"type":"string"},"title":{"type":"string"},"url":{"type":["string","null"]},"status":{"type":"string"},"rawStatus":{"type":["string","null"]},"author":{"type":["string","null"]},"branch":{"type":["string","null"]},"sourceUpdatedAt":{"type":["string","null"],"format":"date-time"}}}
+    ProjectDevelopmentResponse: {"type":"object","additionalProperties":false,"required":["repositories","snapshots"],"properties":{"repositories":{"type":"array","items":{"$ref":"#/components/schemas/RepositoryResponse"}},"snapshots":{"type":"array","items":{"$ref":"#/components/schemas/DevelopmentSnapshotResponse"}}}}
+    RepositoryPageResponse: {"type":"object","additionalProperties":false,"required":["items","page","size","total","hasMore"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/RepositoryResponse"}},"page":{"type":"integer"},"size":{"type":"integer"},"total":{"type":"integer"},"hasMore":{"type":"boolean"}}}
+    IntegrationConnectionPageResponse: {"type":"object","additionalProperties":false,"required":["items","page","size","total","hasMore"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/IntegrationConnectionResponse"}},"page":{"type":"integer"},"size":{"type":"integer"},"total":{"type":"integer"},"hasMore":{"type":"boolean"}}}
+    IntegrationRunPageResponse: {"type":"object","additionalProperties":false,"required":["items","page","size","total","hasMore"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/IntegrationRunResponse"}},"page":{"type":"integer"},"size":{"type":"integer"},"total":{"type":"integer"},"hasMore":{"type":"boolean"}}}
+    IntegrationRunItemPageResponse: {"type":"object","additionalProperties":false,"required":["items","page","size","total","hasMore"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/IntegrationRunItemResponse"}},"page":{"type":"integer"},"size":{"type":"integer"},"total":{"type":"integer"},"hasMore":{"type":"boolean"}}}
+    DevelopmentItemPageResponse: {"type":"object","additionalProperties":false,"required":["items","page","size","total","hasMore"],"properties":{"items":{"type":"array","items":{"$ref":"#/components/schemas/DevelopmentItemResponse"}},"page":{"type":"integer"},"size":{"type":"integer"},"total":{"type":"integer"},"hasMore":{"type":"boolean"}}}
     ProjectRequest:
       type: object
       additionalProperties: false
-      required: [name, status]
+      required: [name, status, homepageUrl]
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         description: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/ProjectStatus" }
         repositoryUrl: { type: [string, "null"], maxLength: 500 }
+        homepageUrl: { type: [string, "null"], maxLength: 500 }
         techStack: { type: [string, "null"], maxLength: 500 }
         runGuide: { type: [string, "null"] }
     ProjectSummaryResponse:
       type: object
       additionalProperties: false
-      required: [id, name, description, status, repositoryUrl, techStack, createdAt, updatedAt]
+      required: [id, name, description, status, repositoryUrl, homepageUrl, techStack, createdAt, updatedAt]
       properties:
         id: { type: integer, format: int64 }
         name: { type: string }
         description: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/ProjectStatus" }
         repositoryUrl: { type: [string, "null"] }
+        homepageUrl: { type: [string, "null"] }
         techStack: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     ProjectResponse:
       type: object
       additionalProperties: false
-      required: [id, name, description, status, repositoryUrl, techStack, runGuide, createdAt, updatedAt]
+      required: [id, name, description, status, repositoryUrl, homepageUrl, techStack, runGuide, createdAt, updatedAt]
       properties:
         id: { type: integer, format: int64 }
         name: { type: string }
         description: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/ProjectStatus" }
         repositoryUrl: { type: [string, "null"] }
+        homepageUrl: { type: [string, "null"] }
         techStack: { type: [string, "null"] }
         runGuide: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }

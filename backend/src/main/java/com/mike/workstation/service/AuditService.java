@@ -50,6 +50,18 @@ public class AuditService {
         }
     }
 
+    /** 后台任务使用已持久化并再次授权的主体，不伪造请求认证。 */
+    public void background(Long workspaceId, String actor, com.mike.workstation.domain.PrincipalType actorType, String action, String type, Long id) {
+        AuditOutbox event = new AuditOutbox();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        event.setEventId(UUID.randomUUID().toString()); event.setWorkspaceId(workspaceId);
+        event.setActorSubject(actor); event.setActorType(actorType);
+        event.setAction(action); event.setResourceType(type); event.setResourceId(id);
+        event.setResult(AuditResult.SUCCESS); event.setOccurredAt(now); event.setStatus(AuditOutboxStatus.PENDING);
+        event.setAttempts(0); event.setNextAttemptAt(now); event.setCreatedAt(now);
+        outboxWriter.writeRequired(event);
+    }
+
     private AuditOutbox create(
             Long workspaceId, String action, String resourceType, Long resourceId, AuditResult result
     ) {

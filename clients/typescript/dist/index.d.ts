@@ -41,6 +41,27 @@ export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
+export type IntegrationProvider = Schemas['IntegrationProvider'];
+export type IntegrationScope = Schemas['IntegrationScope'];
+export type IntegrationConnectionRequest = Schemas['IntegrationConnectionRequest'];
+export type IntegrationConnectionResponse = Schemas['IntegrationConnectionResponse'];
+export type IntegrationTriggerRequest = Schemas['IntegrationTriggerRequest'];
+export type IntegrationImportItemRequest = Schemas['IntegrationImportItemRequest'];
+export type IntegrationImportRequest = Schemas['IntegrationImportRequest'];
+export type RepositoryResponse = Schemas['RepositoryResponse'];
+export type IntegrationRunResponse = Schemas['IntegrationRunResponse'];
+export type IntegrationRunItemResponse = Schemas['IntegrationRunItemResponse'];
+export type RepositoryBindRequest = Schemas['RepositoryBindRequest'];
+export type IntegrationEnableRequest = Schemas['IntegrationEnableRequest'];
+export type DevelopmentKind = Schemas['DevelopmentKind'];
+export type DevelopmentSnapshotResponse = Schemas['DevelopmentSnapshotResponse'];
+export type DevelopmentItemResponse = Schemas['DevelopmentItemResponse'];
+export type ProjectDevelopmentResponse = Schemas['ProjectDevelopmentResponse'];
+export type RepositoryPageResponse = Schemas['RepositoryPageResponse'];
+export type IntegrationConnectionPageResponse = Schemas['IntegrationConnectionPageResponse'];
+export type IntegrationRunPageResponse = Schemas['IntegrationRunPageResponse'];
+export type IntegrationRunItemPageResponse = Schemas['IntegrationRunItemPageResponse'];
+export type DevelopmentItemPageResponse = Schemas['DevelopmentItemPageResponse'];
 export type QueryParams = object;
 export interface WorkstationTransport {
     get<T>(path: string, params?: QueryParams): Promise<T>;
@@ -50,6 +71,187 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    integrationApi: {
+        list: (w: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["IntegrationConnectionResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        create: (w: number, body: IntegrationConnectionRequest) => Promise<{
+            id: number;
+            name: string;
+            provider: components["schemas"]["IntegrationProvider"];
+            baseUrl: string;
+            account: string;
+            scope: components["schemas"]["IntegrationScope"];
+            includeForks: boolean;
+            includeArchived: boolean;
+            autoImport: boolean;
+            scheduleMinutes: number;
+            enabled: boolean;
+            version: number;
+            lastError: string | null;
+            lastSyncedAt: string | null;
+        }>;
+        update: (w: number, id: number, body: IntegrationConnectionRequest) => Promise<{
+            id: number;
+            name: string;
+            provider: components["schemas"]["IntegrationProvider"];
+            baseUrl: string;
+            account: string;
+            scope: components["schemas"]["IntegrationScope"];
+            includeForks: boolean;
+            includeArchived: boolean;
+            autoImport: boolean;
+            scheduleMinutes: number;
+            enabled: boolean;
+            version: number;
+            lastError: string | null;
+            lastSyncedAt: string | null;
+        }>;
+        validate: (w: number, id: number) => Promise<{
+            id: number;
+            name: string;
+            provider: components["schemas"]["IntegrationProvider"];
+            baseUrl: string;
+            account: string;
+            scope: components["schemas"]["IntegrationScope"];
+            includeForks: boolean;
+            includeArchived: boolean;
+            autoImport: boolean;
+            scheduleMinutes: number;
+            enabled: boolean;
+            version: number;
+            lastError: string | null;
+            lastSyncedAt: string | null;
+        }>;
+        enabled: (w: number, id: number, body: IntegrationEnableRequest) => Promise<{
+            id: number;
+            name: string;
+            provider: components["schemas"]["IntegrationProvider"];
+            baseUrl: string;
+            account: string;
+            scope: components["schemas"]["IntegrationScope"];
+            includeForks: boolean;
+            includeArchived: boolean;
+            autoImport: boolean;
+            scheduleMinutes: number;
+            enabled: boolean;
+            version: number;
+            lastError: string | null;
+            lastSyncedAt: string | null;
+        }>;
+        delete: (w: number, id: number) => Promise<null>;
+        discover: (w: number, id: number, requestKey: string) => Promise<{
+            id: number;
+            kind: "DISCOVER" | "IMPORT" | "SYNC";
+            status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+            processed: number;
+            failed: number;
+            lastError: string | null;
+            createdAt: string | null;
+            finishedAt: string | null;
+        }>;
+        sync: (w: number, id: number, requestKey: string) => Promise<{
+            id: number;
+            kind: "DISCOVER" | "IMPORT" | "SYNC";
+            status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+            processed: number;
+            failed: number;
+            lastError: string | null;
+            createdAt: string | null;
+            finishedAt: string | null;
+        }>;
+        imports: (w: number, id: number, body: IntegrationImportRequest) => Promise<{
+            id: number;
+            kind: "DISCOVER" | "IMPORT" | "SYNC";
+            status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+            processed: number;
+            failed: number;
+            lastError: string | null;
+            createdAt: string | null;
+            finishedAt: string | null;
+        }>;
+        repositories: (w: number, id: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["RepositoryResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        runs: (w: number, id: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["IntegrationRunResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        run: (w: number, id: number, runId: number) => Promise<{
+            id: number;
+            kind: "DISCOVER" | "IMPORT" | "SYNC";
+            status: "QUEUED" | "RUNNING" | "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED";
+            processed: number;
+            failed: number;
+            lastError: string | null;
+            createdAt: string | null;
+            finishedAt: string | null;
+        }>;
+        items: (w: number, id: number, runId: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["IntegrationRunItemResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        projectRepositories: (w: number, project: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["RepositoryResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        bind: (w: number, project: number, body: RepositoryBindRequest) => Promise<{
+            id: number;
+            provider: components["schemas"]["IntegrationProvider"];
+            namespace: string;
+            name: string;
+            url: string;
+            description: string | null;
+            defaultBranch: string | null;
+            language: string | null;
+            visibility: string;
+            archived: boolean;
+            projectId: number | null;
+            connectionId: number | null;
+            lastPushedAt: string | null;
+            lastSyncedAt: string | null;
+            lastError: string | null;
+            collectedOpenIssues: number | null;
+            collectedOpenChangeRequests: number | null;
+            latestPipelineStatus: string | null;
+        }>;
+        unbind: (w: number, project: number, repository: number) => Promise<null>;
+        development: (w: number, project: number) => Promise<{
+            repositories: components["schemas"]["RepositoryResponse"][];
+            snapshots: components["schemas"]["DevelopmentSnapshotResponse"][];
+        }>;
+        developmentItems: (w: number, project: number, kind: DevelopmentKind, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["DevelopmentItemResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        workspaceDevelopment: (w: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["RepositoryResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+    };
     workspaceApi: {
         list: () => Promise<{
             id: number;
@@ -150,6 +352,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             description: string | null;
             status: components["schemas"]["ProjectStatus"];
             repositoryUrl: string | null;
+            homepageUrl: string | null;
             techStack: string | null;
             createdAt: string;
             updatedAt: string;
@@ -165,6 +368,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             description: string | null;
             status: components["schemas"]["ProjectStatus"];
             repositoryUrl: string | null;
+            homepageUrl: string | null;
             techStack: string | null;
             runGuide: string | null;
             createdAt: string;
@@ -176,6 +380,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             description: string | null;
             status: components["schemas"]["ProjectStatus"];
             repositoryUrl: string | null;
+            homepageUrl: string | null;
             techStack: string | null;
             runGuide: string | null;
             createdAt: string;
@@ -187,6 +392,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             description: string | null;
             status: components["schemas"]["ProjectStatus"];
             repositoryUrl: string | null;
+            homepageUrl: string | null;
             techStack: string | null;
             runGuide: string | null;
             createdAt: string;
