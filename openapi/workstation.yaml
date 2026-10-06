@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 4.0.0
+  version: 4.1.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -138,10 +138,11 @@ paths:
     get:
       tags: [workspace-members]
       operationId: findWorkspaceMemberCandidate
-      summary: 按精确用户名查询已登录过的用户
+      summary: 按用户名或显示名称模糊查询已登录过的用户
       parameters:
         - name: username
           in: query
+          description: 去除首尾空白后按用户名或显示名称包含匹配，不区分大小写；最多返回 10 个用户，仅成员管理员可查询
           required: true
           schema: { type: string, minLength: 1, maxLength: 255 }
       responses:

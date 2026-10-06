@@ -195,7 +195,7 @@ class WorkspaceServiceTests {
     }
 
     @Test
-    void memberCandidateLookupUsesExactNormalizedUsername() {
+    void memberCandidateLookupUsesNormalizedKeyword() {
         SecurityPrincipal candidate = new SecurityPrincipal();
         candidate.setSubjectId("subject-2");
         candidate.setUsername("alex");
@@ -207,6 +207,24 @@ class WorkspaceServiceTests {
         assertThat(results).hasSize(1);
         assertThat(results.get(0).subjectId()).isEqualTo("subject-2");
         verify(workspaceMapper).findUsersByUsername("alex");
+    }
+
+    @Test
+    void memberSearchRejectsBlankAndOverlongKeywordsBeforeQuerying() {
+        assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "  "))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "a".repeat(256)))
+                .isInstanceOf(BusinessException.class);
+        verify(workspaceMapper, never()).findUsersByUsername(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void memberSearchChecksPermissionBeforeLookingUpUsers() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenThrow(new WorkspaceAccessDeniedException("没有成员管理权限"));
+        assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "张"))
+                .isInstanceOf(WorkspaceAccessDeniedException.class);
+        verify(workspaceMapper, never()).findUsersByUsername(org.mockito.ArgumentMatchers.anyString());
     }
 
     private Workspace workspace(WorkspaceRole role) {

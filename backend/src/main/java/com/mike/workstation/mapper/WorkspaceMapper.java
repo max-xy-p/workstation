@@ -62,7 +62,9 @@ public interface WorkspaceMapper {
     @Select("""
             SELECT subject_id, principal_type, username, display_name, created_at, updated_at
             FROM security_principals
-            WHERE principal_type = 'USER' AND username = #{username}
+            WHERE principal_type = 'USER'
+              AND (LOCATE(LOWER(#{username}), LOWER(username)) > 0
+                   OR LOCATE(LOWER(#{username}), LOWER(display_name)) > 0)
             ORDER BY subject_id LIMIT 10
             """)
     List<SecurityPrincipal> findUsersByUsername(String username);

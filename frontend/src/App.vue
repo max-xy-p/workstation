@@ -11,13 +11,7 @@
         </span>
       </RouterLink>
 
-      <div class="workspace-chip">
-        <span class="status-dot"></span>
-        <select :value="workspace.currentId.value || ''" aria-label="切换工作空间" @change="switchWorkspace">
-          <option v-for="item in workspace.state.items" :key="item.id" :value="item.id">{{ item.name }}</option>
-        </select>
-        <RouterLink :to="{ name: 'workspace-settings', params: { workspaceId: workspace.currentId.value } }" aria-label="工作空间设置" title="工作空间设置">设置</RouterLink>
-      </div>
+      <WorkspaceSwitcher class="sidebar-space-switcher" />
 
       <p class="nav-label">工作区</p>
       <nav class="nav" aria-label="主导航">
@@ -57,6 +51,7 @@
           <p>{{ currentMeta.description }}</p>
         </div>
         <div class="topbar-actions">
+          <WorkspaceSwitcher class="mobile-space-switcher" />
           <RouterLink class="button topbar-action" :to="{ name: 'note-new', params: { workspaceId: workspace.currentId.value } }">
             <AppIcon name="write" />
             <span>新建笔记</span>
@@ -78,6 +73,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
+import WorkspaceSwitcher from './components/WorkspaceSwitcher.vue';
 import { auth } from './auth';
 import { workspace } from './workspace';
 import AppIcon from './components/AppIcon.vue';
@@ -125,13 +121,6 @@ function isNavActive(name) {
   return route.name === name;
 }
 
-function switchWorkspace(event) {
-  const workspaceId = Number(event.target.value);
-  if (Number.isSafeInteger(workspaceId)) {
-    void router.push({ name: 'dashboard', params: { workspaceId } });
-  }
-}
-
 async function signOut() {
   loggingOut.value = true;
   try {
@@ -156,6 +145,15 @@ onBeforeUnmount(() => window.removeEventListener('workstation:unauthorized', han
 </script>
 
 <style scoped>
-.workspace-chip select { min-width: 0; flex: 1; width: 100%; border: 0; background: transparent; padding: 0.25rem; }
-.workspace-chip a { flex: none; font-size: 0.8rem; }
+.sidebar-space-switcher { margin: 0 6px 22px; }
+.mobile-space-switcher { display: none; }
+@media (max-width: 900px) {
+  .sidebar-space-switcher { display: none; }
+  .mobile-space-switcher { display: block; width: min(220px, 36vw); }
+}
+@media (max-width: 620px) {
+  .topbar { flex-wrap: wrap; gap: 12px; }
+  .topbar-actions { width: 100%; }
+  .mobile-space-switcher { flex: 1; width: auto; min-width: 0; }
+}
 </style>

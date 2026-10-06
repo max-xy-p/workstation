@@ -90,7 +90,7 @@ wheels = [
 
 [[package]]
 name = "workstation-api-client"
-version = "4.0.0"
+version = "4.1.0"
 source = { directory = "../python" }
 dependencies = [
     { name = "attrs" },
@@ -105,7 +105,7 @@ requires-dist = [
 
 [[package]]
 name = "workstation-client-credentials"
-version = "4.0.0"
+version = "4.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

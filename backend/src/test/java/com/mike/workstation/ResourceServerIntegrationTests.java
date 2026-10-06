@@ -42,6 +42,25 @@ class ResourceServerIntegrationTests {
     @MockitoBean
     private NoteService noteService;
 
+    @MockitoBean
+    private com.mike.workstation.service.WorkspaceService workspaceService;
+
+    @Test
+    void memberSearchKeepsExistingParameterAndReturnsDisplayNames() throws Exception {
+        when(workspaceService.findMemberCandidates(1L, "张"))
+                .thenReturn(java.util.List.of(new com.mike.workstation.dto.WorkspaceMemberCandidate(
+                        "subject-2", "zhang", "张三")));
+        mockMvc.perform(get("/api/workspaces/1/member-candidates").param("username", "张")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].displayName").value("张三"));
+        mockMvc.perform(get("/api/workspaces/1/member-candidates")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/workspaces/1/member-candidates").param("username", "张"))
+                .andExpect(status().isUnauthorized());
+    }
+
     @Test
     void protectedApiRejectsAnonymousRequests() throws Exception {
         mockMvc.perform(get("/api/workspaces/1/projects"))

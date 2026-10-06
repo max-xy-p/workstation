@@ -74,6 +74,6 @@ PR/MR 的开放、合并、关闭状态与工作台任务状态分离；外部�
 
 ## 契约与后续能力
 
-API 位于 /api/workspaces/{workspaceId}，正式路径和字段以 [OpenAPI](../openapi/workstation.yaml) 为准。契约与全部 SDK 同步升级为 4.0.0，客户端需一起升级；不保留旧请求缺少新字段时的兼容更新行为。部署与发布仍沿用 [CI/CD 流程](ci-cd.md)。
+API 位于 /api/workspaces/{workspaceId}，正式路径和字段以 [OpenAPI](../openapi/workstation.yaml) 为准。数据源接口从 4.0.0 引入，当前契约与全部 SDK 为 4.1.0，客户端需一起升级；不保留旧请求缺少新字段时的兼容更新行为。部署与发布仍沿用 [CI/CD 流程](ci-cd.md)。
 
 当前连接使用 Token。OAuth、GitHub App、Webhook 和外部 Issue 转为任务属于后续能力，不能把现有同步开关视为这些功能已经实现。实际进度、验证结果、环境限制与待办事项统一见 [STATUS.md](STATUS.md)。

@@ -71,7 +71,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** 按精确用户名查询已登录过的用户 */
+        /** 按用户名或显示名称模糊查询已登录过的用户 */
         get: operations["findWorkspaceMemberCandidate"];
         put?: never;
         post?: never;
@@ -1496,6 +1496,7 @@ export interface operations {
     findWorkspaceMemberCandidate: {
         parameters: {
             query: {
+                /** @description 去除首尾空白后按用户名或显示名称包含匹配，不区分大小写；最多返回 10 个用户，仅成员管理员可查询 */
                 username: string;
             };
             header?: never;

@@ -96,9 +96,9 @@ public class WorkspaceService {
     public List<WorkspaceMemberCandidate> findMemberCandidates(Long workspaceId, String username) {
         authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         RequestChecks.requiredText(username, "用户名");
-        String exactUsername = username.trim();
-        RequestChecks.maxLength(exactUsername, 255, "用户名");
-        return workspaceMapper.findUsersByUsername(exactUsername).stream()
+        String keyword = username.trim();
+        RequestChecks.maxLength(keyword, 255, "搜索关键词");
+        return workspaceMapper.findUsersByUsername(keyword).stream()
                 .map(candidate -> new WorkspaceMemberCandidate(
                         candidate.getSubjectId(), candidate.getUsername(), candidate.getDisplayName()))
                 .toList();

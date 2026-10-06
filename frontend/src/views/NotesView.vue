@@ -1,4 +1,6 @@
 <template>
+  <div class="note-space-shell">
+  <div class="note-space-toolbar"><WorkspaceSwitcher /></div>
   <section class="notes-workspace" :class="{ 'has-open-note': hasWorkspaceContent }">
     <aside class="note-explorer">
       <header class="note-explorer-header">
@@ -96,6 +98,7 @@
       </div>
     </main>
   </section>
+  </div>
 </template>
 
 <script setup>
@@ -104,6 +107,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
 import NoteTreeItem from '../components/NoteTreeItem.vue';
+import WorkspaceSwitcher from '../components/WorkspaceSwitcher.vue';
 import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../utils/noteFolders';
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 import NoteEditorView from './NoteEditorView.vue';
@@ -244,3 +248,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => window.clearTimeout(keywordSearchTimer));
 </script>
+
+<style scoped>
+.note-space-shell { display: flex; flex-direction: column; height: 100dvh; }
+.note-space-shell > .notes-workspace { height: auto; min-height: 0; flex: 1; }
+.note-space-toolbar { padding: 10px 18px; background: var(--canvas); border-bottom: 1px solid var(--line); }
+.note-space-toolbar > div { max-width: 280px; }
+</style>

@@ -90,7 +90,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     username: str,
 ) -> Response[ApiError | list[WorkspaceMemberCandidate]]:
-    """按精确用户名查询已登录过的用户
+    """按用户名或显示名称模糊查询已登录过的用户
 
     Args:
         workspace_id (int):
@@ -122,7 +122,7 @@ def sync(
     client: AuthenticatedClient | Client,
     username: str,
 ) -> ApiError | list[WorkspaceMemberCandidate] | None:
-    """按精确用户名查询已登录过的用户
+    """按用户名或显示名称模糊查询已登录过的用户
 
     Args:
         workspace_id (int):
@@ -149,7 +149,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     username: str,
 ) -> Response[ApiError | list[WorkspaceMemberCandidate]]:
-    """按精确用户名查询已登录过的用户
+    """按用户名或显示名称模糊查询已登录过的用户
 
     Args:
         workspace_id (int):
@@ -179,7 +179,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     username: str,
 ) -> ApiError | list[WorkspaceMemberCandidate] | None:
-    """按精确用户名查询已登录过的用户
+    """按用户名或显示名称模糊查询已登录过的用户
 
     Args:
         workspace_id (int):

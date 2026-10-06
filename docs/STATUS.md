@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-10-02。
+> 核对日期：2026-10-06。
 
 ## 当前状态
 
@@ -19,9 +19,9 @@
 - [x] 关键写操作与 Workspace 权限拒绝审计，以及按 Workspace 分页筛选查询
 - [x] Transactional Outbox、XXL-JOB 调度、RabbitMQ Publisher Confirm、幂等消费、有限重试和死信队列
 - [x] Keycloak 用户/管理员/机器系统角色分离，Gateway 只做系统准入，Backend 执行业务授权
-- [x] 共享 Workspace 创建、切换、成员设置与服务端已知用户名的精确查找
+- [x] 可搜索的 Workspace 切换器、个人/共享分组、创建入口、键盘与移动端操作，以及成员名称模糊查询和局部管理状态
 - [x] Frontend Workspace 路由和上下文，以及按用户、Workspace、笔记与编辑会话隔离的 IndexedDB 草稿键
-- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `4.0.0` 项目数据源契约
+- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 升级为 `4.1.0` 成员搜索契约
 - [x] MySQL 分库保存 Workstation、Keycloak 和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计消息
 - [x] 笔记创建、详情、更新、软删除、回收站恢复、永久删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
@@ -50,7 +50,7 @@
 ## 进行中
 
 - [ ] 目标环境备份后执行项目数据源迁移，配置凭证加密密钥和只读平台 Token，验证真实账号导入及浏览器操作；当前仅验证隔离数据库，未迁移部署数据库。
-- [ ] 本次源码的 Sonar 分析待授权：自动审批拒绝向分析服务外发源码，尚未确认本次静态分析及云端 Quality Gate。
+- [ ] 当前源码的 Sonar 分析待服务可用：用户已授权本次文件分析，但连接不支持 Vortex（403）；静态分析及云端 Quality Gate 尚未确认。
 - [ ] 在目标环境备份后执行笔记回收站等迁移，并验证双用户成员操作、双标签页笔记冲突、Gateway CSRF 与浏览器回收站流程。
 
 ## 后续计划
@@ -73,11 +73,13 @@
 - 旧 `.env.docker` 需将初始账号变量改为 `WORKSTATION_INITIAL_USERNAME` 和 `WORKSTATION_INITIAL_PASSWORD`。
 - 成员查找仅覆盖已登录过本系统的用户，不直接查询 Keycloak 全部用户。
 - `PUBLISHED` Outbox 目前没有自动清理任务，长期运行前需要确定保留周期并补充清理 Job。
-- 前端没有自动化测试、lint 和 format 脚本；已配置 OpenAPI DTO 生成和 TypeScript/Vue 静态类型检查。
+- 前端尚未配置统一的 test、lint 和 format 脚本；工作空间导航有独立 Node 回归测试，已配置 OpenAPI DTO 生成和 TypeScript/Vue 静态类型检查。
 - 前端全局样式仍保留多轮页面改版形成的覆盖规则；根级重复选择器已合并，后续改版仍需逐页视觉回归。
 - Windows 下 `mvnw.cmd` 当前无法正常启动，本机需使用已安装的 `mvn.cmd`。
 
 ## 验证与说明
+
+- 2026-10-06 优化工作空间切换与成员管理：桌面、移动端和笔记工作区共用可搜索切换器，展示类型与角色，支持键盘操作、新建入口和保持模块的切换；切换时清除原空间资源 ID 和筛选条件。设置页集中管理当前空间与成员，成员候选按用户名或显示名称简单包含匹配，300ms 防抖并忽略过期响应；添加与角色修改仅锁定当前成员行，移除使用独立确认。契约与全部 SDK 升级为 4.1.0，现有路径、参数与响应结构保持兼容。最后一次 Backend 相关修改后，两模块 mvn.cmd clean verify 通过：Backend 151 项、Gateway 16 项，均无失败、错误或跳过；Backend 包含隔离 MySQL 的中文、大小写、部分匹配、字面符号与 10 条上限验证。python scripts/check_java_coverage.py 通过，Backend 84.01%、Gateway 83.40%、综合 83.96%。Frontend 类型检查与生产构建、3 项独立导航测试、TypeScript SDK 类型检查/构建/3 项测试、Python 4 项测试和版本一致性检查通过。使用本机 Edge 与模拟 API 验证桌面和移动端布局、键盘切换、新建空间、成员筛选与操作状态、过期搜索响应、最后一位 Owner 拒绝、切换失败以及笔记页切换；真实登录会话下的完整集成回归尚未执行。Sonar MCP 在最近云端分析中未查询到相关文件的未解决问题；用户已授权本次文件分析，但 CLI 返回 Vortex 403 并跳过源码分析，当前修改的静态分析与云端 Quality Gate 尚未验证。
 
 - 2026-10-02 实现 GitHub/GitLab 项目数据源接入、多仓库关联、幂等导入、持久化同步队列与近期开发情况快照；项目增加 homepageUrl，契约和 SDK 统一升级到 4.0.0，不保留旧客户端缺少新字段的兼容更新行为。最后一次相关修改后，Backend 与 Gateway 的 mvn.cmd clean verify 分别通过 147 项和 16 项测试（无失败、错误或跳过）；Backend 本次还连接隔离 MySQL 执行真实 Mapper 测试。亲自执行 python scripts/check_java_coverage.py，Backend 83.93%、Gateway 83.40%、综合 83.89%，80% 检查通过。Frontend 类型检查与生产构建、TypeScript SDK 类型检查/构建/3 项测试、Python 4 项测试、SDK 版本一致性与重复生成无漂移检查、开发和生产 Compose 配置校验、文档链接及空白检查通过；隔离 MySQL 8.4 验证新建库、旧结构重复迁移、外键与唯一约束、运行租约及自动导入抑制标记，临时容器已清理。Sonar 分析被自动审批拒绝，原因是向分析服务外发源码未获授权，当前静态分析及云端 Quality Gate 未验证；真实平台账号连接、目标数据库迁移、完整浏览器回归与应用镜像构建尚未执行。
 - 2026-10-02 整理多数据源项目同步实现方案，明确项目与外部仓库关系、连接授权、数据快照、后台同步、接口页面和分阶段验收范围。本次仅新增方案并更新文档导航与计划，文档本地链接检查与 Git 差异空白检查通过；未实现功能、执行数据库迁移或运行代码验证。
