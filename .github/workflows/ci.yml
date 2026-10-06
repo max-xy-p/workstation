@@ -123,7 +123,17 @@ jobs:
           enable-cache: true
 
       - name: 检查 SDK 版本一致性
-        run: python scripts/check_sdk_versions.py
+        run: |
+          python scripts/check_sdk_versions.py
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("clients/python/pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as output:
+              output.write(f"SDK_VERSION={version}\n")
+          PY
 
       - name: Regenerate Python client
         run: >-
@@ -152,8 +162,8 @@ jobs:
       - name: 安装并检查本地 Python wheel
         run: |
           uv pip install --python clients/python-auth/.venv/bin/python --no-deps --no-build --offline \
-            ./.ci-wheels/workstation_api_client-3.1.0-py3-none-any.whl \
-            ./.ci-wheels/workstation_client_credentials-3.1.0-py3-none-any.whl
+            "./.ci-wheels/workstation_api_client-${SDK_VERSION}-py3-none-any.whl" \
+            "./.ci-wheels/workstation_client_credentials-${SDK_VERSION}-py3-none-any.whl"
           uv pip check --python clients/python-auth/.venv/bin/python
 
       - name: Test Client Credentials adapter
