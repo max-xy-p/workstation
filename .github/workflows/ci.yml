@@ -212,6 +212,9 @@ jobs:
       - name: Type-check frontend API contract
         run: npm run typecheck
 
+      - name: 验证前端导航与表单交互状态
+        run: npm test
+
       - name: Build frontend
         run: npm run build
         env:

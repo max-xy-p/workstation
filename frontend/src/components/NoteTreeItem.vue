@@ -1,7 +1,7 @@
 <template>
   <div class="note-tree-branch">
     <div class="note-tree-folder-row" :style="{ '--tree-depth': depth }">
-      <button class="tree-disclosure" type="button" :aria-label="expanded ? '折叠文件夹' : '展开文件夹'" @click="$emit('toggle', folder.id)">
+      <button class="tree-disclosure" type="button" :aria-expanded="expanded" :aria-label="expanded ? '折叠文件夹' : '展开文件夹'" @click="$emit('toggle', folder.id)">
         <ChevronRight :class="{ expanded }" />
       </button>
       <button class="tree-folder-name" type="button" @click="$emit('toggle', folder.id)">
@@ -10,13 +10,13 @@
         <span>{{ folder.name }}</span>
       </button>
       <span class="tree-folder-count">{{ folder.notes.length }}</span>
-      <details ref="actionMenu" class="tree-action-menu" @focusout="closeMenuOnFocusOut">
+      <details v-if="canWriteFolder || canWriteNote" ref="actionMenu" class="tree-action-menu" @focusout="closeMenuOnFocusOut">
         <summary title="文件夹操作" aria-label="文件夹操作"><Ellipsis /></summary>
         <div class="tree-action-popover">
-          <button type="button" @click="runAction('new-note', folder.id)"><FilePlus2 /><span>新建笔记</span></button>
-          <button type="button" @click="runAction('new-child', folder.id)"><FolderPlus /><span>新建子文件夹</span></button>
-          <button type="button" @click="runAction('edit', folder)"><Pencil /><span>编辑文件夹</span></button>
-          <button class="danger" type="button" @click="runAction('delete', folder)"><Trash2 /><span>删除文件夹</span></button>
+          <button v-if="canWriteNote" type="button" @click="runAction('new-note', folder.id)"><FilePlus2 /><span>新建笔记</span></button>
+          <button v-if="canWriteFolder" type="button" @click="runAction('new-child', folder.id)"><FolderPlus /><span>新建子文件夹</span></button>
+          <button v-if="canWriteFolder" type="button" @click="runAction('edit', folder)"><Pencil /><span>编辑文件夹</span></button>
+          <button v-if="canWriteFolder" class="danger" type="button" @click="runAction('delete', folder)"><Trash2 /><span>删除文件夹</span></button>
         </div>
       </details>
     </div>
@@ -55,8 +55,11 @@ import { ChevronRight, Ellipsis, FilePlus2, FileText, Folder, FolderOpen, Folder
 import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { workspaceRouteParams } from '../utils/workspaceRoute';
+import { workspace } from '../workspace';
 
 const route = useRoute();
+const canWriteFolder = computed(() => workspace.hasPermission('FOLDER_WRITE'));
+const canWriteNote = computed(() => workspace.hasPermission('NOTE_WRITE'));
 const workspaceParams = workspaceRouteParams(route);
 
 const props = defineProps({

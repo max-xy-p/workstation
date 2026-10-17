@@ -1,19 +1,19 @@
 <template>
   <main class="login-page">
     <header class="login-header">
-      <div class="login-brand" aria-label="个人工作台">
+      <div class="login-brand" aria-label="Workstation 工作台">
         <span class="brand-mark">知</span>
         <span>
-          <strong>个人工作台</strong>
-          <small>私人知识库</small>
+          <strong>Workstation</strong>
+          <small>知识与项目工作台</small>
         </span>
       </div>
-      <span class="login-privacy"><span class="status-dot"></span>仅限所有者</span>
+      <span class="login-privacy"><span class="status-dot"></span>工作空间协作</span>
     </header>
 
     <div class="login-stage">
       <section class="login-intro" aria-labelledby="login-title">
-        <span class="login-kicker">私人知识库</span>
+        <span class="login-kicker">团队知识与工作</span>
         <h1 id="login-title">把想法放在<br><em>找得到的地方。</em></h1>
         <p>记录笔记，连接项目，用文件夹和标签把零散信息整理成可以继续使用的知识。</p>
 
@@ -26,7 +26,7 @@
 
       <section class="login-sheet" aria-label="登录">
         <div class="sheet-binding" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span class="sheet-tab">WORKSTATION ACCESS</span>
+        <span class="sheet-tab">工作台登录</span>
         <div class="login-form">
           <div class="login-form-heading">
             <span class="section-kicker">欢迎回来</span>

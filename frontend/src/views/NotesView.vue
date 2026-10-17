@@ -1,22 +1,23 @@
 <template>
   <div class="note-space-shell">
-  <div class="note-space-toolbar"><WorkspaceSwitcher /></div>
+  <PageActions>
+    <button v-if="isEditorRoute" class="secondary" type="button" :aria-pressed="focused" @click="focused = !focused">{{ focused ? '退出专注' : '专注写作' }}</button>
+    <RouterLink v-if="canWrite" class="button" :to="{ name: 'note-new', params: workspaceParams }">新建笔记</RouterLink>
+  </PageActions>
   <section class="notes-workspace" :class="{ 'has-open-note': hasWorkspaceContent }">
     <aside class="note-explorer">
       <header class="note-explorer-header">
         <div class="note-workspace-identity">
-          <RouterLink class="workspace-home-link" :to="{ name: 'dashboard', params: workspaceParams }" title="返回工作台" aria-label="返回工作台">知</RouterLink>
-          <span class="workspace-identity-divider">/</span>
-          <h1>笔记</h1>
+          <h2>知识库</h2>
           <span>{{ notes.length }} 篇</span>
         </div>
         <div class="note-explorer-actions">
-          <RouterLink :to="{ name: 'note-new', params: workspaceParams }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
+          <RouterLink v-if="canWrite" :to="{ name: 'note-new', params: workspaceParams }" title="新建笔记" aria-label="新建笔记"><SquarePen /></RouterLink>
           <details class="explorer-action-menu" @focusout="closeExplorerMenu">
             <summary title="更多笔记操作" aria-label="更多笔记操作"><Ellipsis /></summary>
             <div class="explorer-action-popover">
-              <button type="button" @click="openFolderFromMenu"><FolderPlus /><span>新建文件夹</span></button>
-              <RouterLink :to="{ name: 'note-import', params: workspaceParams }"><Import /><span>导入 Markdown</span></RouterLink>
+              <button v-if="canWriteFolder" type="button" @click="openFolderFromMenu"><FolderPlus /><span>新建文件夹</span></button>
+              <RouterLink v-if="canImport" :to="{ name: 'note-import', params: workspaceParams }"><Import /><span>导入 Markdown</span></RouterLink>
               <RouterLink :to="{ name: 'note-trash', params: workspaceParams }"><Trash2 /><span>回收站</span></RouterLink>
             </div>
           </details>
@@ -45,17 +46,17 @@
         </select>
       </div>
 
-      <form v-if="folderForm.open" class="folder-editor" @submit.prevent="saveFolder">
-        <input ref="folderNameInput" v-model="folderForm.name" aria-label="文件夹名称" placeholder="文件夹名称" required maxlength="120" />
-        <select v-model="folderForm.parentId" aria-label="上级文件夹">
+      <AppDrawer v-model="folderForm.open" :title="folderForm.id ? '编辑文件夹' : '新建文件夹'" :busy="folderSaving" :dirty="folderDirty">
+      <p v-if="folderError" class="error" role="alert">{{ folderError }}</p>
+      <form id="folder-form" class="form-grid" @submit.prevent="saveFolder">
+        <label class="wide">文件夹名称<input ref="folderNameInput" v-model="folderForm.name" placeholder="文件夹名称" required maxlength="120" /></label>
+        <label class="wide">上级文件夹<select v-model="folderForm.parentId">
           <option value="">根目录</option>
           <option v-for="folder in availableParents" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
-        </select>
-        <div>
-          <button type="submit" title="保存文件夹" aria-label="保存文件夹"><Check /></button>
-          <button type="button" title="取消" aria-label="取消" @click="closeFolderForm"><X /></button>
-        </div>
+        </select></label>
       </form>
+      <template #footer="{ close }"><button type="button" class="secondary" :disabled="folderSaving" @click="close">取消</button><button type="submit" form="folder-form" :disabled="folderSaving">{{ folderSaving ? '保存中…' : '保存文件夹' }}</button></template>
+      </AppDrawer>
 
       <p v-if="error" class="explorer-error">{{ error }}</p>
       <nav class="note-tree" aria-label="笔记文件夹">
@@ -86,7 +87,7 @@
       </nav>
     </aside>
 
-    <main class="note-workspace-editor">
+    <section class="note-workspace-editor" aria-label="笔记内容">
       <NoteImportView v-if="isImportRoute" />
       <NoteTrashView v-else-if="isTrashRoute" />
       <NoteEditorView v-else-if="isEditorRoute" :key="route.fullPath" @saved="refreshTree" @deleted="refreshTree" />
@@ -94,20 +95,22 @@
         <FileText />
         <h2>选择一篇笔记</h2>
         <p>从左侧文件夹中打开笔记，或新建一篇。</p>
-        <RouterLink class="button" :to="{ name: 'note-new', params: workspaceParams }">新建笔记</RouterLink>
+        <RouterLink v-if="canWrite" class="button" :to="{ name: 'note-new', params: workspaceParams }">新建笔记</RouterLink>
       </div>
-    </main>
+    </section>
   </section>
   </div>
 </template>
 
 <script setup>
-import { Check, Ellipsis, FileText, FolderPlus, Import, ListFilter, Search, SquarePen, Trash2, X } from '@lucide/vue';
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { Ellipsis, FileText, FolderPlus, Import, ListFilter, Search, SquarePen, Trash2, X } from '@lucide/vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, tagApi } from '../api/workstation';
 import NoteTreeItem from '../components/NoteTreeItem.vue';
-import WorkspaceSwitcher from '../components/WorkspaceSwitcher.vue';
+import AppDrawer from '../components/AppDrawer.vue';
+import PageActions from '../components/PageActions.vue';
+import { workspace } from '../workspace';
 import { buildFolderTree, descendantFolderIds, flattenFolderOptions } from '../utils/noteFolders';
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
 import NoteEditorView from './NoteEditorView.vue';
@@ -116,6 +119,10 @@ import NoteTrashView from './NoteTrashView.vue';
 
 const route = useRoute();
 const router = useRouter();
+const focused = inject('notesFocus', ref(false));
+const canWrite = computed(() => workspace.hasPermission('NOTE_WRITE'));
+const canWriteFolder = computed(() => workspace.hasPermission('FOLDER_WRITE'));
+const canImport = computed(() => workspace.hasPermission('NOTE_IMPORT'));
 const workspaceId = computed(() => workspaceIdFromRoute(route));
 const workspaceParams = workspaceRouteParams(route);
 const error = ref('');
@@ -128,6 +135,10 @@ const folderNameInput = ref(null);
 const filters = reactive({ keyword: route.query.keyword || '', tagId: '' });
 const showFilters = ref(false);
 const folderForm = reactive({ open: false, id: null, name: '', parentId: '' });
+const folderInitial = ref('');
+const folderSaving = ref(false);
+const folderError = ref('');
+const folderDirty = computed(() => folderForm.open && JSON.stringify(folderForm) !== folderInitial.value);
 const isEditorRoute = computed(() => ['note-new', 'note-edit'].includes(route.name));
 const isImportRoute = computed(() => route.name === 'note-import');
 const isTrashRoute = computed(() => route.name === 'note-trash');
@@ -138,6 +149,8 @@ const unfiledNotes = computed(() => notes.value.filter((note) => !note.folderId)
 const unavailableParentIds = computed(() => folderForm.id ? descendantFolderIds(folders.value, folderForm.id) : new Set());
 const availableParents = computed(() => flattenFolderOptions(folders.value).filter((folder) => !unavailableParentIds.value.has(folder.id)));
 let keywordSearchTimer;
+watch(isEditorRoute, (editing) => { if (!editing) focused.value = false; });
+watch(() => route.name, (name, previous) => { if (previous === 'note-import' || previous === 'note-trash') void refreshTree(); });
 
 async function loadFolders() {
   folders.value = await noteFolderApi.list(workspaceId.value);
@@ -191,6 +204,8 @@ async function openFolderForm(folder = null, parentId = null) {
     name: folder?.name || '',
     parentId: folder ? (folder.parentId || '') : (parentId || '')
   });
+  folderInitial.value = JSON.stringify(folderForm);
+  folderError.value = '';
   if (parentId) expandedIds.add(parentId);
   await nextTick();
   folderNameInput.value?.focus();
@@ -210,8 +225,10 @@ function closeExplorerMenu(event) {
 }
 
 async function saveFolder() {
+  if (folderSaving.value || !canWriteFolder.value) return;
+  folderSaving.value = true;
   try {
-    error.value = '';
+    folderError.value = '';
     const payload = { name: folderForm.name, parentId: folderForm.parentId ? Number(folderForm.parentId) : null };
     const saved = folderForm.id
       ? await noteFolderApi.update(workspaceId.value, folderForm.id, payload)
@@ -221,7 +238,9 @@ async function saveFolder() {
     closeFolderForm();
     await loadFolders();
   } catch (err) {
-    error.value = err.message;
+    folderError.value = err.message;
+  } finally {
+    folderSaving.value = false;
   }
 }
 
@@ -250,8 +269,6 @@ onBeforeUnmount(() => window.clearTimeout(keywordSearchTimer));
 </script>
 
 <style scoped>
-.note-space-shell { display: flex; flex-direction: column; height: 100dvh; }
+.note-space-shell { display: flex; flex-direction: column; }
 .note-space-shell > .notes-workspace { height: auto; min-height: 0; flex: 1; }
-.note-space-toolbar { padding: 10px 18px; background: var(--canvas); border-bottom: 1px solid var(--line); }
-.note-space-toolbar > div { max-width: 280px; }
 </style>

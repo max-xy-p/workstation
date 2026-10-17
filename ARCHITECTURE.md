@@ -56,7 +56,7 @@ Gateway 中的认证状态用于浏览器会话和系统级准入，Backend 中�
 - Integrations：Workspace 内的 GitHub/GitLab Token 连接、仓库发现导入、持久化任务队列、手动和定时同步，以及近期 Issue、PR/MR、默认分支提交和流水线快照；流程见 [`docs/integrations.md`](docs/integrations.md)。
 - Tasks：任务 CRUD、依据笔记、优先级、截止日期和看板状态。
 - Dashboard：活跃项目、任务数量和最近记录。
-- Frontend shell：概览、项目、任务和标签使用全局侧栏；笔记使用独立工作区外壳。
+- Frontend shell：所有业务模块共用导航、Workspace 切换与页面操作区；笔记在统一外壳内提供文件树和编辑区，可主动进入专注模式。数据源分为连接列表和连接详情；项目、任务、标签、文件夹与连接表单按需打开抽屉，浏览页不常驻编辑表单。
 
 笔记、文件夹、标签、项目和任务都归属于 Workspace。所有业务路径显式携带 `/api/workspaces/{workspaceId}`，后端业务沿用 `Controller -> Service -> Mapper -> MySQL` 分层；Service 先执行集中授权，再校验同 Workspace 关联对象和事务规则，Mapper 的查询与写入始终携带 `workspaceId`。
 
@@ -89,6 +89,8 @@ NotesView / NoteEditorView
 - `AuditMessageConsumer`：消费 RabbitMQ 消息并按 `eventId` 幂等写入最终审计表，耗尽重试后进入死信队列。
 - `keycloak/workstation-realm.json`：Realm、Client、Audience Mapper、系统角色和初始用户。
 - `frontend/src/workspace.js`：当前 Workspace 列表、选择和页面上下文。
+- `frontend/src/utils/pageLayout.mjs`：模块导航高亮与页面实例边界；同一 Workspace 切换笔记保留文件树，切换 Workspace 重建模块上下文。
+- `AppDrawer.vue` 与 `useFormPanel.mjs`：按需编辑、键盘与焦点、关闭时的未保存提醒、提交锁定和表单内错误。
 - `frontend/src/api/client.ts`：同源 API、Cookie、CSRF、未认证事件及类型化底层请求。
 - `frontend/src/api/workstation.ts`：向独立 TypeScript SDK 注入浏览器 Transport，并维护 Gateway BFF 专用接口。
 - `clients/typescript`：独立的 `@workstation/api-client` SDK，包含 OpenAPI DTO、业务 endpoint、分页汇总和可注入 Token 的 Fetch Transport。

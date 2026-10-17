@@ -478,7 +478,7 @@ h3 {
   font-weight: 650;
 }
 
-input,
+input:where(:not([type="checkbox"]):not([type="radio"])),
 select,
 textarea {
   width: 100%;
@@ -489,7 +489,7 @@ textarea {
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-input,
+input:where(:not([type="checkbox"]):not([type="radio"])),
 select {
   min-height: 42px;
   padding: 0 12px;

@@ -1,7 +1,8 @@
 <template>
   <section class="page projects-page">
+    <PageActions><button v-if="canWrite" type="button" @click="createProject">新建项目</button></PageActions>
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split workspace-split">
+    <div>
       <section class="panel collection-panel">
         <div class="section-heading">
           <div>
@@ -20,7 +21,7 @@
           <button class="secondary" @click="resetFilters">重置</button>
         </div>
 
-        <div v-if="projects.length" class="list">
+        <div v-if="projects.length" class="entity-collection">
           <article v-for="project in projects" :key="project.id" class="card entity-card">
             <div class="card-title">
               <RouterLink :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }"><h3>{{ project.name }}</h3></RouterLink>
@@ -29,9 +30,9 @@
             <p class="card-description">{{ project.description || '还没有补充项目描述。' }}</p>
             <p class="meta">{{ project.techStack || '未填写技术栈' }} · {{ formatDate(project.updatedAt) }}</p>
             <div class="actions">
-              <button class="secondary" @click="edit(project)">编辑</button>
-              <RouterLink :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }"><button class="secondary">详情</button></RouterLink>
-              <button class="danger" @click="remove(project.id)">删除</button>
+              <RouterLink class="button secondary" :to="{ name: 'project-detail', params: { ...workspaceParams, id: project.id } }">查看详情</RouterLink>
+              <button v-if="canWrite" class="secondary" :disabled="saving" @click="edit(project)">编辑</button>
+              <button v-if="canWrite" class="danger" :disabled="saving" @click="remove(project.id)">删除</button>
             </div>
           </article>
         </div>
@@ -43,14 +44,9 @@
         </nav>
       </section>
 
-      <section class="panel form-panel sticky-panel">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">{{ form.id ? '编辑模式' : '快速创建' }}</span>
-            <h2>{{ form.id ? '编辑项目' : '新建项目' }}</h2>
-          </div>
-        </div>
-        <form class="form-grid" @submit.prevent="save">
+      <AppDrawer v-model="opened" :title="form.id ? '编辑项目' : '新建项目'" description="维护项目资料，任务与笔记在项目详情中查看。" :busy="saving" :dirty="dirty">
+        <p v-if="formError" class="error form-error" role="alert">{{ formError }}</p>
+        <form id="project-form" class="form-grid" @submit.prevent="save">
           <label>名称<input v-model="form.name" required /></label>
           <label>状态
             <select v-model="form.status" required>
@@ -63,12 +59,9 @@
           <label>仓库地址<input v-model="form.repositoryUrl" /></label>
           <label>技术栈<input v-model="form.techStack" /></label>
           <label class="wide">运行说明<textarea v-model="form.runGuide" /></label>
-          <div class="actions wide">
-            <button type="submit">{{ form.id ? '保存' : '创建' }}</button>
-            <button type="button" class="secondary" @click="resetForm">清空</button>
-          </div>
         </form>
-      </section>
+        <template #footer="{ close }"><button type="button" class="secondary" :disabled="saving" @click="close">取消</button><button type="submit" form="project-form" :disabled="saving">{{ saving ? '保存中…' : '保存项目' }}</button></template>
+      </AppDrawer>
     </div>
   </section>
 </template>
@@ -79,6 +72,10 @@ import { RouterLink, useRoute } from 'vue-router';
 import { projectApi } from '../api/workstation';
 import { PROJECT_STATUSES, optionLabel } from '../constants/options';
 import { workspaceIdFromRoute, workspaceRouteParams } from '../utils/workspaceRoute';
+import { workspace } from '../workspace';
+import AppDrawer from '../components/AppDrawer.vue';
+import PageActions from '../components/PageActions.vue';
+import { useFormPanel } from '../composables/useFormPanel.mjs';
 
 const route = useRoute();
 const workspaceId = computed(() => workspaceIdFromRoute(route));
@@ -88,6 +85,9 @@ const projects = ref([]);
 const pagination = reactive({ page: 0, size: 20, total: 0, hasMore: false });
 const filters = reactive({ keyword: route.query.keyword || '', status: '' });
 const form = reactive(emptyForm());
+const canWrite = computed(() => workspace.hasPermission('PROJECT_WRITE'));
+const { opened, saving, formError, dirty, openPanel, submit } = useFormPanel(form);
+function createProject() { resetForm(); openPanel(); }
 
 function emptyForm() {
   return { id: null, name: '', description: '', status: '', repositoryUrl: '', techStack: '', runGuide: '', homepageUrl: '' };
@@ -134,6 +134,7 @@ async function edit(project) {
     techStack: project.techStack || '',
     runGuide: project.runGuide || ''
   });
+  openPanel();
 }
 
 // 把表单状态转换为后端 ProjectRequest。
@@ -175,18 +176,15 @@ async function load(page = 0) {
 
 // 创建或更新项目。
 async function save() {
-  try {
-    error.value = '';
+  if (!canWrite.value) return;
+  const saved = await submit(async () => {
     if (form.id) {
       await projectApi.update(workspaceId.value, form.id, payload());
     } else {
       await projectApi.create(workspaceId.value, payload());
     }
-    resetForm();
-    await load();
-  } catch (err) {
-    error.value = err.message;
-  }
+  });
+  if (saved) { resetForm(); await load(pagination.page); }
 }
 
 // 删除项目；如果项目下存在任务，后端会拒绝并返回明确提示。

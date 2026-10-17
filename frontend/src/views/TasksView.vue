@@ -1,7 +1,8 @@
 <template>
   <section class="page tasks-page">
+    <PageActions><button v-if="canWrite" type="button" @click="createNewTask">新建任务</button></PageActions>
     <p v-if="error" class="error">{{ error }}</p>
-    <div class="split workspace-split tasks-layout" :class="{ 'tasks-readonly': !canWrite }">
+    <div>
       <section class="task-board">
         <div class="panel compact-panel">
           <div class="toolbar">
@@ -34,17 +35,9 @@
                 <p>{{ task.description || '未填写描述' }}</p>
                 <RouterLink v-if="task.evidenceNoteId" :to="{ name: 'note-edit', params: { workspaceId, id: task.evidenceNoteId } }">依据笔记：{{ task.evidenceNoteTitle || task.evidenceNoteId }}</RouterLink>
                 <div v-if="canWrite" class="actions">
-                  <button
-                    v-for="status in KANBAN_COLUMNS"
-                    :key="status.value"
-                    class="secondary"
-                    :disabled="status.value === task.status"
-                    @click="move(task, status.value)"
-                  >
-                    {{ status.label }}
-                  </button>
-                  <button class="secondary" @click="edit(task)">编辑</button>
-                  <button class="danger" @click="remove(task.id)">删除</button>
+                  <select :value="task.status" :aria-label="'修改任务状态：' + task.title" :disabled="pendingIds.has(task.id)" @change="move(task, $event.target.value)"><option v-for="status in KANBAN_COLUMNS" :key="status.value" :value="status.value">{{ status.label }}</option></select>
+                  <button class="secondary" :disabled="pendingIds.has(task.id)" @click="edit(task)">编辑</button>
+                  <button class="danger" :disabled="pendingIds.has(task.id)" @click="remove(task.id)">删除</button>
                 </div>
               </article>
             </div>
@@ -53,14 +46,9 @@
         </div>
       </section>
 
-      <section v-if="canWrite" class="panel form-panel sticky-panel">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">{{ form.id ? '编辑模式' : '快速创建' }}</span>
-            <h2>{{ form.id ? '编辑任务' : '新建任务' }}</h2>
-          </div>
-        </div>
-        <form class="form-grid" @submit.prevent="save">
+      <AppDrawer v-if="canWrite" v-model="opened" :title="form.id ? '编辑任务' : '新建任务'" description="设置任务的归属、优先级与依据笔记。" :busy="saving" :dirty="dirty">
+        <p v-if="formError" class="error form-error" role="alert">{{ formError }}</p>
+        <form id="task-form" class="form-grid" @submit.prevent="save">
           <label class="wide">标题<input v-model="form.title" required /></label>
           <label class="wide">项目
             <select v-model="form.projectId" required>
@@ -88,12 +76,9 @@
           </label>
           <label class="wide">截止日期<input v-model="form.dueDate" type="date" /></label>
           <label class="wide">描述<textarea v-model="form.description" /></label>
-          <div class="actions wide">
-            <button type="submit">{{ form.id ? '保存' : '创建' }}</button>
-            <button type="button" class="secondary" @click="resetForm">清空</button>
-          </div>
         </form>
-      </section>
+        <template #footer="{ close }"><button type="button" class="secondary" :disabled="saving" @click="close">取消</button><button type="submit" form="task-form" :disabled="saving">{{ saving ? '保存中…' : '保存任务' }}</button></template>
+      </AppDrawer>
     </div>
   </section>
 </template>
@@ -105,6 +90,9 @@ import { noteApi, projectApi, taskApi } from '../api/workstation';
 import { KANBAN_COLUMNS, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
 import { workspaceIdFromRoute } from '../utils/workspaceRoute';
 import { workspace } from '../workspace';
+import AppDrawer from '../components/AppDrawer.vue';
+import PageActions from '../components/PageActions.vue';
+import { useFormPanel } from '../composables/useFormPanel.mjs';
 
 const route = useRoute();
 const workspaceId = computed(() => workspaceIdFromRoute(route));
@@ -119,6 +107,9 @@ const filters = reactive({
   priority: ''
 });
 const form = reactive(emptyForm());
+const pendingIds = reactive(new Set());
+const { opened, saving, formError, dirty, openPanel, submit } = useFormPanel(form);
+function createNewTask() { resetForm(); form.projectId = filters.projectId; form.status = 'TODO'; form.priority = 'MEDIUM'; openPanel(); }
 
 function emptyForm() {
   return { id: null, title: '', description: '', projectId: '', status: '', priority: '', dueDate: '', evidenceNoteId: '' };
@@ -150,6 +141,7 @@ function edit(task) {
     dueDate: task.dueDate || '',
     evidenceNoteId: task.evidenceNoteId || ''
   });
+  openPanel();
 }
 
 // 把表单状态转换为后端 TaskRequest。
@@ -182,28 +174,29 @@ async function load() {
 
 // 创建或更新任务。
 async function save() {
-  try {
-    error.value = '';
+  if (!canWrite.value) return;
+  const saved = await submit(async () => {
     if (form.id) {
       await taskApi.update(workspaceId.value, form.id, payload());
     } else {
       await taskApi.create(workspaceId.value, payload());
     }
-    resetForm();
-    await load();
-  } catch (err) {
-    error.value = err.message;
-  }
+  });
+  if (saved) { resetForm(); await load(); }
 }
 
 // 快捷切换任务看板状态。
 async function move(task, status) {
+  if (pendingIds.has(task.id)) return;
+  pendingIds.add(task.id);
   try {
     error.value = '';
     await taskApi.updateStatus(workspaceId.value, task.id, status);
     await load();
   } catch (err) {
     error.value = err.message;
+  } finally {
+    pendingIds.delete(task.id);
   }
 }
 
@@ -243,11 +236,12 @@ watch(() => form.projectId, async (projectId, previous, onCleanup) => {
       form.evidenceNoteId = '';
     }
   } catch (err) {
-    if (active) error.value = err.message;
+    if (active) formError.value = err.message;
   }
 });
 </script>
 
 <style scoped>
-.tasks-readonly { grid-template-columns: minmax(0, 1fr); }
+.task-card .actions select { width: auto; min-height: 36px; flex: 1; }
+.task-card .actions { flex-wrap: wrap; }
 </style>

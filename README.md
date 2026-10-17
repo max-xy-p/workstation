@@ -11,6 +11,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 - GitHub/GitLab 数据源连接、多仓库关联、批量导入、手动与定时同步，以及近期开发情况快照；启用与升级见 [数据源流程](docs/integrations.md)
 - Keycloak 单点登录、Gateway/BFF 服务端会话和 CSRF 防护
 - 个人与共享 Workspace、成员管理、数据隔离和可靠异步权限审计
+- 统一工作台导航、笔记专注模式，以及项目、任务、标签和数据源的按需编辑抽屉
 - OpenAPI 3.1 契约、TypeScript SDK 和 Client Credentials Python Client
 
 ## 技术栈
@@ -104,12 +105,13 @@ npm.cmd test
 cd ../../frontend
 npm.cmd ci
 npm.cmd run typecheck
+npm.cmd test
 npm.cmd run dev
 npm.cmd run build
 npm.cmd run preview
 ```
 
-OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](docs/openapi.md) 中维护。前端目前没有 `test`、`lint` 或 `format` 命令；`typecheck` 只执行 TypeScript/Vue 静态类型检查。
+OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](docs/openapi.md) 中维护。前端 `test` 使用 Node Test Runner 验证导航、页面实例边界和表单提交状态；`typecheck` 执行 TypeScript/Vue 静态类型检查。前端目前没有 `lint` 或 `format` 命令。
 
 ## 文档
 

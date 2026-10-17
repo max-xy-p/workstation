@@ -49,10 +49,11 @@ cd frontend
 
 npm.cmd ci
 npm.cmd run typecheck
+npm.cmd test
 npm.cmd run build
 ```
 
-Frontend 当前没有 `test`、`lint` 或 `format` 命令，不得声称运行过这些检查。
+Frontend 的 `test` 使用 Node Test Runner 验证导航、页面实例边界和表单状态；浏览器布局与完整交互仍需单独验证。当前没有 `lint` 或 `format` 命令，不得声称运行过这些检查。
 
 ## Python Client Credentials 认证层
 

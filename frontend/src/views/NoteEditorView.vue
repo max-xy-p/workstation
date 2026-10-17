@@ -33,12 +33,12 @@
           <span>{{ characterCount }} 字</span>
           <span v-if="saveState" class="save-state" :data-sync-status="syncStatus" :title="persistenceReceipt">{{ saveState }}</span>
           <span v-if="!canWrite">只读</span>
-          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
-          <button v-if="canWrite" type="submit" :disabled="saving || conflictActive">保存</button>
+          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving || !contentReady" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
+          <button v-if="canWrite" type="submit" :disabled="saving || conflictActive || !contentReady">保存</button>
         </div>
       </div>
 
-      <input v-model="form.title" :readonly="!canWrite" class="note-title-input" aria-label="笔记标题" placeholder="无标题笔记" required />
+      <input v-model="form.title" :readonly="!canWrite || !contentReady" class="note-title-input" aria-label="笔记标题" placeholder="无标题笔记" required />
 
       <details class="note-properties">
         <summary>
@@ -47,19 +47,19 @@
         </summary>
         <div class="metadata-grid">
           <label><span>文件夹</span>
-            <select v-model="form.folderId" :disabled="!canWrite">
+            <select v-model="form.folderId" :disabled="!canWrite || !contentReady">
               <option value="">未归档</option>
               <option v-for="folder in folderOptions" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
             </select>
           </label>
           <label><span>关联项目</span>
-            <select v-model="form.projectId" :disabled="!canWrite">
+            <select v-model="form.projectId" :disabled="!canWrite || !contentReady">
               <option value="">未关联</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
             </select>
           </label>
           <label><span>标签</span>
-            <select v-model="form.tagIds" :disabled="!canWrite" multiple>
+            <select v-model="form.tagIds" :disabled="!canWrite || !contentReady" multiple>
               <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
             </select>
           </label>
@@ -90,7 +90,7 @@
 <script setup>
 import { Trash2 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink, onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, projectApi, tagApi, taskApi } from '../api/workstation';
 import { auth } from '../auth';
 import { workspace } from '../workspace';
@@ -252,16 +252,15 @@ async function load() {
       void loadRelatedTasks(note);
     }
     persistedSnapshot = snapshotOf(form);
-    contentReady.value = true;
     try {
       const drafts = await listNoteDrafts(baseDraftKey);
       pendingDrafts.value = drafts.filter((draft) => draft.snapshot !== persistedSnapshot);
-      for (const draft of drafts.filter((item) => item.snapshot === persistedSnapshot)) {
-        await deleteConfirmedDraft(draft.key, draft.snapshot);
-      }
+      await Promise.all(drafts.filter((item) => item.snapshot === persistedSnapshot)
+        .map((draft) => deleteConfirmedDraft(draft.key, draft.snapshot)));
     } catch {
       error.value = '无法读取本地草稿，服务端内容已打开';
     }
+    contentReady.value = true;
   } catch (err) {
     error.value = err.message;
   } finally {
@@ -478,11 +477,13 @@ function persistDraftWhenHidden() {
   if (!hydrating && document.visibilityState === 'hidden' && isDirty()) void saveDraft();
 }
 
-onBeforeRouteLeave(async () => {
+async function protectDraft() {
   if (hydrating || !isDirty()) return true;
   const cached = await saveDraft();
   return cached || window.confirm('本地草稿保存失败，继续离开可能丢失修改。仍然离开？');
-});
+}
+onBeforeRouteLeave(protectDraft);
+onBeforeRouteUpdate(protectDraft);
 
 onMounted(() => {
   window.addEventListener('keydown', handleShortcut);

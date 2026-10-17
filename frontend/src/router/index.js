@@ -15,6 +15,7 @@ import { workspace } from '../workspace';
 
 export const routes = [
   { path: '/w/:workspaceId/integrations', name: 'integrations', component: IntegrationsView, meta: { title: '数据源' } },
+  { path: '/w/:workspaceId/integrations/:connectionId', name: 'integration-detail', component: IntegrationsView, meta: { title: '连接详情' } },
   { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },
   { path: '/', name: 'root', component: WorkspaceUnavailableView, meta: { title: '工作空间' } },
   { path: '/workspace-unavailable', name: 'workspace-unavailable', component: WorkspaceUnavailableView, meta: { title: '工作空间不可用' } },
@@ -86,7 +87,7 @@ router.beforeEach(async (to) => {
 
 router.afterEach((to) => {
   const title = typeof to.meta.title === 'string' ? to.meta.title : '工作台';
-  document.title = `${title} · 个人工作台`;
+  document.title = `${title} · Workstation`;
 });
 
 export default router;
