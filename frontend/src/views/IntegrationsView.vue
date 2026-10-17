@@ -67,7 +67,7 @@
 
       <AppDrawer v-model="opened" :title="editing ? '编辑连接' : '添加连接'" description="为当前工作空间配置代码托管平台的只读访问。" :busy="saving" :dirty="dirty" @closed="form.token = ''">
         <p v-if="formError" class="error form-error" role="alert">{{ formError }}</p>
-        <form id="connection-form" @submit.prevent="save"><IntegrationConnectionFields :form="form" :editing="!!editing" :shared="isShared" /></form>
+        <form id="connection-form" @submit.prevent="save"><IntegrationConnectionFields :form="form" :editing="!!editing" :shared="isShared" @update:form="Object.assign(form, $event)" /></form>
         <template #footer="{ close }"><button type="button" class="secondary" :disabled="saving" @click="close">取消</button><button type="submit" form="connection-form" :disabled="saving">{{ saving ? '验证并保存中…' : '保存并验证' }}</button></template>
       </AppDrawer>
       <AppDrawer v-model="importOpen" title="导入仓库" :description="'将选中的 ' + selectedIds.length + ' 个仓库导入当前工作空间。'" :busy="importSaving">
@@ -288,6 +288,14 @@ async function retryFailed() {
     notice.value = '已提交本页失败项的重试任务。';
   }, runError);
 }
+async function refreshInspectedRun() {
+  if (!runOpen.value || !inspected.value) return;
+  const inspectedId = inspected.value.id;
+  const updated = await integrationApi.run(workspaceId, connectionId, inspectedId);
+  if (disposed || !runOpen.value || inspected.value?.id !== inspectedId) return;
+  inspected.value = updated;
+  if (!itemsLoading.value) await loadItems(runItems.page);
+}
 const timer = setInterval(async () => {
   if (disposed || !isDetail || !current.value || busy.value || polling || document.hidden) return;
   polling = true;
@@ -299,14 +307,7 @@ const timer = setInterval(async () => {
       current.value = await findConnection(connectionId);
       projects.value = await projectApi.listAll(workspaceId);
     }
-    if (runOpen.value && inspected.value) {
-      const inspectedId = inspected.value.id;
-      const updated = await integrationApi.run(workspaceId, connectionId, inspectedId);
-      if (!disposed && runOpen.value && inspected.value?.id === inspectedId) {
-        inspected.value = updated;
-        if (!itemsLoading.value) await loadItems(runItems.page);
-      }
-    }
+    await refreshInspectedRun();
   } catch (e) { if (!disposed) error.value = e instanceof Error ? e.message : '更新同步进度失败'; }
   finally { polling = false; }
 }, 3000);

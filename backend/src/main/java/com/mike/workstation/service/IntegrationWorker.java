@@ -8,6 +8,7 @@ import com.mike.workstation.integration.CredentialCipher;
 import com.mike.workstation.integration.RepositoryProvider;
 import com.mike.workstation.mapper.IntegrationMapper;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -77,7 +78,8 @@ public class IntegrationWorker {
         } while(items.size()==100);
     }
     private void sync(IntegrationRun run,IntegrationConnection c,RepositoryProvider p,String token) {
-        long offset=0; List<ExternalRepository> repositories;
+        long offset=0;
+        List<ExternalRepository> repositories;
         do {
             repositories=mapper.repositories(c.getWorkspaceId(),c.getId(),-1L,offset,100);
             for(var stored:repositories) {
@@ -95,7 +97,7 @@ public class IntegrationWorker {
     }
     private void development(IntegrationRun run,IntegrationConnection c,RepositoryProvider provider,String token,
             ExternalRepository repository,DevelopmentKind kind) {
-        LocalDateTime since=LocalDateTime.now().minusDays(properties.recentDays());
+        LocalDateTime since=LocalDateTime.now(ZoneId.systemDefault()).minusDays(properties.recentDays());
         DevelopmentSnapshot snapshot=new DevelopmentSnapshot();
         snapshot.setKind(kind.name()); snapshot.setSince(since);
         List<DevelopmentItem> collected=new ArrayList<>();
@@ -104,13 +106,7 @@ public class IntegrationWorker {
             for(int page=1;page<=properties.maxPages() && !finished;page++) {
                 state.heartbeat(run);
                 List<DevelopmentItem> rows=provider.development(c,token,repository,kind,since,page);
-                boolean pastWindow=false;
-                for(var item:rows) {
-                    if(item.getSourceUpdatedAt()!=null && item.getSourceUpdatedAt().isBefore(since)) {
-                        pastWindow=true; continue;
-                    }
-                    if(kind.name().equals(item.getKind())) collected.add(item);
-                }
+                boolean pastWindow=collectRecent(rows,kind,since,collected);
                 if(collected.size()>properties.maxItems()) {
                     collected=new ArrayList<>(collected.subList(0,properties.maxItems()));
                     snapshot.setTruncated(true); finished=true;
@@ -125,6 +121,15 @@ public class IntegrationWorker {
             state.repositoryError(run,repository.getId(),snapshot.getMessage());
         }
         state.snapshot(run,repository,snapshot,collected);
+    }
+    private boolean collectRecent(List<DevelopmentItem> rows,DevelopmentKind kind,LocalDateTime since,
+            List<DevelopmentItem> collected) {
+        collected.addAll(rows.stream().filter(item -> !beforeWindow(item,since))
+                .filter(item -> kind.name().equals(item.getKind())).toList());
+        return rows.stream().anyMatch(item -> beforeWindow(item,since));
+    }
+    private boolean beforeWindow(DevelopmentItem item,LocalDateTime since) {
+        return item.getSourceUpdatedAt()!=null && item.getSourceUpdatedAt().isBefore(since);
     }
     static String safeError(RuntimeException ex) {
         return ex instanceof BusinessException?ex.getMessage():"同步失败，请检查连接配置或联系管理员";

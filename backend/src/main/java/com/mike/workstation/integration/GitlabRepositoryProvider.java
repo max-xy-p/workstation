@@ -3,7 +3,6 @@ package com.mike.workstation.integration;
 import com.mike.workstation.domain.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -20,8 +19,7 @@ public class GitlabRepositoryProvider implements RepositoryProvider {
     @Override public List<ExternalRepository> repositories(IntegrationConnection c,String token,int page) {
         String scope="OWNED".equals(c.getScope())?"owned=true":"membership=true";
         JsonNode data=api.get(c,token,"/projects?"+scope+"&per_page=100&page="+page);
-        List<ExternalRepository> result=new ArrayList<>();
-        for(JsonNode n:data) result.add(parse(n)); return result;
+        return data.valueStream().map(this::parse).toList();
     }
     @Override public ExternalRepository repository(IntegrationConnection c,String token,ExternalRepository r) {
         return parse(api.get(c,token,"/projects/"+RemoteApi.encode(r.getExternalId())));
@@ -46,18 +44,28 @@ public class GitlabRepositoryProvider implements RepositoryProvider {
             case PIPELINE -> "/pipelines?ref="+RemoteApi.encode(r.getDefaultBranch())+"&updated_after="+when+"&order_by=updated_at&sort=desc";
         };
         JsonNode data=api.get(c,token,path+"&per_page=100&page="+page);
-        List<DevelopmentItem> result=new ArrayList<>();
-        for(JsonNode n:data) {
-            DevelopmentItem i=PlatformData.item(n,kind.name(),"id",kind==DevelopmentKind.COMMIT?"title":
-                    kind==DevelopmentKind.PIPELINE?"id":"title","web_url",kind==DevelopmentKind.COMMIT?"committed_date":"updated_at");
-            String raw=PlatformData.text(n,kind==DevelopmentKind.PIPELINE?"status":"state");
-            i.setRawStatus(raw); i.setStatus(kind==DevelopmentKind.COMMIT?"COMMITTED":
-                    kind==DevelopmentKind.PIPELINE?PlatformData.pipelineState(raw):
-                    "merged".equals(raw)?"MERGED":"opened".equals(raw)?"OPEN":"CLOSED");
-            i.setAuthor(kind==DevelopmentKind.COMMIT?PlatformData.text(n,"author_name"):PlatformData.text(n.path("author"),"username"));
-            i.setBranch(kind==DevelopmentKind.PIPELINE?PlatformData.text(n,"ref"):kind==DevelopmentKind.COMMIT?r.getDefaultBranch():null);
-            result.add(i);
-        }
-        return result;
+        return data.valueStream().map(n -> parseItem(n,kind,r)).toList();
+    }
+    private DevelopmentItem parseItem(JsonNode node, DevelopmentKind kind, ExternalRepository repository) {
+        String titleKey = kind == DevelopmentKind.PIPELINE ? "id" : "title";
+        String timeKey = kind == DevelopmentKind.COMMIT ? "committed_date" : "updated_at";
+        DevelopmentItem item = PlatformData.item(node,kind.name(),"id",titleKey,"web_url",timeKey);
+        String raw = PlatformData.text(node,kind == DevelopmentKind.PIPELINE ? "status" : "state");
+        item.setRawStatus(raw);
+        item.setStatus(itemStatus(kind,raw));
+        item.setAuthor(kind == DevelopmentKind.COMMIT ? PlatformData.text(node,"author_name")
+                : PlatformData.text(node.path("author"),"username"));
+        item.setBranch(switch (kind) {
+            case PIPELINE -> PlatformData.text(node,"ref");
+            case COMMIT -> repository.getDefaultBranch();
+            default -> null;
+        });
+        return item;
+    }
+    private String itemStatus(DevelopmentKind kind, String raw) {
+        if (kind == DevelopmentKind.COMMIT) return "COMMITTED";
+        if (kind == DevelopmentKind.PIPELINE) return PlatformData.pipelineState(raw);
+        if ("merged".equals(raw)) return "MERGED";
+        return "opened".equals(raw) ? "OPEN" : "CLOSED";
     }
 }

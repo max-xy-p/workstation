@@ -1,7 +1,7 @@
 <template>
   <section class="page workspace-settings-page">
     <p v-if="error" class="error" role="alert">{{ error }}</p>
-    <p v-if="notice" class="settings-notice" role="status">{{ notice }}</p>
+    <output v-if="notice" class="settings-notice">{{ notice }}</output>
     <div class="settings-layout">
       <section class="panel space-information" aria-labelledby="space-info-title">
         <span class="settings-avatar"><Users v-if="current?.type === 'SHARED'" /><UserRound v-else /></span>
@@ -19,7 +19,7 @@
         <header class="member-heading"><div><h2 id="member-title">空间成员 <span>{{ members.length }}</span></h2><p>管理一起工作的人与他们的访问权限。</p></div><button v-if="canManageMembers" type="button" class="member-add-trigger" :aria-expanded="adding" @click="toggleAdding"><Plus v-if="!adding" /><X v-else />{{ adding ? '收起' : '添加成员' }}</button></header>
         <section v-if="adding && canManageMembers" class="member-discovery" aria-label="添加成员">
           <label class="member-search"><Search /><input ref="candidateInput" v-model="keyword" aria-label="搜索要添加的用户" placeholder="输入用户名或显示名称…" maxlength="255" /></label>
-          <p class="member-search-hint" role="status">{{ candidateHint }}</p>
+          <output class="member-search-hint">{{ candidateHint }}</output>
           <p v-if="candidateError" class="error" role="alert">{{ candidateError }}</p>
           <div v-for="candidate in candidates" :key="candidate.subjectId" class="member-row candidate-row">
             <span class="member-avatar">{{ initial(candidate) }}</span>
@@ -33,7 +33,7 @@
           <p class="settings-description">只查找已登录过本系统的用户。若找不到，请对方先登录一次。</p>
         </section>
         <div class="member-list-toolbar"><label class="member-search"><Search /><input v-model="memberFilter" aria-label="筛选当前成员" placeholder="筛选当前成员…" maxlength="255" /></label><span>{{ visibleMembers.length }} 位成员</span></div>
-        <p v-if="loading" class="member-empty" role="status">正在加载成员…</p>
+        <output v-if="loading" class="member-empty">正在加载成员…</output>
         <p v-else-if="!visibleMembers.length" class="member-empty">{{ memberFilter ? '没有匹配的成员。' : '暂无成员。' }}</p>
         <div v-for="member in visibleMembers" :key="member.subjectId" class="member-row" :aria-busy="pending.has(member.subjectId)">
           <span class="member-avatar">{{ initial(member) }}</span>
@@ -41,7 +41,7 @@
           <select v-if="canEditMember(member)" :disabled="pending.has(member.subjectId)" :value="member.role" :aria-label="'修改 ' + displayName(member) + ' 的角色'" @change="changeRole(member, $event)"><option v-for="role in roles" :key="role" :value="role">{{ roleLabels[role] }}</option></select>
           <span v-else class="member-role">{{ roleLabels[member.role] }}</span>
           <button v-if="canEditMember(member)" class="member-remove" type="button" :disabled="pending.has(member.subjectId)" @click="requestRemoval(member)">移除</button>
-          <span v-if="pending.has(member.subjectId)" class="member-row-progress" role="status">处理中…</span>
+          <output v-if="pending.has(member.subjectId)" class="member-row-progress">处理中…</output>
         </div>
       </section>
     </div>
@@ -249,7 +249,7 @@ onBeforeUnmount(() => { active = false; clearTimeout(timer); ++searchSequence; }
 .member-search:focus-within { outline: 2px solid var(--moss); outline-offset: 2px; }
 .member-search svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
 .member-search input { border: 0; box-shadow: none; outline: none; min-width: 0; padding: 10px 0; background: transparent; font-size: 13px; }
-.member-search-hint { margin: 10px 0; min-height: 20px; font-size: 12px; color: var(--muted); }
+.member-search-hint { display: block; margin: 10px 0; min-height: 20px; font-size: 12px; color: var(--muted); }
 .member-list-toolbar { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
 .member-list-toolbar label { flex: 1; }
 .member-list-toolbar > span { font-size: 12px; color: var(--muted); flex: none; }
@@ -269,8 +269,8 @@ onBeforeUnmount(() => { active = false; clearTimeout(timer); ++searchSequence; }
 .member-status svg { width: 14px; height: 14px; }
 .member-role, .member-row-progress { color: var(--muted); font-size: 12px; }
 .member-row-progress { flex-basis: 100%; text-align: right; }
-.member-empty { padding: 28px 24px; color: var(--muted); font-size: 13px; }
-.settings-notice { padding: 12px 16px; color: var(--moss-dark); background: #eaf3ef; border-radius: 8px; font-size: 13px; }
+.member-empty { display: block; padding: 28px 24px; color: var(--muted); font-size: 13px; }
+.settings-notice { display: block; padding: 12px 16px; color: var(--moss-dark); background: #eaf3ef; border-radius: 8px; font-size: 13px; }
 @media (max-width: 1180px) {
   .settings-layout { grid-template-columns: 1fr; }
 }

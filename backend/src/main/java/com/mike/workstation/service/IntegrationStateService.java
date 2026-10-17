@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 /** 外部同步的短事务边界，连接锁防止配置更新与旧任务提交交错。 */
 @Service
 public class IntegrationStateService {
+    private static final String RESOURCE_INTEGRATION = "INTEGRATION";
+    private static final String RESOURCE_PROJECT = "PROJECT";
+    private static final String REPOSITORY_NOT_FOUND = "仓库不存在";
     private final IntegrationMapper mapper;
     private final ProjectMapper projects;
     private final WorkspaceMapper workspaces;
@@ -64,25 +68,25 @@ public class IntegrationStateService {
         prepared.setKeyVersion(properties.keyVersion()); prepared.setName(r.name().trim());
         prepared.setScope(r.scope().name()); prepared.setIncludeForks(r.includeForks()); prepared.setIncludeArchived(r.includeArchived());
         prepared.setAutoImport(r.autoImport()); prepared.setScheduleMinutes(r.scheduleMinutes()); prepared.setEnabled(true);
-        prepared.setNextSyncAt(LocalDateTime.now().plusMinutes(r.scheduleMinutes())); prepared.setLastError(null);
+        prepared.setNextSyncAt(LocalDateTime.now(ZoneId.systemDefault()).plusMinutes(r.scheduleMinutes())); prepared.setLastError(null);
         if(id==null) mapper.insertConnection(prepared); else mapper.updateConnection(prepared);
-        audit.success(w,"INTEGRATION_SAVE","INTEGRATION",prepared.getId()); return prepared;
+        audit.success(w,"INTEGRATION_SAVE",RESOURCE_INTEGRATION,prepared.getId()); return prepared;
     }
     @Transactional
     public IntegrationConnection enabled(Long w,Long id,IntegrationEnableRequest r) {
         sharing(w,r.sharingConfirmed()); IntegrationConnection c=locked(w,id);
         if(r.expectedVersion()==null || r.expectedVersion()!=c.getVersion() || r.enabled()==null)
             throw new IntegrationConflictException("连接配置已变化，请刷新后重试");
-        if(r.enabled() && !canManage(c)) throw new BusinessException("原连接授权已失效，请重新配置凭证");
+        if(Boolean.TRUE.equals(r.enabled()) && !canManage(c)) throw new BusinessException("原连接授权已失效，请重新配置凭证");
         c.setEnabled(r.enabled()); c.setVersion(c.getVersion()+1); mapper.cancel(w,id);
-        c.setNextSyncAt(LocalDateTime.now()); mapper.updateConnection(c);
-        audit.success(w,"INTEGRATION_ENABLE","INTEGRATION",id); return c;
+        c.setNextSyncAt(LocalDateTime.now(ZoneId.systemDefault())); mapper.updateConnection(c);
+        audit.success(w,"INTEGRATION_ENABLE",RESOURCE_INTEGRATION,id); return c;
     }
     @Transactional
     public void delete(Long w,Long id) {
         authorization.require(w,WorkspacePermission.INTEGRATION_MANAGE); locked(w,id);
         mapper.cancel(w,id); mapper.detachConnection(w,id); mapper.deleteConnection(w,id);
-        audit.success(w,"INTEGRATION_DELETE","INTEGRATION",id);
+        audit.success(w,"INTEGRATION_DELETE",RESOURCE_INTEGRATION,id);
     }
 
     private static String hash(String value) {
@@ -96,20 +100,7 @@ public class IntegrationStateService {
         if(!key.matches("[A-Za-z0-9_-]{1,80}")) throw new BusinessException("请求标识格式不合法");
         IntegrationConnection c=locked(w,id);
         if(!c.isEnabled() || !canManage(c)) throw new BusinessException("连接未启用或原授权已失效");
-        if(request!=null) {
-            sharing(w,request.sharingConfirmed()); authorization.require(w,WorkspacePermission.PROJECT_WRITE);
-            if(request.items()==null || request.items().isEmpty() || request.items().size()>100)
-                throw new BusinessException("每次请选择 1 到 100 个仓库");
-            if(request.items().stream().map(IntegrationImportItemRequest::repositoryId).distinct().count()!=request.items().size())
-                throw new BusinessException("导入仓库不能重复");
-            for(var i:request.items()) {
-                RequestChecks.requiredObject(i.status(),"项目状态");
-                ExternalRepository repo=mapper.repository(w,i.repositoryId());
-                RequestChecks.requiredExisting(repo,"仓库不存在");
-                if(!id.equals(repo.getConnectionId())) throw new BusinessException("仓库不属于本次连接");
-                if(i.projectId()!=null) requireProject(w,i.projectId());
-            }
-        }
+        if(request!=null) validateImport(w,id,request);
         String actor=principals.require().subjectId();
         String digest=hash(kind+":"+c.getVersion()+":"+(request==null?"":request.items().toString()));
         IntegrationRun existing=mapper.request(w,id,actor,key);
@@ -128,10 +119,25 @@ public class IntegrationStateService {
         audit.success(w,"INTEGRATION_"+kind,"SYNC_RUN",run.getId()); return run;
     }
 
+    private void validateImport(Long w,Long id,IntegrationImportRequest request) {
+        sharing(w,request.sharingConfirmed()); authorization.require(w,WorkspacePermission.PROJECT_WRITE);
+        if(request.items()==null || request.items().isEmpty() || request.items().size()>100)
+            throw new BusinessException("每次请选择 1 到 100 个仓库");
+        if(request.items().stream().map(IntegrationImportItemRequest::repositoryId).distinct().count()!=request.items().size())
+            throw new BusinessException("导入仓库不能重复");
+        for(var i:request.items()) {
+            RequestChecks.requiredObject(i.status(),"项目状态");
+            ExternalRepository repo=mapper.repository(w,i.repositoryId());
+            RequestChecks.requiredExisting(repo,REPOSITORY_NOT_FOUND);
+            if(!id.equals(repo.getConnectionId())) throw new BusinessException("仓库不属于本次连接");
+            if(i.projectId()!=null) requireProject(w,i.projectId());
+        }
+    }
+
     private IntegrationRun newRun(IntegrationConnection c,String kind,String key,String digest,String actor) {
         IntegrationRun r=new IntegrationRun(); r.setWorkspaceId(c.getWorkspaceId()); r.setConnectionId(c.getId());
         r.setKind(kind); r.setStatus("QUEUED"); r.setRequestKey(key); r.setRequestHash(digest); r.setActorSubject(actor);
-        r.setConfigVersion(c.getVersion()); r.setCreatedAt(LocalDateTime.now()); return r;
+        r.setConfigVersion(c.getVersion()); r.setCreatedAt(LocalDateTime.now(ZoneId.systemDefault())); return r;
     }
     public boolean canManage(IntegrationConnection c) { return manages(c.getWorkspaceId(),c.getOwnerSubject()); }
     private boolean manages(Long w,String actor) {
@@ -141,23 +147,23 @@ public class IntegrationStateService {
     @Transactional
     public void schedule(Long w,Long id) {
         IntegrationConnection c=locked(w,id);
-        if(!c.isEnabled() || c.getScheduleMinutes()<=0 || c.getNextSyncAt()==null || c.getNextSyncAt().isAfter(LocalDateTime.now())) return;
+        if(!c.isEnabled() || c.getScheduleMinutes()<=0 || c.getNextSyncAt()==null || c.getNextSyncAt().isAfter(LocalDateTime.now(ZoneId.systemDefault()))) return;
         if(!canManage(c)) { c.setEnabled(false); c.setVersion(c.getVersion()+1); mapper.cancel(w,id); mapper.updateConnection(c); return; }
         if(mapper.active(w,id)==null) mapper.insertRun(newRun(c,"SYNC",UUID.randomUUID().toString(),hash("SCHEDULED"),c.getOwnerSubject()));
-        c.setNextSyncAt(LocalDateTime.now().plusMinutes(c.getScheduleMinutes())); mapper.updateConnection(c);
+        c.setNextSyncAt(LocalDateTime.now(ZoneId.systemDefault()).plusMinutes(c.getScheduleMinutes())); mapper.updateConnection(c);
     }
     @Transactional
     public IntegrationRun claim() {
         IntegrationRun r=mapper.nextRun(); if(r==null) return null;
         r.setStatus("RUNNING"); r.setLeaseToken(UUID.randomUUID().toString());
-        r.setLeaseUntil(LocalDateTime.now().plusSeconds(properties.leaseSeconds())); mapper.claim(r); return r;
+        r.setLeaseUntil(LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(properties.leaseSeconds())); mapper.claim(r); return r;
     }
     private IntegrationConnection check(IntegrationRun run) {
         IntegrationConnection c=locked(run.getWorkspaceId(),run.getConnectionId());
         if(!c.isEnabled() || c.getVersion()!=run.getConfigVersion() || !canManage(c) ||
                 !manages(c.getWorkspaceId(),run.getActorSubject()) || mapper.lockRun(run)==null)
             throw new IntegrationConflictException("同步任务已取消或租约已失效");
-        run.setLeaseUntil(LocalDateTime.now().plusSeconds(properties.leaseSeconds()));
+        run.setLeaseUntil(LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(properties.leaseSeconds()));
         return c;
     }
     @Transactional
@@ -173,19 +179,20 @@ public class IntegrationStateService {
     }
     private void saveRepositoryBatch(IntegrationRun run,List<ExternalRepository> repositories,boolean selected) {
         IntegrationConnection c=check(run);
-        for(ExternalRepository r:repositories) {
-            if(!selected && ((r.isFork() && !c.isIncludeForks()) || (r.isArchived() && !c.isIncludeArchived()))) continue;
-            r.setWorkspaceId(c.getWorkspaceId()); r.setProvider(c.getProvider()); r.setBaseUrl(c.getBaseUrl());
-            r.setConnectionId(c.getId()); r.setLastSyncedAt(LocalDateTime.now());
-            ExternalRepository old=mapper.source(r);
-            if(old==null) mapper.insertRepository(r);
-            else {
-                if(old.getConnectionId()!=null && !c.getId().equals(old.getConnectionId())) continue;
-                r.setId(old.getId()); mapper.updateRepository(r);
-            }
-            if(c.isAutoImport()) autoImport(c,r);
-        }
+        for(ExternalRepository r:repositories) saveRepository(c,r,selected);
         run.setProcessed(run.getProcessed()+repositories.size()); mapper.updateRun(run);
+    }
+    private void saveRepository(IntegrationConnection c,ExternalRepository r,boolean selected) {
+        if(!selected && ((r.isFork() && !c.isIncludeForks()) || (r.isArchived() && !c.isIncludeArchived()))) return;
+        r.setWorkspaceId(c.getWorkspaceId()); r.setProvider(c.getProvider()); r.setBaseUrl(c.getBaseUrl());
+        r.setConnectionId(c.getId()); r.setLastSyncedAt(LocalDateTime.now(ZoneId.systemDefault()));
+        ExternalRepository old=mapper.source(r);
+        if(old==null) mapper.insertRepository(r);
+        else {
+            if(old.getConnectionId()!=null && !c.getId().equals(old.getConnectionId())) return;
+            r.setId(old.getId()); mapper.updateRepository(r);
+        }
+        if(c.isAutoImport()) autoImport(c,r);
     }
     private void autoImport(IntegrationConnection c,ExternalRepository r) {
         mapper.lockRepository(c.getWorkspaceId(),r.getId());
@@ -193,7 +200,7 @@ public class IntegrationStateService {
         if(stored.getProjectId()==null && !stored.isAutoImportSuppressed()) {
             Project p=createProject(c.getWorkspaceId(),r,ProjectStatus.PLANNING);
             mapper.bind(c.getWorkspaceId(),p.getId(),r.getId());
-            auditBackground(c.getWorkspaceId(),c.getOwnerSubject(),"PROJECT_IMPORT","PROJECT",p.getId());
+            auditBackground(c.getWorkspaceId(),c.getOwnerSubject(),"PROJECT_IMPORT",RESOURCE_PROJECT,p.getId());
         }
     }
     private void auditBackground(Long w,String actor,String action,String type,Long id) {
@@ -203,14 +210,14 @@ public class IntegrationStateService {
     private Project createProject(Long w,ExternalRepository r,ProjectStatus status) {
         Project p=new Project(); p.setWorkspaceId(w);
         p.setName(r.getName().substring(0,Math.min(r.getName().length(),200))); p.setDescription(r.getDescription());
-        p.setStatus(status); p.setCreatedAt(LocalDateTime.now()); p.setUpdatedAt(p.getCreatedAt());
+        p.setStatus(status); p.setCreatedAt(LocalDateTime.now(ZoneId.systemDefault())); p.setUpdatedAt(p.getCreatedAt());
         projects.insert(p); return p;
     }
     @Transactional
     public void importItem(IntegrationRun run,IntegrationRunItem item) {
         check(run); mapper.lockRepository(run.getWorkspaceId(),item.getRepositoryId());
         ExternalRepository r=mapper.repository(run.getWorkspaceId(),item.getRepositoryId());
-        RequestChecks.requiredExisting(r,"仓库不存在");
+        RequestChecks.requiredExisting(r,REPOSITORY_NOT_FOUND);
         if(!run.getConnectionId().equals(r.getConnectionId())) throw new BusinessException("仓库连接已变化");
         if(r.getProjectId()!=null && item.getProjectId()!=null && !r.getProjectId().equals(item.getProjectId()))
             throw new IntegrationConflictException("仓库已经关联其他项目");
@@ -220,7 +227,7 @@ public class IntegrationStateService {
         if(r.getProjectId()==null) mapper.bind(run.getWorkspaceId(),project,r.getId());
         item.setProjectId(project); item.setStatus("SUCCEEDED"); item.setLastError(null); mapper.updateItem(item);
         run.setProcessed(run.getProcessed()+1); mapper.updateRun(run);
-        auditBackground(run.getWorkspaceId(),run.getActorSubject(),"PROJECT_IMPORT","PROJECT",project);
+        auditBackground(run.getWorkspaceId(),run.getActorSubject(),"PROJECT_IMPORT",RESOURCE_PROJECT,project);
     }
     @Transactional
     public void failedItem(IntegrationRun run,IntegrationRunItem item,String error) {
@@ -235,7 +242,7 @@ public class IntegrationStateService {
     @Transactional
     public void snapshot(IntegrationRun run,ExternalRepository r,DevelopmentSnapshot snapshot,List<DevelopmentItem> items) {
         check(run);
-        snapshot.setWorkspaceId(run.getWorkspaceId()); snapshot.setRepositoryId(r.getId()); snapshot.setSyncedAt(LocalDateTime.now());
+        snapshot.setWorkspaceId(run.getWorkspaceId()); snapshot.setRepositoryId(r.getId()); snapshot.setSyncedAt(LocalDateTime.now(ZoneId.systemDefault()));
         if(snapshot.isAvailable()) {
             mapper.clearDevelopment(run.getWorkspaceId(),r.getId(),snapshot.getKind());
             for(var i:items) {
@@ -252,7 +259,7 @@ public class IntegrationStateService {
         IntegrationConnection c=mapper.lockConnection(run.getWorkspaceId(),run.getConnectionId());
         if(c==null || mapper.lockRun(run)==null) return;
         if(c.isDeleted() || !c.isEnabled() || c.getVersion()!=run.getConfigVersion() || !canManage(c) || !manages(c.getWorkspaceId(),run.getActorSubject())) status="CANCELLED";
-        run.setStatus(status); run.setLastError(error); run.setFinishedAt(LocalDateTime.now()); mapper.updateRun(run);
+        run.setStatus(status); run.setLastError(error); run.setFinishedAt(LocalDateTime.now(ZoneId.systemDefault())); mapper.updateRun(run);
         if(!"CANCELLED".equals(status)) mapper.completed(c.getWorkspaceId(),c.getId(),run.getFinishedAt(),error);
         auditBackground(run.getWorkspaceId(),run.getActorSubject(),"SYNC_"+status,"SYNC_RUN",run.getId());
     }
@@ -260,15 +267,15 @@ public class IntegrationStateService {
     public ExternalRepository bind(Long w,Long project,RepositoryBindRequest request) {
         authorization.require(w,WorkspacePermission.PROJECT_WRITE); sharing(w,request.sharingConfirmed()); requireProject(w,project);
         mapper.lockRepository(w,request.repositoryId()); ExternalRepository r=mapper.repository(w,request.repositoryId());
-        RequestChecks.requiredExisting(r,"仓库不存在");
+        RequestChecks.requiredExisting(r,REPOSITORY_NOT_FOUND);
         if(r.getProjectId()!=null && !project.equals(r.getProjectId())) throw new IntegrationConflictException("仓库已经关联其他项目");
         if(r.getProjectId()==null) mapper.bind(w,project,r.getId());
-        r.setProjectId(project); audit.success(w,"REPOSITORY_BIND","PROJECT",project); return r;
+        r.setProjectId(project); audit.success(w,"REPOSITORY_BIND",RESOURCE_PROJECT,project); return r;
     }
     @Transactional
     public void unbind(Long w,Long project,Long repository) {
         authorization.require(w,WorkspacePermission.PROJECT_WRITE); requireProject(w,project);
         mapper.suppressRepository(w,project,repository);
-        mapper.unbind(w,project,repository); audit.success(w,"REPOSITORY_UNBIND","PROJECT",project);
+        mapper.unbind(w,project,repository); audit.success(w,"REPOSITORY_UNBIND",RESOURCE_PROJECT,project);
     }
 }

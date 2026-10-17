@@ -6,7 +6,7 @@
       <ChevronDown class="space-chevron" />
     </button>
     <Teleport to="body">
-      <dialog ref="dialog" class="space-dialog" aria-labelledby="space-dialog-title" @close="closed" @cancel="cancel" @click="backdropClose">
+      <dialog ref="dialog" class="space-dialog" aria-labelledby="space-dialog-title" @close="closed" @cancel="cancel" @keydown.esc.stop.prevent="!busy && close()" @click="backdropClose">
         <div class="space-dialog-heading">
           <div><h2 id="space-dialog-title">{{ creating ? '新建共享空间' : '切换工作空间' }}</h2><p>{{ creating ? '创建后，你将成为这个空间的所有者。' : '选择你要继续工作的空间。' }}</p></div>
           <button type="button" class="space-icon-button" aria-label="关闭" :disabled="busy" @click="close"><X /></button>
@@ -29,7 +29,7 @@
             </section>
             <p v-if="!groups.length" class="space-empty">没有匹配的空间，试试其他名称。</p>
           </div>
-          <p v-if="busy" class="space-progress" role="status">正在切换工作空间…</p>
+          <output v-if="busy" class="space-progress">正在切换工作空间…</output>
           <div class="space-dialog-footer">
             <button v-if="auth.state.user?.principalType === 'USER'" class="secondary" type="button" :disabled="busy" @click="showCreate"><Plus />新建空间</button>
             <button v-if="current" class="secondary" type="button" :disabled="busy" @click="settings"><Settings />空间设置</button>
@@ -112,8 +112,13 @@ function listKeydown(event) {
   const index = buttons.indexOf(event.target);
   if (index < 0) return;
   event.preventDefault();
-  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
-    : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+  let next;
+  if (event.key === 'Home') next = 0;
+  else if (event.key === 'End') next = buttons.length - 1;
+  else {
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    next = (index + step + buttons.length) % buttons.length;
+  }
   buttons[next]?.focus();
 }
 async function navigate(target) {
@@ -173,7 +178,7 @@ async function create() {
 .space-option-copy strong { display: block; overflow-wrap: anywhere; font-size: 14px; }
 .space-option-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .space-check, .space-chevron { width: 16px; height: 16px; flex: none; color: var(--moss); }
-.space-empty, .space-progress { text-align: center; padding: 18px; font-size: 13px; color: var(--muted); }
+.space-empty, .space-progress { display: block; text-align: center; padding: 18px; font-size: 13px; color: var(--muted); }
 .space-dialog-footer { display: flex; gap: 10px; justify-content: space-between; padding: 16px 24px; border-top: 1px solid var(--line); }
 .space-dialog-footer button { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .space-dialog-footer svg { width: 16px; height: 16px; }

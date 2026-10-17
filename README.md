@@ -113,6 +113,8 @@ npm.cmd run preview
 
 OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](docs/openapi.md) 中维护。前端 `test` 使用 Node Test Runner 验证导航、页面实例边界和表单提交状态；`typecheck` 执行 TypeScript/Vue 静态类型检查。前端目前没有 `lint` 或 `format` 命令。
 
+手动初始化 MySQL 时，依次执行 `backend/src/main/resources/db/schema.sql` 和 `backend/src/main/resources/db/migrate-project-integrations.sql`；Compose 首次启动会自动按此顺序执行。已有数据卷的升级流程见 [CI/CD 与部署](docs/ci-cd.md)。
+
 ## 文档
 
 所有当前文档、历史决策记录及其维护边界见 [文档导航](docs/README.md)。

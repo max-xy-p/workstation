@@ -86,14 +86,14 @@ async function listAllPages<T, P extends QueryParams>(
   params?: P
 ): Promise<T[]> {
   const items: T[] = [];
-  let page = 0;
-  let response: PageResponse<T>;
-  do {
-    response = await transport.get<PageResponse<T>>(path, { ...params, page, size: 100 });
+  // 后一页是否存在由当前响应决定，保持逐页请求，避免并发越界读取。
+  async function readPage(page: number): Promise<T[]> {
+    const response = await transport.get<PageResponse<T>>(path, { ...params, page, size: 100 });
     items.push(...response.items);
-    page += 1;
-  } while (response.hasMore);
-  return items;
+    if (response.hasMore) return readPage(page + 1);
+    return items;
+  }
+  return readPage(0);
 }
 
 export function createWorkstationApi(transport: WorkstationTransport) {

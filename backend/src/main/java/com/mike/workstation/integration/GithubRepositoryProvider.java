@@ -11,26 +11,26 @@ import tools.jackson.databind.JsonNode;
 /** GitHub 仓库、Issue、PR、默认分支提交及 Actions 工作流适配。 */
 @Component
 public class GithubRepositoryProvider implements RepositoryProvider {
+    private static final String LOGIN = "login";
+    private static final String HTML_URL = "html_url";
     private final RemoteApi api;
     public GithubRepositoryProvider(RemoteApi api) { this.api = api; }
     @Override public String provider() { return "GITHUB"; }
     @Override public String account(IntegrationConnection c,String token) {
-        return PlatformData.text(api.get(c,token,"/user"),"login");
+        return PlatformData.text(api.get(c,token,"/user"),LOGIN);
     }
     @Override public List<ExternalRepository> repositories(IntegrationConnection c,String token,int page) {
         String affiliation = "OWNED".equals(c.getScope()) ? "owner" : "owner,collaborator,organization_member";
         JsonNode response = api.get(c,token,"/user/repos?affiliation="+affiliation+"&per_page=100&page="+page);
-        List<ExternalRepository> items = new ArrayList<>();
-        for (JsonNode node : response) items.add(parse(node));
-        return items;
+        return response.valueStream().map(this::parse).toList();
     }
     @Override public ExternalRepository repository(IntegrationConnection c,String token,ExternalRepository r) {
         return parse(api.get(c,token,"/repositories/"+RemoteApi.encode(r.getExternalId())));
     }
     private ExternalRepository parse(JsonNode n) {
         ExternalRepository r = new ExternalRepository();
-        r.setExternalId(PlatformData.text(n,"id")); r.setNamespace(PlatformData.text(n.path("owner"),"login"));
-        r.setName(PlatformData.text(n,"name")); r.setUrl(PlatformData.text(n,"html_url"));
+        r.setExternalId(PlatformData.text(n,"id")); r.setNamespace(PlatformData.text(n.path("owner"),LOGIN));
+        r.setName(PlatformData.text(n,"name")); r.setUrl(PlatformData.text(n,HTML_URL));
         r.setDescription(PlatformData.text(n,"description")); r.setDefaultBranch(PlatformData.text(n,"default_branch"));
         r.setLanguage(PlatformData.text(n,"language")); r.setVisibility(n.path("private").asBoolean()?"private":"public");
         r.setArchived(n.path("archived").asBoolean()); r.setFork(n.path("fork").asBoolean());
@@ -65,18 +65,22 @@ public class GithubRepositoryProvider implements RepositoryProvider {
             DevelopmentItem i=new DevelopmentItem();
             i.setKind(kind.name()); i.setExternalId(PlatformData.text(n,"sha"));
             i.setTitle(commit.path("message").asText().lines().findFirst().orElse(""));
-            i.setUrl(PlatformData.text(n,"html_url")); i.setStatus("COMMITTED");
+            i.setUrl(PlatformData.text(n,HTML_URL)); i.setStatus("COMMITTED");
             i.setAuthor(PlatformData.text(commit.path("author"),"name")); i.setBranch(r.getDefaultBranch());
             i.setSourceUpdatedAt(PlatformData.time(commit.path("committer"),"date")); return i;
         }
-        DevelopmentItem i=PlatformData.item(n,kind.name(),"id",kind==DevelopmentKind.PIPELINE?"name":"title","html_url","updated_at");
+        DevelopmentItem i=PlatformData.item(n,kind.name(),"id",kind==DevelopmentKind.PIPELINE?"name":"title",HTML_URL,"updated_at");
         String raw=PlatformData.text(n,kind==DevelopmentKind.PIPELINE?"conclusion":"state");
         if(kind==DevelopmentKind.PIPELINE && raw==null) raw=PlatformData.text(n,"status");
         i.setRawStatus(raw);
-        i.setStatus(kind==DevelopmentKind.PIPELINE?PlatformData.pipelineState(raw):
-                PlatformData.text(n,"merged_at")!=null?"MERGED":"open".equals(raw)?"OPEN":"CLOSED");
-        i.setAuthor(PlatformData.text(n.path(kind==DevelopmentKind.PIPELINE?"actor":"user"),"login"));
+        i.setStatus(itemStatus(n,kind,raw));
+        i.setAuthor(PlatformData.text(n.path(kind==DevelopmentKind.PIPELINE?"actor":"user"),LOGIN));
         i.setBranch(kind==DevelopmentKind.PIPELINE?PlatformData.text(n,"head_branch"):null);
         return i;
+    }
+    private String itemStatus(JsonNode node, DevelopmentKind kind, String raw) {
+        if (kind == DevelopmentKind.PIPELINE) return PlatformData.pipelineState(raw);
+        if (PlatformData.text(node,"merged_at") != null) return "MERGED";
+        return "open".equals(raw) ? "OPEN" : "CLOSED";
     }
 }

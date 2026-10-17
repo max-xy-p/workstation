@@ -56,7 +56,10 @@ public class RemoteApi {
                 || uri.getQuery() != null || uri.getFragment() != null || uri.getPort() == 0
                 || uri.getPath().contains("..") || uri.getPath().contains("%"))
             throw new BusinessException("平台实例必须使用 HTTPS 且不能包含凭证或查询参数");
-        String path = uri.getPath().replaceAll("/+$", "");
+        String path = uri.getPath();
+        int end = path.length();
+        while (end > 0 && path.charAt(end - 1) == '/') end--;
+        path = path.substring(0, end);
         return "https://" + uri.getHost().toLowerCase(Locale.ROOT)
                 + (uri.getPort() < 0 || uri.getPort() == 443 ? "" : ":" + uri.getPort()) + path;
     }
@@ -75,20 +78,18 @@ public class RemoteApi {
         } else {
             builder.header("PRIVATE-TOKEN", token);
         }
+        return sendWithRetries(builder.build());
+    }
+
+    private JsonNode sendWithRetries(HttpRequest request) {
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-                int status = response.statusCode();
-                if (status == 200) {
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                if (response.statusCode() == 200) {
                     if (response.body().length() > 2_000_000) throw new BusinessException("平台响应超过允许大小");
                     return json.readTree(response.body());
                 }
-                if (status == 401) throw new BusinessException("平台凭证失效，请重新配置");
-                boolean limited = status == 429 || (status == 403 &&
-                        (response.headers().firstValue("Retry-After").isPresent()
-                                || response.headers().firstValue("X-RateLimit-Remaining").orElse("1").equals("0")));
-                if (!limited && status < 500) throw new BusinessException("平台资源不可读取，请检查权限和仓库状态");
-                if (attempt == 2) throw new BusinessException(limited ? "平台请求受限，请稍后重试" : "平台暂时不可用");
+                checkRetryable(response, attempt);
                 Thread.sleep(1000L << attempt);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
@@ -98,6 +99,16 @@ public class RemoteApi {
             }
         }
         throw new BusinessException("平台请求失败");
+    }
+
+    private void checkRetryable(HttpResponse<String> response, int attempt) {
+        int status = response.statusCode();
+        if (status == 401) throw new BusinessException("平台凭证失效，请重新配置");
+        boolean limited = status == 429 || (status == 403 &&
+                (response.headers().firstValue("Retry-After").isPresent()
+                        || response.headers().firstValue("X-RateLimit-Remaining").orElse("1").equals("0")));
+        if (!limited && status < 500) throw new BusinessException("平台资源不可读取，请检查权限和仓库状态");
+        if (attempt == 2) throw new BusinessException(limited ? "平台请求受限，请稍后重试" : "平台暂时不可用");
     }
 
     public static String encode(String value) {

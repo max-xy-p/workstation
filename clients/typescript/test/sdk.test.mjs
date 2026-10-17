@@ -49,3 +49,20 @@ test('Fetch transport sends an injected Bearer token through the API base path',
   assert.equal(capturedUrl.toString(), 'https://workstation.example/api/workspaces/17/tasks?status=TODO');
   assert.equal(new Headers(capturedInit.headers).get('Authorization'), 'Bearer machine-token');
 });
+
+test('分页在响应确认存在下一页后才发起请求，并在失败时停止', async () => {
+  const calls = [];
+  let resolveFirst;
+  const transport = {
+    get(path, params) {
+      calls.push(params.page);
+      if (params.page === 0) return new Promise(resolve => { resolveFirst = resolve; });
+      return Promise.reject(new Error('第二页读取失败'));
+    }
+  };
+  const pending = createWorkstationApi(transport).taskApi.listAll(17);
+  assert.deepEqual(calls, [0]);
+  resolveFirst({ items: [{ id: 1 }], hasMore: true });
+  await assert.rejects(pending, { message: '第二页读取失败' });
+  assert.deepEqual(calls, [0, 1]);
+});

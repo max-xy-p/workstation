@@ -66,15 +66,20 @@ public class IntegrationService {
         if(id!=null && (!c.getProvider().equals(r.provider().name()) || !c.getBaseUrl().equals(base)))
             throw new BusinessException("平台与实例不可修改，请创建新连接");
         if(id==null) { c.setWorkspaceId(w); c.setProvider(r.provider().name()); c.setBaseUrl(base); }
+        String token=connectionToken(id,r,c);
+        RequestChecks.maxLength(token,4096,"平台凭证");
+        c.setAccount(provider(c.getProvider()).account(c,token));
+        RequestChecks.requiredText(c.getAccount(),"平台账号");
+        return IntegrationResponseAssembler.connection(state.saveConnection(w,id,r,c,token));
+    }
+
+    private String connectionToken(Long id,IntegrationConnectionRequest r,IntegrationConnection c) {
         String token=r.token();
         if(token==null || token.isBlank()) {
             if(id==null) throw new BusinessException("平台凭证不能为空");
             token=cipher.decrypt(c.getCredential(),c.getKeyVersion(),context(c));
         }
-        RequestChecks.maxLength(token,4096,"平台凭证");
-        c.setAccount(provider(c.getProvider()).account(c,token));
-        RequestChecks.requiredText(c.getAccount(),"平台账号");
-        return IntegrationResponseAssembler.connection(state.saveConnection(w,id,r,c,token));
+        return token;
     }
 
     public IntegrationConnectionResponse validate(Long w,Long id) {

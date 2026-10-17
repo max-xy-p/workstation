@@ -146,7 +146,7 @@ button:disabled {
   border-radius: 10px;
   color: #5c6877;
   font-size: 14px;
-  transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition: color var(--motion-160, 160ms) ease, background var(--motion-160, 160ms) ease, transform var(--motion-160, 160ms) ease;
 }
 
 .nav-link:hover,
@@ -257,7 +257,7 @@ button:disabled {
   border-radius: 10px;
   font-weight: 650;
   line-height: 1;
-  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--motion-150, 150ms) ease, background var(--motion-150, 150ms) ease, border-color var(--motion-150, 150ms) ease, box-shadow var(--motion-150, 150ms) ease;
 }
 
 .topbar-action,
@@ -287,7 +287,7 @@ button,
   background: var(--moss);
   font-weight: 650;
   line-height: 1;
-  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--motion-150, 150ms) ease, background var(--motion-150, 150ms) ease, border-color var(--motion-150, 150ms) ease, box-shadow var(--motion-150, 150ms) ease;
 }
 
 button:hover,
@@ -341,7 +341,7 @@ button.secondary:hover,
 
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity var(--motion-160, 160ms) ease, transform var(--motion-160, 160ms) ease;
 }
 
 .page-enter-from,
@@ -352,7 +352,7 @@ button.secondary:hover,
 
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity var(--motion-160, 160ms) ease, transform var(--motion-160, 160ms) ease;
 }
 
 .page-fade-enter-from,
@@ -486,7 +486,7 @@ textarea {
   border-radius: 10px;
   color: var(--ink);
   background: #fff;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color var(--motion-150, 150ms) ease, box-shadow var(--motion-150, 150ms) ease;
 }
 
 input:where(:not([type="checkbox"]):not([type="radio"])),
@@ -541,7 +541,7 @@ textarea:focus {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
-  transition: border-color 150ms ease, transform 150ms ease;
+  transition: border-color var(--motion-150, 150ms) ease, transform var(--motion-150, 150ms) ease;
 }
 
 .list-stack > .list-item:hover,
@@ -731,7 +731,7 @@ textarea:focus {
   min-height: 82px;
   padding: 16px 26px;
   border-bottom: 1px solid var(--line);
-  transition: background 150ms ease;
+  transition: background var(--motion-150, 150ms) ease;
 }
 
 .record-row:last-child {
@@ -1249,7 +1249,7 @@ textarea:focus {
 
 .project-card,
 .stat-card {
-  transition: transform 150ms ease, border-color 150ms ease;
+  transition: transform var(--motion-150, 150ms) ease, border-color var(--motion-150, 150ms) ease;
 }
 
 .project-card:hover,
@@ -1529,13 +1529,10 @@ textarea:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+  :root {
+    --motion-120: 0.01ms;
+    --motion-150: 0.01ms;
+    --motion-160: 0.01ms;
   }
 }
 
@@ -2528,7 +2525,7 @@ textarea:focus {
 }
 
 .entity-card {
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  transition: border-color var(--motion-150, 150ms) ease, box-shadow var(--motion-150, 150ms) ease;
 }
 
 .entity-card:hover {
@@ -2822,7 +2819,7 @@ textarea:focus {
 .note-row {
   display: grid;
   border-bottom: 1px solid var(--line);
-  transition: background 150ms ease;
+  transition: background var(--motion-150, 150ms) ease;
   position: relative;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 20px;
@@ -3959,7 +3956,7 @@ textarea:focus {
 
 .tree-disclosure svg {
   width: 13px;
-  transition: transform 120ms ease;
+  transition: transform var(--motion-120, 120ms) ease;
 }
 
 .tree-disclosure svg.expanded {

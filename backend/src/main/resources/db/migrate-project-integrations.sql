@@ -1,6 +1,6 @@
 USE workstation;
 
--- 仅升级已完成 Workspace 迁移的数据库；执行前备份。
+-- 新安装在 schema.sql 后执行；升级已完成 Workspace 迁移的数据库时先备份。
 DROP PROCEDURE IF EXISTS migrate_project_integrations;
 DELIMITER $$
 CREATE PROCEDURE migrate_project_integrations()

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <dialog ref="dialog" class="app-drawer" :aria-label="title" :aria-busy="busy" @cancel.prevent="requestClose" @click="backdropClose" @close="closed">
+    <dialog ref="dialog" class="app-drawer" :aria-label="title" :aria-busy="busy" @cancel.prevent="requestClose" @keydown.esc.stop.prevent="requestClose" @click="backdropClose" @close="closed">
       <header class="drawer-heading">
         <div><h2>{{ title }}</h2><p v-if="description">{{ description }}</p></div>
         <button class="drawer-close secondary" type="button" aria-label="关闭面板" :disabled="busy" @click="requestClose"><X :size="20" /></button>

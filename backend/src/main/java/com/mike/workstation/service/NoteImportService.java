@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
@@ -75,12 +74,9 @@ public class NoteImportService {
         validateRequest(workspaceId, request);
         Path sourcePath = resolveAllowedPath(request.sourcePath());
         List<Path> markdownFiles = collectMarkdownFiles(sourcePath);
-        List<NoteImportItemResponse> items = new ArrayList<>();
         List<Long> tagIds = normalizedTagIds(request.tagIds());
-
-        for (Path markdownFile : markdownFiles) {
-            items.add(importOne(workspaceId, markdownFile, request, tagIds));
-        }
+        List<NoteImportItemResponse> items = markdownFiles.stream()
+                .map(markdownFile -> importOne(workspaceId, markdownFile, request, tagIds)).toList();
 
         int importedCount = count(items, STATUS_IMPORTED);
         int skippedCount = count(items, STATUS_SKIPPED);

@@ -10,7 +10,7 @@ Workstation 可以从 GitHub、GitLab 获取仓库资料和开发情况，并保
 
 ## 部署准备
 
-上线前先备份目标数据库，再执行仓库中的 migrate-project-integrations.sql 历史迁移。新安装使用 schema.sql。初始化脚本不会自动升级已有数据卷；即使尚未启用连接功能，项目新字段与关联表也需要完成迁移。历史项目资料与原有仓库地址保留，不根据 URL 自动绑定远端账号。
+上线前先备份目标数据库，再执行仓库中的 migrate-project-integrations.sql 历史迁移。新安装依次执行 schema.sql 和 migrate-project-integrations.sql；开发与生产 Compose 已按此顺序挂载初始化脚本，外部数据表只维护一份定义。初始化脚本不会自动升级已有数据卷；即使尚未启用连接功能，项目新字段与关联表也需要完成迁移。历史项目资料与原有仓库地址保留，不根据 URL 自动绑定远端账号。
 
 数据源默认关闭。部署管理员参照 [.env.docker.example](../.env.docker.example) 或 [Backend 示例配置](../backend/.env.example) 配置功能开关、凭证加密密钥、密钥版本、允许的 GitLab 实例、请求超时、分页与采集上限、租约和近期窗口。开发与生产 Compose 均转发这些配置。
 

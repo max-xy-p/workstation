@@ -68,4 +68,27 @@ class RemoteApiTests {
         verify(client,times(3)).send(any(HttpRequest.class),any(HttpResponse.BodyHandler.class));
         assertThat(RemoteApi.encode("a/b c")).isEqualTo("a%2Fb%20c");
     }
+    @Test void normalizesTrailingSlashesWithoutBacktrackingOrRemovingInnerPaths() {
+        assertThat(api.normalize(IntegrationProvider.GITLAB,"https://gitlab.com" + "/".repeat(100_000)))
+                .isEqualTo("https://gitlab.com");
+        assertThat(api.normalize(IntegrationProvider.GITLAB,"https://gitlab.example.test/team///"))
+                .isEqualTo("https://gitlab.example.test/team");
+        assertThatThrownBy(() -> api.normalize(IntegrationProvider.GITLAB,"https://gitlab.com/other///"))
+                .hasMessageContaining("允许范围");
+    }
+    @Test void rateLimitRetriesThenReturnsSuccessfulResponse() throws Exception {
+        HttpResponse<String> limited=response(403,"secret");
+        HttpResponse<String> success=response(200,"{\"ok\":true}");
+        when(limited.headers()).thenReturn(HttpHeaders.of(Map.of("X-RateLimit-Remaining",List.of("0")),(a,b)->true));
+        when(client.send(any(HttpRequest.class),any(HttpResponse.BodyHandler.class)))
+                .thenReturn(limited,success);
+        assertThat(api.get(connection("GITHUB","https://github.com"),"secret","/user").path("ok").asBoolean()).isTrue();
+        verify(client,times(2)).send(any(HttpRequest.class),any(HttpResponse.BodyHandler.class));
+    }
+    @Test void transientServerFailuresStopAtRetryBoundWithRedactedMessage() throws Exception {
+        doReturn(response(503,"secret")).when(client).send(any(HttpRequest.class),any(HttpResponse.BodyHandler.class));
+        assertThatThrownBy(() -> api.get(connection("GITHUB","https://github.com"),"secret","/user"))
+                .hasMessage("平台暂时不可用");
+        verify(client,times(3)).send(any(HttpRequest.class),any(HttpResponse.BodyHandler.class));
+    }
 }
