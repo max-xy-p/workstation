@@ -17,6 +17,18 @@ import org.apache.ibatis.annotations.Update;
  * <p>负责 notes 表查询和写入；标签关联由 {@link TagMapper} 维护。</p>
  */
 public interface NoteMapper {
+    @Select("SELECT version FROM notes WHERE workspace_id=#{workspaceId} AND id=#{id} AND deleted_at IS NULL")
+    Long findVersionById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    @Select("SELECT * FROM notes WHERE workspace_id=#{workspaceId} AND id=#{id} AND deleted_at IS NULL FOR UPDATE")
+    Note lockContentById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
+    /** 恢复正文保留此刻的文件夹、项目、标签以及任务依据关联。 */
+    @Update("""
+            UPDATE notes SET title=#{title}, content=#{content}, version=version+1, updated_at=#{updatedAt}
+            WHERE workspace_id=#{workspaceId} AND id=#{id} AND version=#{version} AND deleted_at IS NULL
+            """)
+    int restoreContent(Note note);
     /**
      * 按标题、正文、文件夹、标签和项目组合筛选笔记。
      */

@@ -10,7 +10,7 @@ Workstation 可以从 GitHub、GitLab 获取仓库资料和开发情况，并保
 
 ## 部署准备
 
-上线前先备份目标数据库，再执行仓库中的 migrate-project-integrations.sql 历史迁移。新安装依次执行 schema.sql 和 migrate-project-integrations.sql；开发与生产 Compose 已按此顺序挂载初始化脚本，外部数据表只维护一份定义。初始化脚本不会自动升级已有数据卷；即使尚未启用连接功能，项目新字段与关联表也需要完成迁移。历史项目资料与原有仓库地址保留，不根据 URL 自动绑定远端账号。
+上线前先备份目标数据库，再执行仓库中的 migrate-project-integrations.sql 历史迁移。新安装的完整初始化顺序以 [部署流程](ci-cd.md) 为准；开发与生产 Compose 已挂载初始化脚本，外部数据表只维护一份定义。初始化脚本不会自动升级已有数据卷；即使尚未启用连接功能，项目新字段与关联表也需要完成迁移。历史项目资料与原有仓库地址保留，不根据 URL 自动绑定远端账号。
 
 数据源默认关闭。部署管理员参照 [.env.docker.example](../.env.docker.example) 或 [Backend 示例配置](../backend/.env.example) 配置功能开关、凭证加密密钥、密钥版本、允许的 GitLab 实例、请求超时、分页与采集上限、租约和近期窗口。开发与生产 Compose 均转发这些配置。
 
@@ -74,6 +74,6 @@ PR/MR 的开放、合并、关闭状态与工作台任务状态分离；外部�
 
 ## 契约与后续能力
 
-API 位于 /api/workspaces/{workspaceId}，正式路径和字段以 [OpenAPI](../openapi/workstation.yaml) 为准。数据源接口从 4.0.0 引入，当前契约与全部 SDK 为 4.1.0，客户端需一起升级；不保留旧请求缺少新字段时的兼容更新行为。部署与发布仍沿用 [CI/CD 流程](ci-cd.md)。
+API 位于 /api/workspaces/{workspaceId}，正式路径和字段以 [OpenAPI](../openapi/workstation.yaml) 为准。数据源接口从 4.0.0 引入，当前契约与全部 SDK 为 4.2.0，客户端需一起升级；不保留旧请求缺少新字段时的兼容更新行为。部署与发布仍沿用 [CI/CD 流程](ci-cd.md)。
 
 当前连接使用 Token。OAuth、GitHub App、Webhook 和外部 Issue 转为任务属于后续能力，不能把现有同步开关视为这些功能已经实现。实际进度、验证结果、环境限制与待办事项统一见 [STATUS.md](STATUS.md)。

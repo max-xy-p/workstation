@@ -5,7 +5,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 ## 主要功能
 
 - 使用 Tiptap 所见即所得编辑 Markdown 笔记
-- 手动保存、自动保存、按版本检测并发冲突、IndexedDB 草稿恢复和笔记回收站
+- 手动保存、自动保存、按版本检测并发冲突、IndexedDB 草稿恢复、笔记回收站及[内容历史、差异与恢复](docs/note-history.md)
 - 多级文件夹、跨项目/任务/笔记搜索、标签、项目关联和 Markdown 导入
 - 项目资料、项目详情、任务看板及任务的依据笔记关联
 - GitHub/GitLab 数据源连接、多仓库关联、批量导入、手动与定时同步，以及近期开发情况快照；启用与升级见 [数据源流程](docs/integrations.md)
@@ -113,7 +113,7 @@ npm.cmd run preview
 
 OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](docs/openapi.md) 中维护。前端 `test` 使用 Node Test Runner 验证导航、页面实例边界和表单提交状态；`typecheck` 执行 TypeScript/Vue 静态类型检查。前端目前没有 `lint` 或 `format` 命令。
 
-手动初始化 MySQL 时，依次执行 `backend/src/main/resources/db/schema.sql` 和 `backend/src/main/resources/db/migrate-project-integrations.sql`；Compose 首次启动会自动按此顺序执行。已有数据卷的升级流程见 [CI/CD 与部署](docs/ci-cd.md)。
+手动初始化 MySQL 时，依次执行 `backend/src/main/resources/db/schema.sql`、`backend/src/main/resources/db/migrate-project-integrations.sql` 和 `backend/src/main/resources/db/migrate-note-revisions.sql`；Compose 首次启动会自动按此顺序执行。已有数据卷的升级流程见 [CI/CD 与部署](docs/ci-cd.md)。
 
 ## 文档
 
@@ -121,4 +121,4 @@ OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](
 
 ## 许可证
 
-本项目采用 [MIT 许可证](LICENSE)。第三方依赖及随附的第三方代码继续遵循各自的许可证。
+本项目采用 [MIT 许可证](LICENSE)。第三方依赖及随附的第三方代码继续遵循各自的许可证，随附声明见 [第三方许可说明](THIRD_PARTY_NOTICES.md)。

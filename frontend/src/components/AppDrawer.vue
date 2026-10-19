@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <dialog ref="dialog" class="app-drawer" :aria-label="title" :aria-busy="busy" @cancel.prevent="requestClose" @keydown.esc.stop.prevent="requestClose" @click="backdropClose" @close="closed">
+    <dialog ref="dialog" class="app-drawer" :class="panelClass" :aria-label="title" :aria-busy="busy" @cancel.prevent="requestClose" @keydown.esc.stop.prevent="requestClose" @click="backdropClose" @close="closed">
       <header class="drawer-heading">
         <div><h2>{{ title }}</h2><p v-if="description">{{ description }}</p></div>
         <button class="drawer-close secondary" type="button" aria-label="关闭面板" :disabled="busy" @click="requestClose"><X :size="20" /></button>
@@ -16,7 +16,7 @@ import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import { X } from '@lucide/vue';
 
-const props = defineProps({ modelValue: Boolean, title: { type: String, required: true }, description: { type: String, default: '' }, busy: Boolean, dirty: Boolean });
+const props = defineProps({ modelValue: Boolean, title: { type: String, required: true }, description: { type: String, default: '' }, panelClass: { type: String, default: '' }, busy: Boolean, dirty: Boolean });
 const emit = defineEmits(['update:modelValue', 'closed']);
 const dialog = ref(null);
 function canClose() {

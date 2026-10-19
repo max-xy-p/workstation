@@ -33,12 +33,13 @@
           <span>{{ characterCount }} 字</span>
           <span v-if="saveState" class="save-state" :data-sync-status="syncStatus" :title="persistenceReceipt">{{ saveState }}</span>
           <span v-if="!canWrite">只读</span>
-          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving || !contentReady" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
-          <button v-if="canWrite" type="submit" :disabled="saving || conflictActive || !contentReady">保存</button>
+          <button v-if="isEdit" type="button" class="secondary note-history-trigger" :disabled="!contentReady || restoringHistory" @click="openHistory">版本历史</button>
+          <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving || restoringHistory || !contentReady" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
+          <button v-if="canWrite" type="submit" :disabled="saving || restoringHistory || conflictActive || !contentReady">保存</button>
         </div>
       </div>
 
-      <input v-model="form.title" :readonly="!canWrite || !contentReady" class="note-title-input" aria-label="笔记标题" placeholder="无标题笔记" required />
+      <input v-model="form.title" :readonly="!canWrite || !contentReady || restoringHistory" class="note-title-input" aria-label="笔记标题" placeholder="无标题笔记" required />
 
       <details class="note-properties">
         <summary>
@@ -47,19 +48,19 @@
         </summary>
         <div class="metadata-grid">
           <label><span>文件夹</span>
-            <select v-model="form.folderId" :disabled="!canWrite || !contentReady">
+            <select v-model="form.folderId" :disabled="!canWrite || !contentReady || restoringHistory">
               <option value="">未归档</option>
               <option v-for="folder in folderOptions" :key="folder.id" :value="folder.id">{{ folder.path }}</option>
             </select>
           </label>
           <label><span>关联项目</span>
-            <select v-model="form.projectId" :disabled="!canWrite || !contentReady">
+            <select v-model="form.projectId" :disabled="!canWrite || !contentReady || restoringHistory">
               <option value="">未关联</option>
               <option v-for="project in projects" :key="project.id" :value="project.id">{{ project.name }}</option>
             </select>
           </label>
           <label><span>标签</span>
-            <select v-model="form.tagIds" :disabled="!canWrite || !contentReady" multiple>
+            <select v-model="form.tagIds" :disabled="!canWrite || !contentReady || restoringHistory" multiple>
               <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
             </select>
           </label>
@@ -77,24 +78,28 @@
         <MarkdownEditor
           v-if="contentReady"
           v-model="form.content"
-          :editable="canWrite"
+          :editable="canWrite && !restoringHistory"
           @ready="editorReady = true"
           @error="handleEditorError"
         />
         <p v-if="!editorReady && !error" class="editor-loading">正在打开文稿…</p>
       </div>
     </form>
+    <NoteHistoryDrawer v-if="isEdit && historyOpened" v-model="historyOpened" :workspace-id="workspaceId" :note-id="noteId"
+      :local-content="{ title: form.title, content: form.content }" :can-restore="canWrite" :dirty="isDirty()"
+      :busy="saving || restoringHistory" :restore-error="historyError" @restore="restoreHistory" />
   </section>
 </template>
 
 <script setup>
 import { Trash2 } from '@lucide/vue';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { noteApi, noteFolderApi, projectApi, tagApi, taskApi } from '../api/workstation';
 import { auth } from '../auth';
 import { workspace } from '../workspace';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
+const NoteHistoryDrawer = defineAsyncComponent(() => import('../components/NoteHistoryDrawer.vue'));
 import { flattenFolderOptions } from '../utils/noteFolders';
 import { deleteConfirmedDraft, deleteNoteDraft, listNoteDrafts, putNoteDraft } from '../utils/noteDraftStore';
 
@@ -106,9 +111,9 @@ const workspaceParams = { workspaceId };
 const noteId = route.params.id ? Number(route.params.id) : null;
 const subjectId = auth.state.user?.subjectId;
 const newDraftId = route.query.draftId || window.crypto.randomUUID();
-const editSessionId = window.crypto.randomUUID();
+let editSessionId = window.crypto.randomUUID();
 const baseDraftKey = ['note-draft', subjectId, workspaceId, noteId || 'new:' + newDraftId].join(':');
-const draftKey = baseDraftKey + ':' + editSessionId;
+let draftKey = baseDraftKey + ':' + editSessionId;
 const emit = defineEmits(['saved', 'deleted']);
 const error = ref('');
 const folders = ref([]);
@@ -120,6 +125,9 @@ const conflictNote = ref(null);
 const conflictActive = ref(false);
 const pendingDrafts = ref([]);
 const saving = ref(false);
+const historyOpened = ref(false);
+const restoringHistory = ref(false);
+const historyError = ref('');
 const saveState = ref('');
 const syncStatus = ref('SYNCED');
 const contentReady = ref(false);
@@ -269,6 +277,7 @@ async function load() {
 }
 
 async function restorePendingDraft(record) {
+  if (restoringHistory.value || saving.value) return;
   if (isDirty() && !window.confirm('用所选草稿替换当前编辑内容？当前修改会先保存在本地。')) return;
   if (isDirty() && !await saveDraft()) return;
   try {
@@ -343,6 +352,7 @@ async function completePersist(response, snapshot, previousVersion) {
 }
 
 async function persist(manual = false) {
+  if (restoringHistory.value) return;
   if (conflictActive.value) {
     if (manual) error.value = '请先处理笔记版本冲突';
     return;
@@ -381,6 +391,68 @@ async function persist(manual = false) {
 
 async function save() {
   await persist(true);
+}
+
+function openHistory() {
+  historyError.value = '';
+  historyOpened.value = true;
+}
+
+async function applyHistoryReceipt(response, expectedVersion) {
+  const version = requirePersistenceReceipt(response, expectedVersion);
+  if (response.id !== noteId) throw new Error('服务器返回的笔记不匹配，请刷新历史核对。');
+  if (disposed) return;
+  hydrating = true;
+  // 原草稿留在旧会话下，后续编辑使用新键，避免自动保存覆盖保留的草稿。
+  editSessionId = window.crypto.randomUUID();
+  draftKey = baseDraftKey + ':' + editSessionId;
+  recoveredDraft = null;
+  persistedVersion = version;
+  persistedSnapshot = snapshotOf(response);
+  saved.value = response;
+  applyNote(response);
+  conflictActive.value = false;
+  conflictNote.value = null;
+  saveBlocked = false;
+  saveQueued = false;
+  syncStatus.value = 'SYNCED';
+  saveState.value = '历史已恢复为新版本';
+  error.value = '';
+  historyOpened.value = false;
+  emit('saved', response);
+  await nextTick();
+  hydrating = false;
+  try {
+    const drafts = await listNoteDrafts(baseDraftKey);
+    if (!disposed) pendingDrafts.value = drafts.filter(draft => draft.snapshot !== persistedSnapshot);
+  } catch {
+    if (!disposed) error.value = '历史已恢复，原草稿保留在本地；读取草稿列表失败，请刷新页面。';
+  }
+}
+
+async function restoreHistory(revision, expectedVersion) {
+  if (!canWrite.value || !contentReady.value || saving.value || restoringHistory.value || disposed) return;
+  restoringHistory.value = true;
+  historyError.value = '';
+  window.clearTimeout(autoSaveTimer);
+  window.clearTimeout(draftTimer);
+  try {
+    if (isDirty() && !await saveDraft()) {
+      historyError.value = '本地草稿未能保存，已停止恢复。请先备份当前内容后重试。';
+      return;
+    }
+    await draftQueue;
+    if (disposed) return;
+    const response = await noteApi.restoreRevision(workspaceId, noteId, revision.id, expectedVersion);
+    await applyHistoryReceipt(response, expectedVersion);
+  } catch (err) {
+    if (!disposed) {
+      historyError.value = err.message + ' 请刷新历史核对服务端内容后再操作。';
+      await recordSaveFailure(err);
+    }
+  } finally {
+    restoringHistory.value = false;
+  }
 }
 
 async function copyLocalContent() {
@@ -427,7 +499,7 @@ async function retryWithLatestVersion() {
 }
 
 async function removeNote() {
-  if (!canWrite.value || saving.value || !window.confirm('确认将笔记移入回收站？之后可以恢复。')) return;
+  if (!canWrite.value || saving.value || restoringHistory.value || !window.confirm('确认将笔记移入回收站？之后可以恢复。')) return;
   try {
     await noteApi.delete(workspaceId, noteId);
     persistedSnapshot = snapshotOf(form);
@@ -441,7 +513,7 @@ async function removeNote() {
 
 function scheduleAutoSave() {
   window.clearTimeout(autoSaveTimer);
-  if (!isEdit || !canSave.value || conflictActive.value || saveBlocked || disposed) return;
+  if (!isEdit || !canSave.value || conflictActive.value || saveBlocked || disposed || restoringHistory.value) return;
   autoSaveTimer = window.setTimeout(() => { void persist(false); }, 8000);
 }
 
@@ -451,7 +523,7 @@ function handleEditorError(err) {
 }
 
 watch(form, () => {
-  if (hydrating || disposed) return;
+  if (hydrating || disposed || restoringHistory.value) return;
   window.clearTimeout(draftTimer);
   window.clearTimeout(autoSaveTimer);
   if (!isDirty()) {
@@ -478,6 +550,7 @@ function persistDraftWhenHidden() {
 }
 
 async function protectDraft() {
+  if (restoringHistory.value) return false;
   if (hydrating || !isDirty()) return true;
   const cached = await saveDraft();
   return cached || window.confirm('本地草稿保存失败，继续离开可能丢失修改。仍然离开？');

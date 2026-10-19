@@ -1,6 +1,9 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.dto.NoteDetailResponse;
+import com.mike.workstation.dto.NoteRevisionResponse;
+import com.mike.workstation.dto.NoteRevisionSummaryResponse;
+import com.mike.workstation.dto.NoteRevisionRestoreRequest;
 import com.mike.workstation.dto.DeletedNoteResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
@@ -10,6 +13,7 @@ import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.service.NoteImportService;
 import com.mike.workstation.service.NoteService;
+import com.mike.workstation.service.NoteRevisionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,10 +36,31 @@ import org.springframework.web.bind.annotation.RestController;
 public class NoteController {
     private final NoteService noteService;
     private final NoteImportService noteImportService;
+    private final NoteRevisionService revisions;
 
-    public NoteController(NoteService noteService, NoteImportService noteImportService) {
+    public NoteController(NoteService noteService, NoteImportService noteImportService, NoteRevisionService revisions) {
         this.noteService = noteService;
         this.noteImportService = noteImportService;
+        this.revisions = revisions;
+    }
+
+    @GetMapping("/{id}/revisions")
+    public PageResponse<NoteRevisionSummaryResponse> revisions(@PathVariable Long workspaceId, @PathVariable Long id,
+            @RequestParam(required=false) Long upToVersion, @RequestParam(defaultValue="0") int page,
+            @RequestParam(defaultValue="20") int size) {
+        return revisions.list(workspaceId, id, upToVersion, page, size);
+    }
+
+    @GetMapping("/{id}/revisions/{revisionId}")
+    public NoteRevisionResponse revision(@PathVariable Long workspaceId, @PathVariable Long id,
+            @PathVariable Long revisionId) {
+        return revisions.get(workspaceId, id, revisionId);
+    }
+
+    @PostMapping("/{id}/revisions/{revisionId}/restore")
+    public NoteDetailResponse restoreRevision(@PathVariable Long workspaceId, @PathVariable Long id,
+            @PathVariable Long revisionId, @RequestBody NoteRevisionRestoreRequest request) {
+        return noteService.restoreRevision(workspaceId, id, revisionId, request);
     }
 
     /**

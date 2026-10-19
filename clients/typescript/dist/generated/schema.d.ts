@@ -240,6 +240,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/notes/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** 分页查看笔记标题与正文历史 */
+        get: operations["listNoteRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/revisions/{revisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                revisionId: number;
+            };
+            cookie?: never;
+        };
+        /** 查看当前笔记的一份完整历史快照 */
+        get: operations["getNoteRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/revisions/{revisionId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                revisionId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 将历史标题和正文恢复为新版本，保留当前关联关系 */
+        post: operations["restoreNoteRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workspaces/{workspaceId}/notes/import": {
         parameters: {
             query?: never;
@@ -853,6 +915,56 @@ export interface components {
             tagIds: number[];
             /** Format: int64 */
             expectedVersion: number;
+        };
+        /** @enum {string} */
+        NoteRevisionSource: "CREATE" | "IMPORT" | "UPDATE" | "RESTORE" | "BASELINE";
+        NoteRevisionRestoreRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        NoteRevisionSummaryResponse: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            noteId: number;
+            /** Format: int64 */
+            noteVersion: number;
+            title: string;
+            actorSubject: string | null;
+            actorDisplayName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            source: components["schemas"]["NoteRevisionSource"];
+            /** Format: int64 */
+            restoredFromRevisionId: number | null;
+        };
+        NoteRevisionResponse: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            noteId: number;
+            /** Format: int64 */
+            noteVersion: number;
+            title: string;
+            actorSubject: string | null;
+            actorDisplayName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            source: components["schemas"]["NoteRevisionSource"];
+            /** Format: int64 */
+            restoredFromRevisionId: number | null;
+            /** @description 历史 Markdown 正文 */
+            content: string;
+        };
+        NoteRevisionPageResponse: {
+            items: components["schemas"]["NoteRevisionSummaryResponse"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
         };
         NoteSummaryResponse: {
             /** Format: int64 */
@@ -1862,6 +1974,100 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listNoteRevisions: {
+        parameters: {
+            query?: {
+                /** @description 从 0 开始的页码 */
+                page?: components["parameters"]["Page"];
+                /** @description 每页数量 */
+                size?: components["parameters"]["Size"];
+                /** @description 固定历史分页的版本上界；省略时使用请求时的当前版本 */
+                upToVersion?: number;
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 不包含正文的历史摘要 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRevisionPageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getNoteRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                revisionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 历史标题、正文与记录信息 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteRevisionResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    restoreNoteRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                revisionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteRevisionRestoreRequest"];
+            };
+        };
+        responses: {
+            /** @description 已恢复的当前笔记，版本已递增 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteDetailResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     importNotes: {

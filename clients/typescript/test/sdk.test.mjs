@@ -66,3 +66,22 @@ test('分页在响应确认存在下一页后才发起请求，并在失败时�
   await assert.rejects(pending, { message: '第二页读取失败' });
   assert.deepEqual(calls, [0, 1]);
 });
+
+test('笔记历史分页保留上界，恢复请求携带预期版本并与回收站恢复分开', async () => {
+  const calls = [];
+  const transport = {
+    async get(path, params) { calls.push({ path, params }); },
+    async post(path, body) { calls.push({ path, body }); }
+  };
+  const api = createWorkstationApi(transport);
+  await api.noteApi.revisions(9, 3, { page: 1, size: 20, upToVersion: 7 });
+  await api.noteApi.revision(9, 3, 11);
+  await api.noteApi.restoreRevision(9, 3, 11, 7);
+  await api.noteApi.restore(9, 3);
+  assert.deepEqual(calls, [
+    { path: '/workspaces/9/notes/3/revisions', params: { page: 1, size: 20, upToVersion: 7 } },
+    { path: '/workspaces/9/notes/3/revisions/11', params: undefined },
+    { path: '/workspaces/9/notes/3/revisions/11/restore', body: { expectedVersion: 7 } },
+    { path: '/workspaces/9/notes/3/restore', body: undefined }
+  ]);
+});

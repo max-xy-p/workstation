@@ -2,10 +2,13 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.assembler.NoteResponseAssembler;
 import com.mike.workstation.domain.Note;
+import com.mike.workstation.domain.NoteRevision;
+import com.mike.workstation.domain.NoteRevisionSource;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.DeletedNoteResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteRevisionRestoreRequest;
 import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
 import com.mike.workstation.dto.PageResponse;
@@ -41,6 +44,7 @@ public class NoteService {
     private final CurrentPrincipalResolver principalResolver;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
+    private final NoteRevisionService revisions;
 
     public NoteService(
             NoteMapper noteMapper,
@@ -51,7 +55,8 @@ public class NoteService {
             NoteTagLoader noteTagLoader,
             CurrentPrincipalResolver principalResolver,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
+            AuditService auditService,
+            NoteRevisionService revisions
     ) {
         this.noteMapper = noteMapper;
         this.folderMapper = folderMapper;
@@ -62,6 +67,7 @@ public class NoteService {
         this.principalResolver = principalResolver;
         this.authorization = authorization;
         this.auditService = auditService;
+        this.revisions = revisions;
     }
 
     /**
@@ -133,6 +139,8 @@ public class NoteService {
         note.setCreatedAt(now);
         note.setUpdatedAt(now);
         noteMapper.insert(note);
+        note.setVersion(1L);
+        revisions.record(note, NoteRevisionSource.CREATE, null);
         replaceTags(workspaceId, note.getId(), request.tagIds());
         auditService.success(workspaceId, "NOTE_CREATE", "NOTE", note.getId());
         return get(workspaceId, note.getId());
@@ -165,9 +173,32 @@ public class NoteService {
             RequestChecks.requiredExisting(noteMapper.lockById(workspaceId, id), NOTE_NOT_FOUND);
             throw new NoteVersionConflictException();
         }
+        note.setVersion(request.expectedVersion() + 1);
+        revisions.record(note, NoteRevisionSource.UPDATE, null);
         taskMapper.clearEvidenceOutsideProject(workspaceId, id, note.getProjectId(), note.getUpdatedAt());
         replaceTags(workspaceId, id, noteRequest.tagIds());
         auditService.success(workspaceId, "NOTE_UPDATE", "NOTE", id);
+        return get(workspaceId, id);
+    }
+
+    /** 将历史标题与正文保存为新版本；并发修改仍需通过版本校验。 */
+    @Transactional
+    public NoteDetailResponse restoreRevision(Long workspaceId, Long id, Long revisionId, NoteRevisionRestoreRequest request) {
+        authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
+        RequestChecks.requiredObject(request, "历史恢复请求");
+        if (request.expectedVersion() == null || request.expectedVersion() < 1)
+            throw new BusinessException("笔记版本不合法");
+        Note note = noteMapper.lockContentById(workspaceId, id);
+        RequestChecks.requiredExisting(note, NOTE_NOT_FOUND);
+        NoteRevision revision = revisions.require(workspaceId, id, revisionId);
+        if (!request.expectedVersion().equals(note.getVersion())) throw new NoteVersionConflictException();
+        note.setTitle(revision.getTitle());
+        note.setContent(revision.getContent());
+        note.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
+        if (noteMapper.restoreContent(note) != 1) throw new NoteVersionConflictException();
+        note.setVersion(request.expectedVersion() + 1);
+        revisions.record(note, NoteRevisionSource.RESTORE, revisionId);
+        auditService.success(workspaceId, "NOTE_REVISION_RESTORE", "NOTE", id);
         return get(workspaceId, id);
     }
 

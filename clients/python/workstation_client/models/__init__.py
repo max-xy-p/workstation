@@ -36,6 +36,11 @@ from .note_import_response import NoteImportResponse
 from .note_import_status import NoteImportStatus
 from .note_page_response import NotePageResponse
 from .note_request import NoteRequest
+from .note_revision_page_response import NoteRevisionPageResponse
+from .note_revision_response import NoteRevisionResponse
+from .note_revision_restore_request import NoteRevisionRestoreRequest
+from .note_revision_source import NoteRevisionSource
+from .note_revision_summary_response import NoteRevisionSummaryResponse
 from .note_summary_response import NoteSummaryResponse
 from .note_update_request import NoteUpdateRequest
 from .principal_type import PrincipalType
@@ -105,6 +110,11 @@ __all__ = (
     "NoteImportStatus",
     "NotePageResponse",
     "NoteRequest",
+    "NoteRevisionPageResponse",
+    "NoteRevisionResponse",
+    "NoteRevisionRestoreRequest",
+    "NoteRevisionSource",
+    "NoteRevisionSummaryResponse",
     "NoteSummaryResponse",
     "NoteUpdateRequest",
     "PrincipalType",

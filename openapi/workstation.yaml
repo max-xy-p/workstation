@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 4.1.0
+  version: 4.2.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -406,6 +406,84 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/revisions:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      tags: [notes]
+      operationId: listNoteRevisions
+      summary: 分页查看笔记标题与正文历史
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - name: upToVersion
+          in: query
+          required: false
+          description: 固定历史分页的版本上界；省略时使用请求时的当前版本
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        "200":
+          description: 不包含正文的历史摘要
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteRevisionPageResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/revisions/{revisionId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+      - name: revisionId
+        in: path
+        required: true
+        schema: { type: integer, format: int64, minimum: 1 }
+    get:
+      tags: [notes]
+      operationId: getNoteRevision
+      summary: 查看当前笔记的一份完整历史快照
+      responses:
+        "200":
+          description: 历史标题、正文与记录信息
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteRevisionResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/revisions/{revisionId}/restore:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+      - name: revisionId
+        in: path
+        required: true
+        schema: { type: integer, format: int64, minimum: 1 }
+    post:
+      tags: [notes]
+      operationId: restoreNoteRevision
+      summary: 将历史标题和正文恢复为新版本，保留当前关联关系
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteRevisionRestoreRequest" }
+      responses:
+        "200":
+          description: 已恢复的当前笔记，版本已递增
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteDetailResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/workspaces/{workspaceId}/notes/import:
     parameters:
@@ -1791,6 +1869,57 @@ components:
           uniqueItems: true
           default: []
         expectedVersion: { type: integer, format: int64, minimum: 1 }
+
+    NoteRevisionSource:
+      type: string
+      enum: [CREATE, IMPORT, UPDATE, RESTORE, BASELINE]
+    NoteRevisionRestoreRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, format: int64, minimum: 1 }
+    NoteRevisionSummaryResponse:
+      type: object
+      additionalProperties: false
+      required: [id, noteId, noteVersion, title, actorSubject, actorDisplayName, createdAt, source, restoredFromRevisionId]
+      properties:
+        id: { type: integer, format: int64 }
+        noteId: { type: integer, format: int64 }
+        noteVersion: { type: integer, format: int64, minimum: 1 }
+        title: { type: string }
+        actorSubject: { type: [string, "null"] }
+        actorDisplayName: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        source: { $ref: "#/components/schemas/NoteRevisionSource" }
+        restoredFromRevisionId: { type: [integer, "null"], format: int64 }
+    NoteRevisionResponse:
+      type: object
+      additionalProperties: false
+      required: [id, noteId, noteVersion, title, actorSubject, actorDisplayName, createdAt, source, restoredFromRevisionId, content]
+      properties:
+        id: { type: integer, format: int64 }
+        noteId: { type: integer, format: int64 }
+        noteVersion: { type: integer, format: int64, minimum: 1 }
+        title: { type: string }
+        actorSubject: { type: [string, "null"] }
+        actorDisplayName: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        source: { $ref: "#/components/schemas/NoteRevisionSource" }
+        restoredFromRevisionId: { type: [integer, "null"], format: int64 }
+        content: { type: string, description: 历史 Markdown 正文 }
+    NoteRevisionPageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, total, hasMore]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/NoteRevisionSummaryResponse" }
+        page: { type: integer, format: int32, minimum: 0 }
+        size: { type: integer, format: int32, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+        hasMore: { type: boolean }
 
     NoteSummaryResponse:
       type: object

@@ -2,6 +2,7 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.config.NoteImportProperties;
 import com.mike.workstation.domain.Note;
+import com.mike.workstation.domain.NoteRevisionSource;
 import com.mike.workstation.domain.NoteImportDuplicateStrategy;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteImportItemResponse;
@@ -41,6 +42,7 @@ public class NoteImportService {
     private final TagMapper tagMapper;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
+    private final NoteRevisionService revisions;
 
     public NoteImportService(
             NoteImportProperties properties,
@@ -49,7 +51,8 @@ public class NoteImportService {
             ProjectMapper projectMapper,
             TagMapper tagMapper,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
+            AuditService auditService,
+            NoteRevisionService revisions
     ) {
         this.properties = properties;
         this.noteMapper = noteMapper;
@@ -58,6 +61,7 @@ public class NoteImportService {
         this.tagMapper = tagMapper;
         this.authorization = authorization;
         this.auditService = auditService;
+        this.revisions = revisions;
     }
 
     /**
@@ -124,6 +128,8 @@ public class NoteImportService {
             for (Long tagId : tagIds) {
                 tagMapper.insertNoteTag(workspaceId, note.getId(), tagId);
             }
+            note.setVersion(1L);
+            revisions.record(note, NoteRevisionSource.IMPORT, null);
 
             return new NoteImportItemResponse(filePath, title, STATUS_IMPORTED, "导入成功", note.getId());
         } catch (IOException | RuntimeException ex) {

@@ -41,9 +41,34 @@ class ResourceServerIntegrationTests {
     private WorkspaceAuthorizationService authorizationService;
     @MockitoBean
     private NoteService noteService;
+    @MockitoBean
+    private com.mike.workstation.service.NoteRevisionService noteRevisions;
 
     @MockitoBean
     private com.mike.workstation.service.WorkspaceService workspaceService;
+
+    @Test
+    void noteHistoryEndpointsKeepWorkspaceAndConflictContract() throws Exception {
+        when(noteRevisions.list(1L,2L,5L,0,20)).thenReturn(com.mike.workstation.dto.PageResponse.of(java.util.List.of(),0,20,0));
+        mockMvc.perform(get("/api/workspaces/1/notes/2/revisions").param("upToVersion","5")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isArray());
+        mockMvc.perform(get("/api/workspaces/1/notes/2/revisions")).andExpect(status().isUnauthorized());
+        when(noteService.restoreRevision(eq(1L),eq(2L),eq(3L),any())).thenThrow(new NoteVersionConflictException());
+        mockMvc.perform(post("/api/workspaces/1/notes/2/revisions/3/restore")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":5}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOTE_VERSION_CONFLICT"));
+        verify(noteRevisions).list(1L,2L,5L,0,20);
+    }
+
+    @Test
+    void noteHistoryRestoreRejectsForgedAuthorFields() throws Exception {
+        mockMvc.perform(post("/api/workspaces/1/notes/2/revisions/3/restore")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"expectedVersion\":5,\"actorSubject\":\"forged\"}"))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void memberSearchKeepsExistingParameterAndReturnsDisplayNames() throws Exception {

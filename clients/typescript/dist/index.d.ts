@@ -14,6 +14,12 @@ export type AuditEventResponse = Schemas['AuditEventResponse'];
 export type AuditEventPageResponse = Schemas['AuditEventPageResponse'];
 export type DashboardResponse = Schemas['DashboardResponse'];
 export type NoteRequest = Schemas['NoteRequest'];
+export type NoteRevisionSource = Schemas['NoteRevisionSource'];
+export type NoteRevisionSummaryResponse = Schemas['NoteRevisionSummaryResponse'];
+export type NoteRevisionResponse = Schemas['NoteRevisionResponse'];
+export type NoteRevisionPageResponse = Schemas['NoteRevisionPageResponse'];
+export type NoteRevisionRestoreRequest = Schemas['NoteRevisionRestoreRequest'];
+export type NoteRevisionListParams = NonNullable<operations['listNoteRevisions']['parameters']['query']>;
 export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
@@ -481,6 +487,38 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
         delete: (workspaceId: number, id: number) => Promise<null>;
     };
     noteApi: {
+        revisions: (workspaceId: number, id: number, params?: NoteRevisionListParams) => Promise<{
+            items: components["schemas"]["NoteRevisionSummaryResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        revision: (workspaceId: number, id: number, revisionId: number) => Promise<{
+            id: number;
+            noteId: number;
+            noteVersion: number;
+            title: string;
+            actorSubject: string | null;
+            actorDisplayName: string | null;
+            createdAt: string;
+            source: components["schemas"]["NoteRevisionSource"];
+            restoredFromRevisionId: number | null;
+            content: string;
+        }>;
+        restoreRevision: (workspaceId: number, id: number, revisionId: number, expectedVersion: number) => Promise<{
+            id: number;
+            title: string;
+            content: string;
+            folderId: number | null;
+            folderName: string | null;
+            projectId: number | null;
+            projectName: string | null;
+            version: number;
+            tags: components["schemas"]["TagResponse"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
         list: (workspaceId: number, params?: NoteListParams) => Promise<{
             items: components["schemas"]["NoteSummaryResponse"][];
             page: number;

@@ -8,6 +8,7 @@
 | --- | --- |
 | [`STATUS.md`](STATUS.md) | 已完成事项、进行中事项、后续计划、已知问题和验证记录 |
 | [`integrations.md`](integrations.md) | GitHub/GitLab 连接、仓库导入、开发快照和同步故障恢复 |
+| [`note-history.md`](note-history.md) | 笔记内容历史、差异查看、草稿保护、共享保留边界及升级回退 |
 | [`authentication.md`](authentication.md) | 认证设计、组件职责、浏览器与机器调用方式及其流程 |
 | [`audit/README.md`](audit/README.md) | 审计边界、Outbox、XXL-JOB、RabbitMQ、幂等与故障处理 |
 | [`openapi.md`](openapi.md) | 契约真源的含义、职责边界、Schema 原则和变更流程 |

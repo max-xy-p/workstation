@@ -51,6 +51,8 @@ class NoteServiceTests {
     private WorkspaceAuthorizationService authorization;
     @Mock
     private AuditService auditService;
+    @Mock
+    private NoteRevisionService revisions;
     @InjectMocks
     private NoteService noteService;
 
@@ -199,9 +201,31 @@ class NoteServiceTests {
         verify(noteTagLoader).attachTags(WORKSPACE_ID, List.of(deleted));
     }
 
+    @Test
+    void historicalRestoreRejectsInvalidVersionsBeforeTouchingContent() {
+        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,null))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
+                new com.mike.workstation.dto.NoteRevisionRestoreRequest(null))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
+                new com.mike.workstation.dto.NoteRevisionRestoreRequest(0L))).isInstanceOf(BusinessException.class);
+        org.mockito.Mockito.verifyNoInteractions(noteMapper,revisions);
+    }
+
+    @Test
+    void historicalRestoreRequiresWritePermissionBeforeReadingSnapshots() {
+        org.mockito.Mockito.doThrow(new com.mike.workstation.exception.WorkspaceAccessDeniedException("只读空间"))
+                .when(authorization).require(WORKSPACE_ID,com.mike.workstation.domain.WorkspacePermission.NOTE_WRITE);
+        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
+                new com.mike.workstation.dto.NoteRevisionRestoreRequest(1L)))
+                .isInstanceOf(com.mike.workstation.exception.WorkspaceAccessDeniedException.class);
+        org.mockito.Mockito.verifyNoInteractions(noteMapper,revisions);
+    }
+
     private Note note(Long id, Long version) {
         Note note = new Note();
         note.setId(id);
+        note.setWorkspaceId(WORKSPACE_ID);
         note.setTitle("Title");
         note.setContent("Content");
         note.setVersion(version);

@@ -54,6 +54,9 @@ class NoteImportServiceTests {
     @Mock
     AuditService auditService;
 
+    @Mock
+    NoteRevisionService revisions;
+
     private NoteImportService service;
 
     @BeforeEach
@@ -186,7 +189,7 @@ class NoteImportServiceTests {
 
     private NoteImportService serviceWith(NoteImportProperties properties) {
         return new NoteImportService(properties, noteMapper, folderMapper, projectMapper,
-                tagMapper, authorization, auditService);
+                tagMapper, authorization, auditService, revisions);
     }
 
     private NoteImportRequest request(Path path, NoteImportDuplicateStrategy strategy) {

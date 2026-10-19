@@ -16,6 +16,12 @@ export type AuditEventResponse = Schemas['AuditEventResponse'];
 export type AuditEventPageResponse = Schemas['AuditEventPageResponse'];
 export type DashboardResponse = Schemas['DashboardResponse'];
 export type NoteRequest = Schemas['NoteRequest'];
+export type NoteRevisionSource = Schemas['NoteRevisionSource'];
+export type NoteRevisionSummaryResponse = Schemas['NoteRevisionSummaryResponse'];
+export type NoteRevisionResponse = Schemas['NoteRevisionResponse'];
+export type NoteRevisionPageResponse = Schemas['NoteRevisionPageResponse'];
+export type NoteRevisionRestoreRequest = Schemas['NoteRevisionRestoreRequest'];
+export type NoteRevisionListParams = NonNullable<operations['listNoteRevisions']['parameters']['query']>;
 export type NoteUpdateRequest = Schemas['NoteUpdateRequest'];
 export type NoteSummaryResponse = Schemas['NoteSummaryResponse'];
 export type NoteDetailResponse = Schemas['NoteDetailResponse'];
@@ -193,6 +199,13 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
     },
     noteApi: {
+      revisions: (workspaceId: number, id: number, params?: NoteRevisionListParams) =>
+        transport.get<NoteRevisionPageResponse>(`${workspacePath(workspaceId)}/notes/${id}/revisions`, params),
+      revision: (workspaceId: number, id: number, revisionId: number) =>
+        transport.get<NoteRevisionResponse>(`${workspacePath(workspaceId)}/notes/${id}/revisions/${revisionId}`),
+      restoreRevision: (workspaceId: number, id: number, revisionId: number, expectedVersion: number) =>
+        transport.post<NoteDetailResponse, NoteRevisionRestoreRequest>(
+          `${workspacePath(workspaceId)}/notes/${id}/revisions/${revisionId}/restore`, { expectedVersion }),
       list: (workspaceId: number, params?: NoteListParams) =>
         transport.get<NotePageResponse>(`${workspacePath(workspaceId)}/notes`, params),
       listAll: (workspaceId: number, params?: NoteListParams) =>

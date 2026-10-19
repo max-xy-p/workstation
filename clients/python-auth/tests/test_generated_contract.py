@@ -1,11 +1,25 @@
 import datetime
 import unittest
 
-from workstation_client.models import ApiError, NoteRequest
+from workstation_client.models import ApiError, NoteRequest, NoteRevisionRestoreRequest, NoteRevisionResponse, NoteRevisionSource
 
 
 class GeneratedContractTests(unittest.TestCase):
     """验证生成模型与 Workstation HTTP 契约的关键约定。"""
+
+    def test_note_revision_preserves_baseline_author_and_restore_version(self) -> None:
+        request = NoteRevisionRestoreRequest(expected_version=7)
+        self.assertEqual(request.to_dict(), {"expectedVersion": 7})
+        payload = {
+            "id": 11, "noteId": 3, "noteVersion": 5, "title": "历史标题", "content": "# 历史正文",
+            "actorSubject": None, "actorDisplayName": None, "createdAt": "2026-10-19T12:00:00+08:00",
+            "source": "BASELINE", "restoredFromRevisionId": None,
+        }
+        revision = NoteRevisionResponse.from_dict(payload)
+        self.assertEqual(revision.source, NoteRevisionSource.BASELINE)
+        self.assertIsNone(revision.actor_subject)
+        self.assertEqual(revision.content, "# 历史正文")
+        self.assertEqual(revision.to_dict(), payload)
 
     def test_api_error_parses_offset_timestamp(self) -> None:
         error = ApiError.from_dict(

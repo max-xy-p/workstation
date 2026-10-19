@@ -72,6 +72,9 @@ export function createWorkstationApi(transport) {
             delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
         },
         noteApi: {
+            revisions: (workspaceId, id, params) => transport.get(`${workspacePath(workspaceId)}/notes/${id}/revisions`, params),
+            revision: (workspaceId, id, revisionId) => transport.get(`${workspacePath(workspaceId)}/notes/${id}/revisions/${revisionId}`),
+            restoreRevision: (workspaceId, id, revisionId, expectedVersion) => transport.post(`${workspacePath(workspaceId)}/notes/${id}/revisions/${revisionId}/restore`, { expectedVersion }),
             list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/notes`, params),
             listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/notes`, params),
             listDeleted: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/notes/trash`, params),
