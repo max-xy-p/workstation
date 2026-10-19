@@ -11,7 +11,7 @@
     </section>
     <section v-if="conflictActive" class="panel note-conflict-panel" role="alert">
       <h2>笔记已由其他位置更新</h2>
-      <p>请先比较服务端内容，再在下方编辑器合并修改。本地保存情况见编辑器状态。</p>
+      <p>本地内容已保留。打开冲突处理，对照编辑基准与双方修改，再核对合并结果。</p>
       <details v-if="conflictNote"><summary>查看服务端版本</summary>
         <h3>{{ conflictNote.title }}</h3><pre>{{ conflictNote.content }}</pre>
         <p>文件夹：{{ conflictNote.folderName || '未归档' }} · 项目：{{ conflictNote.projectName || '未关联' }}</p>
@@ -21,9 +21,11 @@
       <div class="actions">
         <button type="button" class="secondary" @click="copyLocalContent">复制我的内容</button>
         <button type="button" class="secondary" @click="refreshConflict">刷新服务端版本</button>
-        <button type="button" class="secondary" :disabled="!conflictNote" @click="openServerVersion">载入服务端版本</button>
-        <button v-if="canWrite" type="button" :disabled="!conflictNote || saving" @click="retryWithLatestVersion">保存合并后的内容</button>
+        <button v-if="canWrite" type="button" :disabled="saving || restoringHistory || mergeApplying" @click="openMerge">处理冲突</button>
       </div>
+    </section>
+    <section v-else-if="mergePendingConfirmation" class="panel note-conflict-panel" role="status">
+      <h2>合并结果已保留为草稿</h2><p>请核对标题、正文和关联属性，再点击“确认保存合并结果”。自动保存已暂停，原本地草稿仍保留。</p>
     </section>
 
     <form class="editor-document" @submit.prevent="save">
@@ -35,7 +37,7 @@
           <span v-if="!canWrite">只读</span>
           <button v-if="isEdit" type="button" class="secondary note-history-trigger" :disabled="!contentReady || restoringHistory" @click="openHistory">版本历史</button>
           <button v-if="isEdit && canWrite" class="editor-delete-button" :disabled="saving || restoringHistory || !contentReady" type="button" title="移入回收站" aria-label="移入回收站" @click="removeNote"><Trash2 /></button>
-          <button v-if="canWrite" type="submit" :disabled="saving || restoringHistory || conflictActive || !contentReady">保存</button>
+          <button v-if="canWrite" type="submit" :disabled="saving || restoringHistory || mergeApplying || conflictActive || !contentReady">{{ mergePendingConfirmation ? '确认保存合并结果' : '保存' }}</button>
         </div>
       </div>
 
@@ -88,6 +90,9 @@
     <NoteHistoryDrawer v-if="isEdit && historyOpened" v-model="historyOpened" :workspace-id="workspaceId" :note-id="noteId"
       :local-content="{ title: form.title, content: form.content }" :can-restore="canWrite" :dirty="isDirty()"
       :busy="saving || restoringHistory" :restore-error="historyError" @restore="restoreHistory" />
+    <NoteMergeDrawer v-if="mergeOpened && mergeInput" v-model="mergeOpened" :workspace-id="workspaceId" :note-id="noteId"
+      :base="mergeInput.base" :base-version="mergeInput.baseVersion" :local="mergeInput.local" :folders="folders" :projects="projects" :tags="tags"
+      :busy="mergeApplying" :apply-error="mergeError" @apply="applyMergeDraft" />
   </section>
 </template>
 
@@ -100,8 +105,10 @@ import { auth } from '../auth';
 import { workspace } from '../workspace';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
 const NoteHistoryDrawer = defineAsyncComponent(() => import('../components/NoteHistoryDrawer.vue'));
+const NoteMergeDrawer = defineAsyncComponent(() => import('../components/NoteMergeDrawer.vue'));
 import { flattenFolderOptions } from '../utils/noteFolders';
 import { deleteConfirmedDraft, deleteNoteDraft, listNoteDrafts, putNoteDraft } from '../utils/noteDraftStore';
+import { noteSnapshot, parseMergeBase } from '../utils/noteSnapshot.mjs';
 
 const route = useRoute();
 const router = useRouter();
@@ -128,6 +135,8 @@ const saving = ref(false);
 const historyOpened = ref(false);
 const restoringHistory = ref(false);
 const historyError = ref('');
+const mergeOpened = ref(false), mergeApplying = ref(false), mergeError = ref(''), mergeInput = ref(null);
+const mergePendingConfirmation = ref(false);
 const saveState = ref('');
 const syncStatus = ref('SYNCED');
 const contentReady = ref(false);
@@ -152,18 +161,13 @@ let disposed = false;
 let saveBlocked = false;
 let persistedSnapshot = '';
 let persistedVersion = null;
+let hasMergeBase = true;
 let recoveredDraft = null;
 let createdNoteId = null;
 let draftQueue = Promise.resolve();
 
 function snapshotOf(value) {
-  return JSON.stringify({
-    title: value.title.trim(),
-    content: value.content,
-    folderId: value.folderId ? Number(value.folderId) : null,
-    projectId: value.projectId ? Number(value.projectId) : null,
-    tagIds: [...new Set((value.tagIds || value.tags?.map((tag) => tag.id) || []).map(Number))].sort((a, b) => a - b)
-  });
+  return JSON.stringify(noteSnapshot(value));
 }
 
 function applyNote(value) {
@@ -201,16 +205,17 @@ async function saveDraft() {
   const key = createdNoteId ? ['note-draft', subjectId, workspaceId, createdNoteId, editSessionId].join(':') : draftKey;
   const record = {
     key, subjectId, workspaceId, noteId: targetId,
-    snapshot, baseSnapshot: persistedSnapshot, baseVersion: persistedVersion,
+    snapshot, baseSnapshot: hasMergeBase ? persistedSnapshot : '', baseVersion: persistedVersion,
+    requiresConfirmation: mergePendingConfirmation.value,
     updatedAt: new Date().toISOString()
   };
   try {
-    await enqueueDraft(() => snapshot === record.baseSnapshot
+    await enqueueDraft(() => snapshot === record.baseSnapshot && !record.requiresConfirmation
       ? deleteNoteDraft(key)
       : putNoteDraft(record));
     if (!disposed && !saving.value && !conflictActive.value && isDirty()) {
       syncStatus.value = 'CACHED';
-      saveState.value = '待同步，修改已缓存';
+      saveState.value = mergePendingConfirmation.value ? '合并草稿已缓存，等待确认保存' : '待同步，修改已缓存';
     }
     return true;
   } catch {
@@ -262,8 +267,8 @@ async function load() {
     persistedSnapshot = snapshotOf(form);
     try {
       const drafts = await listNoteDrafts(baseDraftKey);
-      pendingDrafts.value = drafts.filter((draft) => draft.snapshot !== persistedSnapshot);
-      await Promise.all(drafts.filter((item) => item.snapshot === persistedSnapshot)
+      pendingDrafts.value = drafts.filter((draft) => draft.snapshot !== persistedSnapshot || draft.requiresConfirmation);
+      await Promise.all(drafts.filter((item) => item.snapshot === persistedSnapshot && !item.requiresConfirmation)
         .map((draft) => deleteConfirmedDraft(draft.key, draft.snapshot)));
     } catch {
       error.value = '无法读取本地草稿，服务端内容已打开';
@@ -277,7 +282,7 @@ async function load() {
 }
 
 async function restorePendingDraft(record) {
-  if (restoringHistory.value || saving.value) return;
+  if (restoringHistory.value || saving.value || mergeApplying.value) return;
   if (isDirty() && !window.confirm('用所选草稿替换当前编辑内容？当前修改会先保存在本地。')) return;
   if (isDirty() && !await saveDraft()) return;
   try {
@@ -287,15 +292,17 @@ async function restorePendingDraft(record) {
     }
     recoveredDraft = record;
     const remoteVersion = saved.value?.version ?? null;
-    persistedSnapshot = record.baseSnapshot || persistedSnapshot;
+    hasMergeBase = Number.isSafeInteger(record.baseVersion) && record.baseVersion > 0 && Boolean(parseMergeBase(record.baseSnapshot));
+    persistedSnapshot = hasMergeBase ? record.baseSnapshot : snapshotOf(saved.value || form);
     persistedVersion = Number.isSafeInteger(record.baseVersion) ? record.baseVersion : null;
+    mergePendingConfirmation.value = record.requiresConfirmation === true;
     conflictActive.value = isEdit && persistedVersion !== remoteVersion;
     conflictNote.value = conflictActive.value ? saved.value : null;
     applyNote(parsed);
     pendingDrafts.value = pendingDrafts.value.filter((item) => item.key !== record.key);
     await saveDraft();
     syncStatus.value = conflictActive.value ? 'CONFLICT' : 'PENDING';
-    saveState.value = conflictActive.value ? '草稿与服务端版本不同，请处理冲突' : '已恢复，等待保存';
+    saveState.value = conflictActive.value ? '草稿与服务端版本不同，请处理冲突' : '已恢复草稿，等待确认保存';
     if (!conflictActive.value) scheduleAutoSave();
   } catch (err) {
     error.value = err.message;
@@ -334,6 +341,8 @@ async function recordSaveFailure(err) {
 
 async function completePersist(response, snapshot, previousVersion) {
   persistedVersion = requirePersistenceReceipt(response, previousVersion);
+  mergePendingConfirmation.value = false;
+  hasMergeBase = true;
   if (!isEdit) createdNoteId = response.id;
   saved.value = response;
   persistedSnapshot = snapshot;
@@ -351,20 +360,26 @@ async function completePersist(response, snapshot, previousVersion) {
   }
 }
 
-async function persist(manual = false) {
-  if (restoringHistory.value) return;
+function canStartPersist(manual) {
   if (conflictActive.value) {
     if (manual) error.value = '请先处理笔记版本冲突';
-    return;
+    return false;
   }
   if (!canSave.value || !contentReady.value) {
     if (manual) error.value = canWrite.value ? '标题和正文不能为空' : '当前工作空间为只读';
-    return;
+    return false;
   }
   if (saving.value) {
     saveQueued = true;
-    return;
+    return false;
   }
+  return true;
+}
+
+async function persist(manual = false) {
+  if (restoringHistory.value || mergeApplying.value || mergeOpened.value) return;
+  if (mergePendingConfirmation.value && !manual) return;
+  if (!canStartPersist(manual)) return;
   window.clearTimeout(autoSaveTimer);
   const snapshot = snapshotOf(form);
   const previousVersion = persistedVersion;
@@ -407,6 +422,8 @@ async function applyHistoryReceipt(response, expectedVersion) {
   editSessionId = window.crypto.randomUUID();
   draftKey = baseDraftKey + ':' + editSessionId;
   recoveredDraft = null;
+  mergePendingConfirmation.value = false;
+  hasMergeBase = true;
   persistedVersion = version;
   persistedSnapshot = snapshotOf(response);
   saved.value = response;
@@ -464,38 +481,56 @@ async function copyLocalContent() {
   }
 }
 
-async function openServerVersion() {
-  const remote = conflictNote.value;
-  if (!remote || !window.confirm('载入服务端版本会丢弃当前编辑内容，确认继续？')) return;
-  try {
-    persistedVersion = requirePersistenceReceipt(remote);
-    persistedSnapshot = snapshotOf(remote);
-    applyNote(remote);
-    saved.value = remote;
-    conflictActive.value = false;
-    conflictNote.value = null;
-    saveBlocked = false;
-    await enqueueDraft(() => deleteNoteDraft(draftKey));
-    if (recoveredDraft) await deleteConfirmedDraft(recoveredDraft.key, recoveredDraft.snapshot);
-    recoveredDraft = null;
-    syncStatus.value = 'SYNCED';
-    saveState.value = '已载入服务端版本';
-    error.value = '';
-  } catch (err) {
-    error.value = err.message;
-  }
+function openMerge() {
+  if (!canWrite.value || saving.value || restoringHistory.value || mergeApplying.value || !conflictActive.value) return;
+  window.clearTimeout(autoSaveTimer);
+  window.clearTimeout(draftTimer);
+  mergeError.value = '';
+  mergeInput.value = { base: hasMergeBase ? parseMergeBase(persistedSnapshot) : null,
+    baseVersion: persistedVersion, local: noteSnapshot(form) };
+  mergeOpened.value = true;
 }
 
-async function retryWithLatestVersion() {
-  const remote = conflictNote.value;
-  if (!remote || !window.confirm('确认已比较并合并内容，用当前编辑结果保存到最新版本？')) return;
-  persistedVersion = requirePersistenceReceipt(remote);
-  persistedSnapshot = snapshotOf(remote);
-  conflictActive.value = false;
-  conflictNote.value = null;
-  saveBlocked = false;
-  await saveDraft();
-  await persist(true);
+async function applyMergeDraft({ result, remote }) {
+  if (disposed || !canWrite.value || saving.value || restoringHistory.value || mergeApplying.value || !mergeOpened.value) return;
+  mergeApplying.value = true; mergeError.value = '';
+  let retained = null;
+  try {
+    const version = requirePersistenceReceipt(remote);
+    if (remote.id !== noteId || snapshotOf(form) !== JSON.stringify(mergeInput.value.local))
+      throw new Error('编辑内容已经变化，请关闭面板后重新处理冲突。');
+    // 先保留原会话，再把合并结果写入新会话；任一步失败都不替换编辑器基准。
+    if (!await saveDraft()) throw new Error('原本地草稿保存失败，已停止应用合并结果。');
+    const session = window.crypto.randomUUID(), key = baseDraftKey + ':' + session;
+    const snapshot = snapshotOf(result), baseline = snapshotOf(remote);
+    await enqueueDraft(() => putNoteDraft({ key, subjectId, workspaceId, noteId, snapshot,
+      baseSnapshot: baseline, baseVersion: version, requiresConfirmation: true, updatedAt: new Date().toISOString() }));
+    if (disposed) return;
+    hydrating = true;
+    editSessionId = session; draftKey = key; recoveredDraft = null;
+    persistedSnapshot = baseline; persistedVersion = version; hasMergeBase = true;
+    saved.value = remote; applyNote(result);
+    mergePendingConfirmation.value = true;
+    conflictActive.value = false; conflictNote.value = null;
+    saveBlocked = true; saveQueued = false;
+    syncStatus.value = 'CACHED'; saveState.value = '合并草稿已缓存，等待确认保存'; error.value = '';
+    mergeOpened.value = false;
+    await nextTick();
+    retained = { key, snapshot };
+  } catch (err) {
+    if (!disposed) { mergeError.value = err.message; error.value = '应用合并草稿未完成：' + err.message; }
+  } finally { hydrating = false; mergeApplying.value = false; }
+  if (retained) await listRetainedDrafts(retained);
+}
+
+async function listRetainedDrafts({ key, snapshot }) {
+  try {
+    const drafts = await listNoteDrafts(baseDraftKey);
+    if (!disposed && draftKey === key)
+      pendingDrafts.value = drafts.filter(draft => draft.key !== key && draft.snapshot !== snapshot);
+  } catch {
+    if (!disposed && draftKey === key) error.value = '合并草稿已保存，读取原草稿列表失败，请刷新页面。';
+  }
 }
 
 async function removeNote() {
@@ -513,7 +548,8 @@ async function removeNote() {
 
 function scheduleAutoSave() {
   window.clearTimeout(autoSaveTimer);
-  if (!isEdit || !canSave.value || conflictActive.value || saveBlocked || disposed || restoringHistory.value) return;
+  if (!isEdit || !canSave.value || conflictActive.value || saveBlocked || disposed || restoringHistory.value
+      || mergeOpened.value || mergeApplying.value || mergePendingConfirmation.value) return;
   autoSaveTimer = window.setTimeout(() => { void persist(false); }, 8000);
 }
 
@@ -523,17 +559,17 @@ function handleEditorError(err) {
 }
 
 watch(form, () => {
-  if (hydrating || disposed || restoringHistory.value) return;
+  if (hydrating || disposed || restoringHistory.value || mergeApplying.value) return;
   window.clearTimeout(draftTimer);
   window.clearTimeout(autoSaveTimer);
-  if (!isDirty()) {
+  if (!isDirty() && !mergePendingConfirmation.value) {
     void saveDraft();
     syncStatus.value = conflictActive.value ? 'CONFLICT' : 'SYNCED';
     saveState.value = conflictActive.value ? '请处理版本冲突' : '已同步';
     return;
   }
   syncStatus.value = conflictActive.value ? 'CONFLICT' : 'PENDING';
-  saveState.value = conflictActive.value ? '请处理版本冲突' : '待同步';
+  saveState.value = conflictActive.value ? '请处理版本冲突' : (mergePendingConfirmation.value ? '合并草稿等待确认保存' : '待同步');
   draftTimer = window.setTimeout(() => { void saveDraft(); }, 350);
   scheduleAutoSave();
 }, { deep: true });
@@ -550,8 +586,8 @@ function persistDraftWhenHidden() {
 }
 
 async function protectDraft() {
-  if (restoringHistory.value) return false;
-  if (hydrating || !isDirty()) return true;
+  if (restoringHistory.value || mergeApplying.value) return false;
+  if (hydrating || (!isDirty() && !mergePendingConfirmation.value)) return true;
   const cached = await saveDraft();
   return cached || window.confirm('本地草稿保存失败，继续离开可能丢失修改。仍然离开？');
 }
