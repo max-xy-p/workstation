@@ -21,6 +21,7 @@ services:
       - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/db/migrate-project-integrations.sql:/docker-entrypoint-initdb.d/01a-project-integrations.sql:ro
       - ./backend/src/main/resources/db/migrate-note-revisions.sql:/docker-entrypoint-initdb.d/01b-note-revisions.sql:ro
+      - ./backend/src/main/resources/db/migrate-task-issues.sql:/docker-entrypoint-initdb.d/01c-task-issues.sql:ro
       - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
       - ./xxl-job/tables_xxl_job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
       - ./backend/src/main/resources/db/init-xxl-job-database.sh:/docker-entrypoint-initdb.d/04-xxl-job-user.sh:ro

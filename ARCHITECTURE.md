@@ -54,7 +54,7 @@ Gateway 中的认证状态用于浏览器会话和系统级准入，Backend 中�
 - Notes：Markdown 笔记 CRUD、版本条件更新、内容快照、历史差异与恢复、软删除与恢复、多级文件夹、搜索、标签/项目筛选和文件导入。
 - Projects：项目资料、状态、项目入口以及关联任务、笔记和多个外部仓库。
 - Integrations：Workspace 内的 GitHub/GitLab Token 连接、仓库发现导入、持久化任务队列、手动和定时同步，以及近期 Issue、PR/MR、默认分支提交和流水线快照；流程见 [`docs/integrations.md`](docs/integrations.md)。
-- Tasks：任务 CRUD、依据笔记、优先级、截止日期和看板状态。
+- Tasks：任务 CRUD、依据笔记、优先级、截止日期和看板状态，以及 GitHub Issue 创建任务、已有任务来源关联和状态差异提示。
 - Dashboard：活跃项目、任务数量和最近记录。
 - Frontend shell：所有业务模块共用导航、Workspace 切换与页面操作区；笔记在统一外壳内提供文件树和编辑区，可主动进入专注模式。数据源分为连接列表和连接详情；项目、任务、标签、文件夹与连接表单按需打开抽屉，浏览页不常驻编辑表单。
 
@@ -105,6 +105,12 @@ NotesView / NoteEditorView
 - `openapi/workstation.yaml`：Backend、Python 与 Vue 共用的 Request、Response、分页、错误和认证 HTTP 契约真源。
 - `clients/python/workstation_client`：由 OpenAPI 生成的 Python 客户端。
 - `clients/python-auth/workstation_auth`：Client Credentials Token 获取和缓存薄层。
+
+## 任务的外部来源
+
+`external_issue_sources` 保存已关联 GitHub Issue 的稳定身份与来源快照，`task_issue_links` 保存 Workspace 内一对一关系和关联代次。近期开发快照可重建，任务不引用其临时 ID。Backend 在同一事务创建任务、关系和审计；来源同步只写外部快照，本地任务继续由用户维护。
+
+定点跟踪复用数据源队列、连接租约及执行版本，运行表保存冻结上界和逐项游标。提交前核对关联代次、仓库绑定和当前连接，防止旧响应覆盖解除或接管后的关系。来源读取通过 SDK 的独立接口提供，普通任务旧请求不会清除来源。操作、共享与升级边界见 [数据源流程](docs/integrations.md#github-issue-与本地任务)。
 
 ## 外部依赖
 

@@ -95,4 +95,17 @@ class RepositoryProviderTests {
         assertThat(PlatformData.pipelineState("new_state")).isEqualTo("UNKNOWN");
         assertThat(PlatformData.pipelineState(null)).isEqualTo("UNKNOWN");
     }
+
+    @Test void githubPointReadUsesStoredLocatorAndExcludesPullRequests() {
+        GithubRepositoryProvider provider=new GithubRepositoryProvider(remote);
+        response("""
+                {"id":100,"number":7,"title":"来源","state":"closed","state_reason":"not_planned","updated_at":"2026-10-20T00:00:00Z"}
+                """);
+        DevelopmentItem item=provider.issue(connection,"token",repo(),7);
+        assertThat(item.getIssueNumber()).isEqualTo(7);assertThat(item.getStateReason()).isEqualTo("not_planned");
+        verify(remote).get(connection,"token","/repos/owner/repo/issues/7");
+        response("{\"id\":100,\"number\":7,\"pull_request\":{}}");
+        assertThatThrownBy(()->provider.issue(connection,"token",repo(),7)).isInstanceOf(com.mike.workstation.exception.BusinessException.class);
+        assertThatThrownBy(()->new GitlabRepositoryProvider(remote).issue(connection,"token",repo(),7)).isInstanceOf(com.mike.workstation.exception.BusinessException.class);
+    }
 }

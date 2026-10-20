@@ -36,6 +36,11 @@ export type ProjectResponse = Schemas['ProjectResponse'];
 export type ProjectDetailResponse = Schemas['ProjectDetailResponse'];
 export type ProjectPageResponse = Schemas['ProjectPageResponse'];
 export type ProjectStatus = Schemas['ProjectStatus'];
+export type TaskIssueSourceResponse = Schemas['TaskIssueSourceResponse'];
+export type TaskIssueSourcePageResponse = Schemas['TaskIssueSourcePageResponse'];
+export type IssueTaskCreateRequest = Schemas['IssueTaskCreateRequest'];
+export type IssueTaskLinkRequest = Schemas['IssueTaskLinkRequest'];
+export type IssueTaskResult = Schemas['IssueTaskResult'];
 export type TaskRequest = Schemas['TaskRequest'];
 export type TaskResponse = Schemas['TaskResponse'];
 export type TaskPageResponse = Schemas['TaskPageResponse'];
@@ -405,6 +410,42 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             updatedAt: string;
         }>;
         delete: (workspaceId: number, id: number) => Promise<null>;
+    };
+    issueApi: {
+        list: (w: number, projectId?: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["TaskIssueSourceResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        listAll: (w: number, projectId?: number) => Promise<{
+            id: number;
+            taskId: number;
+            projectId: number;
+            repositoryId: number;
+            repositoryName: string;
+            externalId: string;
+            issueNumber: number;
+            title: string;
+            url: string | null;
+            status: string;
+            stateReason: string | null;
+            sourceUpdatedAt: string | null;
+            lastAttemptAt: string | null;
+            lastSuccessAt: string | null;
+            lastError: string | null;
+            trackingStatus: "WAITING" | "ACTIVE" | "ERROR" | "STOPPED";
+        }[]>;
+        create: (w: number, project: number, body: IssueTaskCreateRequest) => Promise<{
+            task: components["schemas"]["TaskResponse"];
+            created: boolean;
+        }>;
+        link: (w: number, project: number, body: IssueTaskLinkRequest) => Promise<{
+            task: components["schemas"]["TaskResponse"];
+            created: boolean;
+        }>;
+        unlink: (w: number, task: number) => Promise<null>;
     };
     taskApi: {
         list: (workspaceId: number, params?: TaskListParams) => Promise<{

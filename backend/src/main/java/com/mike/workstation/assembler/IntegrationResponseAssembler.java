@@ -33,6 +33,6 @@ public final class IntegrationResponseAssembler {
     public static DevelopmentItemResponse development(DevelopmentItem i) {
         return new DevelopmentItemResponse(i.getId(), i.getRepositoryId(), DevelopmentKind.valueOf(i.getKind()),
                 i.getExternalId(), i.getTitle(), i.getUrl(), i.getStatus(), i.getRawStatus(), i.getAuthor(), i.getBranch(),
-                ApiTime.toOffset(i.getSourceUpdatedAt()));
+                ApiTime.toOffset(i.getSourceUpdatedAt()),i.getIssueNumber(),i.getStateReason(),i.getLinkedTaskId());
     }
 }

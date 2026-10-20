@@ -105,6 +105,17 @@ public interface TaskMapper {
             """)
     Task findById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
+    @Select("""
+            SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
+                   t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
+                   t.created_at, t.updated_at
+            FROM tasks t
+            JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
+            LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
+            WHERE t.workspace_id = #{workspaceId} AND t.id = #{id} FOR UPDATE
+            """)
+    Task lockById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+
     /**
      * 插入任务，并回填自增主键到 task.id。
      */

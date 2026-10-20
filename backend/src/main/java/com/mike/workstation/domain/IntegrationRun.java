@@ -6,6 +6,8 @@ import lombok.Data;
 @Data
 public class IntegrationRun {
     private Long id;
+    private long issueCursor;
+    private Long issueUpperBound;
     private Long workspaceId;
     private Long connectionId;
     private String kind;

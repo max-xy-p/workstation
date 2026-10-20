@@ -791,6 +791,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/issue-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 分页查询已关联任务的持久化 Issue 来源 */
+        get: operations["listTaskIssueSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/projects/{id}/issue-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 从已采集 GitHub Issue 创建任务；重复请求返回已有任务 */
+        post: operations["createTaskFromIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/projects/{id}/issue-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 将已采集 GitHub Issue 关联同项目的已有任务 */
+        post: operations["linkTaskIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/tasks/{id}/issue-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 解除来源关系，保留本地任务；重复解除幂等成功 */
+        delete: operations["unlinkTaskIssue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1212,6 +1291,11 @@ export interface components {
             branch: string | null;
             /** Format: date-time */
             sourceUpdatedAt: string | null;
+            /** Format: int64 */
+            issueNumber?: number | null;
+            stateReason?: string | null;
+            /** Format: int64 */
+            linkedTaskId?: number | null;
         };
         ProjectDevelopmentResponse: {
             repositories: components["schemas"]["RepositoryResponse"][];
@@ -1383,6 +1467,58 @@ export interface components {
             total: number;
             hasMore: boolean;
         };
+        TaskIssueSourceResponse: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            projectId: number;
+            /** Format: int64 */
+            repositoryId: number;
+            repositoryName: string;
+            externalId: string;
+            /** Format: int64 */
+            issueNumber: number;
+            title: string;
+            url: string | null;
+            status: string;
+            stateReason: string | null;
+            /** Format: date-time */
+            sourceUpdatedAt: string | null;
+            /** Format: date-time */
+            lastAttemptAt: string | null;
+            /** Format: date-time */
+            lastSuccessAt: string | null;
+            lastError: string | null;
+            /** @enum {string} */
+            trackingStatus: "WAITING" | "ACTIVE" | "ERROR" | "STOPPED";
+        };
+        TaskIssueSourcePageResponse: {
+            items: components["schemas"]["TaskIssueSourceResponse"][];
+            page: number;
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
+        };
+        IssueTaskCreateRequest: {
+            /** Format: int64 */
+            developmentItemId: number;
+            sharingConfirmed: boolean;
+            task: components["schemas"]["TaskRequest"];
+        };
+        IssueTaskLinkRequest: {
+            /** Format: int64 */
+            developmentItemId: number;
+            sharingConfirmed: boolean;
+            /** Format: int64 */
+            taskId: number;
+        };
+        IssueTaskResult: {
+            task: components["schemas"]["TaskResponse"];
+            created: boolean;
+        };
     };
     responses: {
         /** @description 请求格式或业务校验失败 */
@@ -1421,7 +1557,7 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
-        /** @description 笔记版本冲突，调用方应重新读取并处理本地修改 */
+        /** @description 版本、数据源配置或任务来源关联冲突；调用方应按错误码重新读取并处理本地操作 */
         Conflict: {
             headers: {
                 [name: string]: unknown;
@@ -3882,6 +4018,138 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+        };
+    };
+    listTaskIssueSources: {
+        parameters: {
+            query?: {
+                /** @description 从 0 开始的页码 */
+                page?: components["parameters"]["Page"];
+                /** @description 每页数量 */
+                size?: components["parameters"]["Size"];
+                projectId?: number;
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 关联来源及当前跟踪状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskIssueSourcePageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createTaskFromIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueTaskCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description 已有任务或已建立关联 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueTaskResult"];
+                };
+            };
+            /** @description 新任务及来源关联已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueTaskResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    linkTaskIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueTaskLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description 已有任务或已建立关联 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueTaskResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unlinkTaskIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已解除关联 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
 }

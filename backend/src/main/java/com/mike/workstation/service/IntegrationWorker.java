@@ -25,9 +25,10 @@ public class IntegrationWorker {
     private final IntegrationService service;
     private final CredentialCipher cipher;
     private final IntegrationProperties properties;
+    private final IssueTracker issueTracker;
     public IntegrationWorker(IntegrationMapper mapper,IntegrationStateService state,IntegrationService service,
-            CredentialCipher cipher,IntegrationProperties properties) {
-        this.mapper=mapper; this.state=state; this.service=service; this.cipher=cipher; this.properties=properties;
+            CredentialCipher cipher,IntegrationProperties properties,IssueTracker issueTracker) {
+        this.mapper=mapper; this.state=state; this.service=service; this.cipher=cipher; this.properties=properties; this.issueTracker=issueTracker;
     }
     @Scheduled(fixedDelay=3000)
     @XxlJob("integrationQueueJob")
@@ -41,7 +42,10 @@ public class IntegrationWorker {
             if("IMPORT".equals(run.getKind())) imports(run);
             else {
                 if("DISCOVER".equals(run.getKind()) || c.isAutoImport()) discover(run,c,provider,token);
-                if("SYNC".equals(run.getKind())) sync(run,c,provider,token);
+                if("SYNC".equals(run.getKind())) {
+                    sync(run,c,provider,token);
+                    issueTracker.track(run,c,provider,token);
+                }
             }
             state.finish(run,run.getFailed()==0?"SUCCEEDED":"PARTIAL",run.getFailed()==0?null:"部分资源未能同步，请查看仓库及逐项结果");
         } catch(IntegrationConflictException ex) {

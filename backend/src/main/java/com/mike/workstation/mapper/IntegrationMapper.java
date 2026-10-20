@@ -206,7 +206,7 @@ public interface IntegrationMapper {
     int claim(IntegrationRun r);
 
     @Update("""
-            UPDATE integration_sync_runs SET lease_until=#{leaseUntil},processed=#{processed},failed=#{failed},last_error=#{lastError},status=#{status},finished_at=#{finishedAt}
+            UPDATE integration_sync_runs SET issue_cursor=#{issueCursor},issue_upper_bound=#{issueUpperBound},lease_until=#{leaseUntil},processed=#{processed},failed=#{failed},last_error=#{lastError},status=#{status},finished_at=#{finishedAt}
             WHERE workspace_id=#{workspaceId} AND id=#{id} AND lease_token=#{leaseToken} AND status='RUNNING' AND lease_until >= NOW()
             """)
     int updateRun(IntegrationRun r);
@@ -237,8 +237,8 @@ public interface IntegrationMapper {
     int clearDevelopment(@Param("w") Long w,@Param("r") Long r,@Param("kind") String kind);
 
     @Insert("""
-            INSERT INTO external_development_items (workspace_id,repository_id,kind,external_id,title,url,status,raw_status,author,branch,source_updated_at)
-            VALUES (#{workspaceId},#{repositoryId},#{kind},#{externalId},#{title},#{url},#{status},#{rawStatus},#{author},#{branch},#{sourceUpdatedAt})
+            INSERT INTO external_development_items (workspace_id,repository_id,kind,external_id,title,url,status,raw_status,author,branch,source_updated_at,issue_number,state_reason)
+            VALUES (#{workspaceId},#{repositoryId},#{kind},#{externalId},#{title},#{url},#{status},#{rawStatus},#{author},#{branch},#{sourceUpdatedAt},#{issueNumber},#{stateReason})
             """)
     int insertDevelopment(DevelopmentItem i);
 
@@ -256,7 +256,12 @@ public interface IntegrationMapper {
     List<DevelopmentSnapshot> snapshots(@Param("w") Long w,@Param("projectId") Long projectId);
 
     @Select("""
-            SELECT d.* FROM external_development_items d JOIN project_repositories p ON p.workspace_id=d.workspace_id AND p.repository_id=d.repository_id
+            SELECT d.*, l.task_id AS linked_task_id FROM external_development_items d
+            JOIN external_repositories r ON r.workspace_id=d.workspace_id AND r.id=d.repository_id
+            JOIN project_repositories p ON p.workspace_id=d.workspace_id AND p.repository_id=d.repository_id
+            LEFT JOIN external_issue_sources s ON s.workspace_id=d.workspace_id AND s.provider=r.provider
+                AND s.base_url=r.base_url AND s.external_id=d.external_id AND d.kind='ISSUE'
+            LEFT JOIN task_issue_links l ON l.workspace_id=s.workspace_id AND l.source_id=s.id
             WHERE d.workspace_id=#{w} AND p.project_id=#{projectId} AND d.kind=#{kind}
             ORDER BY d.source_updated_at DESC,d.id DESC LIMIT #{size} OFFSET #{offset}
             """)

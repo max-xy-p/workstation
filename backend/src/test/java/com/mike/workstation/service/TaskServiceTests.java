@@ -40,6 +40,8 @@ class TaskServiceTests {
     private WorkspaceAuthorizationService authorization;
     @Mock
     private AuditService auditService;
+    @Mock
+    private com.mike.workstation.mapper.IssueSourceMapper issueSources;
     @InjectMocks
     private TaskService taskService;
 
@@ -143,5 +145,16 @@ class TaskServiceTests {
 
         verify(taskMapper).delete(WORKSPACE_ID, 4L);
         verify(auditService).success(WORKSPACE_ID, "TASK_DELETE", "TASK", 4L);
+    }
+
+    @Test void movingLinkedTaskRequiresUnlink() {
+        Project project=new Project();when(projectMapper.findById(WORKSPACE_ID,2L)).thenReturn(project);
+        Task task=new Task();when(taskMapper.findById(WORKSPACE_ID,4L)).thenReturn(task);when(issueSources.linkedProject(WORKSPACE_ID,4L)).thenReturn(1L);
+        var request=new TaskRequest("任务",null,2L,TaskStatus.TODO,TaskPriority.MEDIUM,null,null);
+        assertThatThrownBy(()->taskService.update(WORKSPACE_ID,4L,request)).hasMessageContaining("解除");verify(taskMapper,never()).update(any());
+    }
+    @Test void lockedTaskReadUsesLatestRow() {
+        Task task=new Task();task.setId(4L);when(taskMapper.lockById(WORKSPACE_ID,4L)).thenReturn(task);assertThat(taskService.getLocked(WORKSPACE_ID,4L).id()).isEqualTo(4L);
+        assertThatThrownBy(()->taskService.getLocked(WORKSPACE_ID,5L)).isInstanceOf(NotFoundException.class);
     }
 }

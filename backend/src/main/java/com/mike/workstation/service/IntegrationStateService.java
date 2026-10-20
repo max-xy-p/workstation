@@ -33,12 +33,13 @@ public class IntegrationStateService {
     private final CredentialCipher cipher;
     private final IntegrationProperties properties;
     private final AuditService audit;
+    private final IssueSourceMapper issueSources;
 
     public IntegrationStateService(IntegrationMapper mapper, ProjectMapper projects, WorkspaceMapper workspaces,
             WorkspaceAuthorizationService authorization, CurrentPrincipalResolver principals, CredentialCipher cipher,
-            IntegrationProperties properties, AuditService audit) {
+            IntegrationProperties properties, AuditService audit, IssueSourceMapper issueSources) {
         this.mapper=mapper; this.projects=projects; this.workspaces=workspaces; this.authorization=authorization;
-        this.principals=principals; this.cipher=cipher; this.properties=properties; this.audit=audit;
+        this.principals=principals; this.cipher=cipher; this.properties=properties; this.audit=audit;this.issueSources=issueSources;
     }
     public void requireProject(Long w,Long project) {
         RequestChecks.requiredExisting(projects.findById(w,project),"项目不存在");
@@ -275,6 +276,8 @@ public class IntegrationStateService {
     @Transactional
     public void unbind(Long w,Long project,Long repository) {
         authorization.require(w,WorkspacePermission.PROJECT_WRITE); requireProject(w,project);
+        issueSources.lockWorkspace(w);
+        mapper.lockRepository(w,repository);
         mapper.suppressRepository(w,project,repository);
         mapper.unbind(w,project,repository); audit.success(w,"REPOSITORY_UNBIND",RESOURCE_PROJECT,project);
     }

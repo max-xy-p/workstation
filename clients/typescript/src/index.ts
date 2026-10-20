@@ -38,6 +38,11 @@ export type ProjectResponse = Schemas['ProjectResponse'];
 export type ProjectDetailResponse = Schemas['ProjectDetailResponse'];
 export type ProjectPageResponse = Schemas['ProjectPageResponse'];
 export type ProjectStatus = Schemas['ProjectStatus'];
+export type TaskIssueSourceResponse = Schemas['TaskIssueSourceResponse'];
+export type TaskIssueSourcePageResponse = Schemas['TaskIssueSourcePageResponse'];
+export type IssueTaskCreateRequest = Schemas['IssueTaskCreateRequest'];
+export type IssueTaskLinkRequest = Schemas['IssueTaskLinkRequest'];
+export type IssueTaskResult = Schemas['IssueTaskResult'];
 export type TaskRequest = Schemas['TaskRequest'];
 export type TaskResponse = Schemas['TaskResponse'];
 export type TaskPageResponse = Schemas['TaskPageResponse'];
@@ -179,6 +184,13 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         ),
       delete: (workspaceId: number, id: number) =>
         transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
+    },
+    issueApi: {
+      list: (w: number, projectId?: number, page = 0, size = 20) => transport.get<TaskIssueSourcePageResponse>(`${workspacePath(w)}/issue-sources`, { projectId, page, size }),
+      listAll: (w: number, projectId?: number) => listAllPages<TaskIssueSourceResponse, { projectId?: number }>(transport, `${workspacePath(w)}/issue-sources`, { projectId }),
+      create: (w: number, project: number, body: IssueTaskCreateRequest) => transport.post<IssueTaskResult, IssueTaskCreateRequest>(`${workspacePath(w)}/projects/${project}/issue-tasks`, body),
+      link: (w: number, project: number, body: IssueTaskLinkRequest) => transport.post<IssueTaskResult, IssueTaskLinkRequest>(`${workspacePath(w)}/projects/${project}/issue-links`, body),
+      unlink: (w: number, task: number) => transport.delete<null>(`${workspacePath(w)}/tasks/${task}/issue-source`),
     },
     taskApi: {
       list: (workspaceId: number, params?: TaskListParams) =>

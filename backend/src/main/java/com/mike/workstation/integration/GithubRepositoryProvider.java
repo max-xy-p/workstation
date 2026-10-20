@@ -59,6 +59,11 @@ public class GithubRepositoryProvider implements RepositoryProvider {
         }
         return items;
     }
+    @Override public DevelopmentItem issue(IntegrationConnection c,String token,ExternalRepository r,long number) {
+        JsonNode data=api.get(c,token,"/repos/"+RemoteApi.encode(r.getNamespace())+"/"+RemoteApi.encode(r.getName())+"/issues/"+number);
+        if(data.has("pull_request")) throw new com.mike.workstation.exception.BusinessException("来源已不再是可关联的 Issue");
+        return parseItem(data,DevelopmentKind.ISSUE,r);
+    }
     private DevelopmentItem parseItem(JsonNode n,DevelopmentKind kind,ExternalRepository r) {
         if(kind==DevelopmentKind.COMMIT) {
             JsonNode commit=n.path("commit");
@@ -72,7 +77,13 @@ public class GithubRepositoryProvider implements RepositoryProvider {
         DevelopmentItem i=PlatformData.item(n,kind.name(),"id",kind==DevelopmentKind.PIPELINE?"name":"title",HTML_URL,"updated_at");
         String raw=PlatformData.text(n,kind==DevelopmentKind.PIPELINE?"conclusion":"state");
         if(kind==DevelopmentKind.PIPELINE && raw==null) raw=PlatformData.text(n,"status");
+        if(i.getTitle()==null) i.setTitle("");
+        if(i.getTitle().length()>1000) i.setTitle(i.getTitle().substring(0,1000));
         i.setRawStatus(raw);
+        if(kind==DevelopmentKind.ISSUE) {
+            i.setIssueNumber(n.path("number").isIntegralNumber()?n.path("number").asLong():null);
+            i.setStateReason(PlatformData.text(n,"state_reason"));
+        }
         i.setStatus(itemStatus(n,kind,raw));
         i.setAuthor(PlatformData.text(n.path(kind==DevelopmentKind.PIPELINE?"actor":"user"),LOGIN));
         i.setBranch(kind==DevelopmentKind.PIPELINE?PlatformData.text(n,"head_branch"):null);

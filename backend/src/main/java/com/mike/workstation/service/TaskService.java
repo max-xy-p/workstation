@@ -29,19 +29,22 @@ public class TaskService {
     private final NoteMapper noteMapper;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
+    private final com.mike.workstation.mapper.IssueSourceMapper issueSources;
 
     public TaskService(
             TaskMapper taskMapper,
             ProjectMapper projectMapper,
             NoteMapper noteMapper,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
+            AuditService auditService,
+            com.mike.workstation.mapper.IssueSourceMapper issueSources
     ) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
         this.noteMapper = noteMapper;
         this.authorization = authorization;
         this.auditService = auditService;
+        this.issueSources = issueSources;
     }
 
     /**
@@ -76,6 +79,13 @@ public class TaskService {
     public TaskResponse get(Long workspaceId, Long id) {
         authorization.require(workspaceId, WorkspacePermission.TASK_READ);
         return TaskResponseAssembler.toResponse(getEntity(workspaceId, id));
+    }
+
+    public TaskResponse getLocked(Long workspaceId,Long id) {
+        authorization.require(workspaceId,WorkspacePermission.TASK_READ);
+        Task task=taskMapper.lockById(workspaceId,id);
+        RequestChecks.requiredExisting(task,"任务不存在");
+        return TaskResponseAssembler.toResponse(task);
     }
 
     private Task getEntity(Long workspaceId, Long id) {
@@ -115,8 +125,12 @@ public class TaskService {
     @Transactional
     public TaskResponse update(Long workspaceId, Long id, TaskRequest request) {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
+        issueSources.lockWorkspace(workspaceId);
         validate(workspaceId, request);
         getEntity(workspaceId, id);
+        var sourceProject=issueSources.linkedProject(workspaceId,id);
+        if(sourceProject!=null && !sourceProject.equals(request.projectId()))
+            throw new BusinessException("请先解除 Issue 来源关联，再移动任务项目");
         Task task = new Task();
         task.setId(id);
         task.setWorkspaceId(workspaceId);
@@ -152,6 +166,7 @@ public class TaskService {
     @Transactional
     public void delete(Long workspaceId, Long id) {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
+        issueSources.lockWorkspace(workspaceId);
         getEntity(workspaceId, id);
         taskMapper.delete(workspaceId, id);
         auditService.success(workspaceId, "TASK_DELETE", "TASK", id);

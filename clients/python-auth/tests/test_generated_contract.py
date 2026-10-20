@@ -21,6 +21,18 @@ class GeneratedContractTests(unittest.TestCase):
         self.assertEqual(revision.content, "# 历史正文")
         self.assertEqual(revision.to_dict(), payload)
 
+    def test_issue_task_source_preserves_identity_and_tracking_state(self) -> None:
+        from workstation_client.models import IssueTaskLinkRequest, TaskIssueSourceResponse
+        request = IssueTaskLinkRequest(development_item_id=1, sharing_confirmed=True, task_id=5)
+        self.assertEqual(request.to_dict(), {"developmentItemId": 1, "sharingConfirmed": True, "taskId": 5})
+        payload = {
+            "id": 4, "taskId": 5, "projectId": 20, "repositoryId": 2, "repositoryName": "test/repo",
+            "externalId": "100", "issueNumber": 1, "title": "来源", "url": None, "status": "CLOSED",
+            "stateReason": "not_planned", "sourceUpdatedAt": None, "lastAttemptAt": None,
+            "lastSuccessAt": None, "lastError": "权限不足", "trackingStatus": "ERROR",
+        }
+        self.assertEqual(TaskIssueSourceResponse.from_dict(payload).to_dict(), payload)
+
     def test_api_error_parses_offset_timestamp(self) -> None:
         error = ApiError.from_dict(
             {

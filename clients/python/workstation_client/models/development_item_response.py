@@ -7,6 +7,7 @@ from typing import Any, TypeVar, cast
 from attrs import define as _attrs_define
 
 from ..models.development_kind import DevelopmentKind
+from ..types import UNSET, Unset
 
 T = TypeVar("T", bound="DevelopmentItemResponse")
 
@@ -26,6 +27,9 @@ class DevelopmentItemResponse:
         author (None | str):
         branch (None | str):
         source_updated_at (datetime.datetime | None):
+        issue_number (int | None | Unset):
+        state_reason (None | str | Unset):
+        linked_task_id (int | None | Unset):
     """
 
     id: int
@@ -39,6 +43,9 @@ class DevelopmentItemResponse:
     author: None | str
     branch: None | str
     source_updated_at: datetime.datetime | None
+    issue_number: int | None | Unset = UNSET
+    state_reason: None | str | Unset = UNSET
+    linked_task_id: int | None | Unset = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         id = self.id
@@ -71,6 +78,24 @@ class DevelopmentItemResponse:
         else:
             source_updated_at = self.source_updated_at
 
+        issue_number: int | None | Unset
+        if isinstance(self.issue_number, Unset):
+            issue_number = UNSET
+        else:
+            issue_number = self.issue_number
+
+        state_reason: None | str | Unset
+        if isinstance(self.state_reason, Unset):
+            state_reason = UNSET
+        else:
+            state_reason = self.state_reason
+
+        linked_task_id: int | None | Unset
+        if isinstance(self.linked_task_id, Unset):
+            linked_task_id = UNSET
+        else:
+            linked_task_id = self.linked_task_id
+
         field_dict: dict[str, Any] = {}
 
         field_dict.update(
@@ -88,6 +113,12 @@ class DevelopmentItemResponse:
                 "sourceUpdatedAt": source_updated_at,
             }
         )
+        if issue_number is not UNSET:
+            field_dict["issueNumber"] = issue_number
+        if state_reason is not UNSET:
+            field_dict["stateReason"] = state_reason
+        if linked_task_id is not UNSET:
+            field_dict["linkedTaskId"] = linked_task_id
 
         return field_dict
 
@@ -149,6 +180,33 @@ class DevelopmentItemResponse:
 
         source_updated_at = _parse_source_updated_at(d.pop("sourceUpdatedAt"))
 
+        def _parse_issue_number(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        issue_number = _parse_issue_number(d.pop("issueNumber", UNSET))
+
+        def _parse_state_reason(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        state_reason = _parse_state_reason(d.pop("stateReason", UNSET))
+
+        def _parse_linked_task_id(data: object) -> int | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(int | None | Unset, data)
+
+        linked_task_id = _parse_linked_task_id(d.pop("linkedTaskId", UNSET))
+
         development_item_response = cls(
             id=id,
             repository_id=repository_id,
@@ -161,6 +219,9 @@ class DevelopmentItemResponse:
             author=author,
             branch=branch,
             source_updated_at=source_updated_at,
+            issue_number=issue_number,
+            state_reason=state_reason,
+            linked_task_id=linked_task_id,
         )
 
         return development_item_response

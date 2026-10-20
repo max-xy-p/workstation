@@ -2,6 +2,9 @@ import { createWorkstationApi } from '@workstation/api-client';
 import { api, resetCsrfToken, submitWithCsrf } from './client';
 
 export type {
+  TaskIssueSourceResponse,
+  IssueTaskCreateRequest,
+  IssueTaskLinkRequest,
   IntegrationProvider,
   IntegrationScope,
   IntegrationConnectionRequest,
@@ -93,6 +96,7 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  issueApi,
   integrationApi,
   workspaceApi,
   auditApi,

@@ -34,6 +34,7 @@
                 <p class="meta">{{ task.projectName }} · {{ task.dueDate || '无截止日期' }}</p>
                 <p>{{ task.description || '未填写描述' }}</p>
                 <RouterLink v-if="task.evidenceNoteId" :to="{ name: 'note-edit', params: { workspaceId, id: task.evidenceNoteId } }">依据笔记：{{ task.evidenceNoteTitle || task.evidenceNoteId }}</RouterLink>
+                <TaskIssueSource v-if="sourceForTask(task.id)" :source="sourceForTask(task.id)" :task-status="task.status" :can-write="canWrite" :busy="pendingIds.has(task.id)" @unlink="unlinkSource(task.id)" @complete="move(task, 'DONE')" />
                 <div v-if="canWrite" class="actions">
                   <select :value="task.status" :aria-label="'修改任务状态：' + task.title" :disabled="pendingIds.has(task.id)" @change="move(task, $event.target.value)"><option v-for="status in KANBAN_COLUMNS" :key="status.value" :value="status.value">{{ status.label }}</option></select>
                   <button class="secondary" :disabled="pendingIds.has(task.id)" @click="edit(task)">编辑</button>
@@ -48,6 +49,7 @@
 
       <AppDrawer v-if="canWrite" v-model="opened" :title="form.id ? '编辑任务' : '新建任务'" description="设置任务的归属、优先级与依据笔记。" :busy="saving" :dirty="dirty">
         <p v-if="formError" class="error form-error" role="alert">{{ formError }}</p>
+        <TaskIssueSource v-if="sourceForTask(form.id)" :source="sourceForTask(form.id)" :task-status="form.status" expanded />
         <form id="task-form" class="form-grid" @submit.prevent="save">
           <label class="wide">标题<input v-model="form.title" required /></label>
           <label class="wide">项目
@@ -86,12 +88,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { noteApi, projectApi, taskApi } from '../api/workstation';
+import { issueApi, noteApi, projectApi, taskApi } from '../api/workstation';
 import { KANBAN_COLUMNS, TASK_PRIORITIES, TASK_STATUSES, optionLabel } from '../constants/options';
 import { workspaceIdFromRoute } from '../utils/workspaceRoute';
 import { workspace } from '../workspace';
 import AppDrawer from '../components/AppDrawer.vue';
 import PageActions from '../components/PageActions.vue';
+import TaskIssueSource from '../components/TaskIssueSource.vue';
 import { useFormPanel } from '../composables/useFormPanel.mjs';
 
 const route = useRoute();
@@ -99,6 +102,8 @@ const workspaceId = computed(() => workspaceIdFromRoute(route));
 const canWrite = computed(() => workspace.hasPermission('TASK_WRITE'));
 const error = ref('');
 const tasks = ref([]);
+const issueSources = ref([]);
+const sourceForTask = (id) => issueSources.value.find((source) => source.taskId === id);
 const projects = ref([]);
 const evidenceNotes = ref([]);
 const filters = reactive({
@@ -166,7 +171,10 @@ async function loadProjects() {
 async function load() {
   try {
     error.value = '';
-    tasks.value = await taskApi.listAll(workspaceId.value, filters);
+    const [loadedTasks, loadedSources] = await Promise.all([
+      taskApi.listAll(workspaceId.value, filters), issueApi.listAll(workspaceId.value)
+    ]);
+    tasks.value = loadedTasks; issueSources.value = loadedSources;
   } catch (err) {
     error.value = err.message;
   }
@@ -198,6 +206,14 @@ async function move(task, status) {
   } finally {
     pendingIds.delete(task.id);
   }
+}
+
+async function unlinkSource(id) {
+  if (pendingIds.has(id)) return;
+  pendingIds.add(id);
+  try { error.value = ''; await issueApi.unlink(workspaceId.value, id); await load(); }
+  catch (err) { error.value = err.message; }
+  finally { pendingIds.delete(id); }
 }
 
 // 删除任务；项目本身不会受影响。

@@ -73,7 +73,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 ## 数据和身份配置
 
-容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql 和 migrate-note-revisions.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
+容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql 和 migrate-task-issues.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 
 Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience、角色和用户变化需要受控更新，不能假设重启会覆盖数据库中的现有配置。
 
@@ -82,6 +82,8 @@ Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience�
 升级包含任务依据笔记功能的已有数据库时，在备份后执行 `backend/src/main/resources/db/migrate-task-evidence.sql`，再发布应用。脚本可重复执行，会为 `tasks` 增加可空关联字段、索引和工作空间内外键；全新数据库直接使用 `schema.sql`。旧应用能保留该可空字段运行，但它不知道如何清除依据关联；若需回滚到旧应用并恢复笔记删除操作，应先清理关联或恢复迁移前备份。迁移不由容器重启自动执行。
 
 升级包含笔记回收站功能的已有数据库时，在备份后执行 `backend/src/main/resources/db/migrate-note-trash.sql`。脚本可重复执行，会增加删除时间、删除主体、查询索引和主体外键；全新数据库直接使用 `schema.sql`。字段保持可空，因此旧应用可以读取数据库，但旧版本不知道过滤软删除记录，不应在未恢复迁移前数据库的情况下回滚应用。迁移不由容器重启自动执行。
+
+GitHub Issue 任务关联版本需要在维护窗口备份并执行 `backend/src/main/resources/db/migrate-task-issues.sql`，随后更新配套应用；旧快照须重新同步后才能用于建立来源。新增表与关联不能随镜像回退自动撤销，回退前暂停任务写入和数据源同步，具体边界见 [Issue 与本地任务](integrations.md#github-issue-与本地任务)。
 
 ## 回滚含义
 

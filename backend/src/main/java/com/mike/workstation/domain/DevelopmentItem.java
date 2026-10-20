@@ -6,6 +6,9 @@ import lombok.Data;
 @Data
 public class DevelopmentItem {
     private Long id;
+    private Long issueNumber;
+    private String stateReason;
+    private Long linkedTaskId;
     private Long workspaceId;
     private Long repositoryId;
     private String kind;

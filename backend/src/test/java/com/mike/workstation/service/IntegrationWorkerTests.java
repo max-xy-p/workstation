@@ -21,7 +21,7 @@ class IntegrationWorkerTests {
     private final CredentialCipher cipher=mock(CredentialCipher.class);
     private final RepositoryProvider provider=mock(RepositoryProvider.class);
     private final IntegrationProperties properties=new IntegrationProperties(true,"v1",Map.of(),List.of(),15,2,2,180,30);
-    private final IntegrationWorker worker=new IntegrationWorker(mapper,state,service,cipher,properties);
+    private final IntegrationWorker worker=new IntegrationWorker(mapper,state,service,cipher,properties,mock(IssueTracker.class));
     private IntegrationRun run;
     private IntegrationConnection c;
     @BeforeEach void setup() {

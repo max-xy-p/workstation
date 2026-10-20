@@ -26,6 +26,9 @@ from .integration_run_response_kind import IntegrationRunResponseKind
 from .integration_run_response_status import IntegrationRunResponseStatus
 from .integration_scope import IntegrationScope
 from .integration_trigger_request import IntegrationTriggerRequest
+from .issue_task_create_request import IssueTaskCreateRequest
+from .issue_task_link_request import IssueTaskLinkRequest
+from .issue_task_result import IssueTaskResult
 from .note_detail_response import NoteDetailResponse
 from .note_folder_request import NoteFolderRequest
 from .note_folder_response import NoteFolderResponse
@@ -57,6 +60,9 @@ from .repository_page_response import RepositoryPageResponse
 from .repository_response import RepositoryResponse
 from .tag_request import TagRequest
 from .tag_response import TagResponse
+from .task_issue_source_page_response import TaskIssueSourcePageResponse
+from .task_issue_source_response import TaskIssueSourceResponse
+from .task_issue_source_response_tracking_status import TaskIssueSourceResponseTrackingStatus
 from .task_page_response import TaskPageResponse
 from .task_priority import TaskPriority
 from .task_request import TaskRequest
@@ -100,6 +106,9 @@ __all__ = (
     "IntegrationRunResponseStatus",
     "IntegrationScope",
     "IntegrationTriggerRequest",
+    "IssueTaskCreateRequest",
+    "IssueTaskLinkRequest",
+    "IssueTaskResult",
     "NoteDetailResponse",
     "NoteFolderRequest",
     "NoteFolderResponse",
@@ -131,6 +140,9 @@ __all__ = (
     "RepositoryResponse",
     "TagRequest",
     "TagResponse",
+    "TaskIssueSourcePageResponse",
+    "TaskIssueSourceResponse",
+    "TaskIssueSourceResponseTrackingStatus",
     "TaskPageResponse",
     "TaskPriority",
     "TaskRequest",

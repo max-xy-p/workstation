@@ -60,6 +60,13 @@ export function createWorkstationApi(transport) {
             updateStatus: (workspaceId, id, status) => transport.patch(`${workspacePath(workspaceId)}/projects/${id}/status`, { status }),
             delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
         },
+        issueApi: {
+            list: (w, projectId, page = 0, size = 20) => transport.get(`${workspacePath(w)}/issue-sources`, { projectId, page, size }),
+            listAll: (w, projectId) => listAllPages(transport, `${workspacePath(w)}/issue-sources`, { projectId }),
+            create: (w, project, body) => transport.post(`${workspacePath(w)}/projects/${project}/issue-tasks`, body),
+            link: (w, project, body) => transport.post(`${workspacePath(w)}/projects/${project}/issue-links`, body),
+            unlink: (w, task) => transport.delete(`${workspacePath(w)}/tasks/${task}/issue-source`),
+        },
         taskApi: {
             list: (workspaceId, params) => transport.get(`${workspacePath(workspaceId)}/tasks`, params),
             listAll: (workspaceId, params) => listAllPages(transport, `${workspacePath(workspaceId)}/tasks`, params),

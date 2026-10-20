@@ -15,6 +15,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * <p>把 Service 或框架抛出的异常转换为前端易处理的 JSON 错误响应。</p>
  */
 public class GlobalExceptionHandler {
+    @ExceptionHandler(TaskIssueConflictException.class)
+    public ResponseEntity<ApiError> handleTaskIssueConflict(TaskIssueConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of("TASK_ISSUE_CONFLICT",ex.getMessage()));
+    }
+
     @ExceptionHandler(IntegrationConflictException.class)
     public ResponseEntity<ApiError> handleIntegrationConflict(IntegrationConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of("INTEGRATION_CONFLICT", ex.getMessage()));
