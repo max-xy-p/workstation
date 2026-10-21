@@ -26,7 +26,7 @@ public interface TaskMapper {
             <script>
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
-                   t.created_at, t.updated_at
+                   t.created_at, t.updated_at, t.version
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
             LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
@@ -82,7 +82,7 @@ public interface TaskMapper {
     @Select("""
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
-                   t.created_at, t.updated_at
+                   t.created_at, t.updated_at, t.version
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
             LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
@@ -97,7 +97,7 @@ public interface TaskMapper {
     @Select("""
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
-                   t.created_at, t.updated_at
+                   t.created_at, t.updated_at, t.version
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
             LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
@@ -108,7 +108,7 @@ public interface TaskMapper {
     @Select("""
             SELECT t.id, t.workspace_id, t.title, t.description, t.project_id, p.name AS project_name,
                    t.status, t.priority, t.due_date, t.evidence_note_id, n.title AS evidence_note_title,
-                   t.created_at, t.updated_at
+                   t.created_at, t.updated_at, t.version
             FROM tasks t
             JOIN projects p ON p.workspace_id = t.workspace_id AND p.id = t.project_id
             LEFT JOIN notes n ON n.workspace_id = t.workspace_id AND n.id = t.evidence_note_id
@@ -133,7 +133,7 @@ public interface TaskMapper {
      */
     @Update("""
             UPDATE tasks
-            SET title = #{title},
+            SET version = version + 1, title = #{title},
                 description = #{description},
                 project_id = #{projectId},
                 status = #{status},
@@ -150,7 +150,7 @@ public interface TaskMapper {
      */
     @Update("""
             UPDATE tasks
-            SET status = #{status}, updated_at = #{updatedAt}
+            SET version = version + 1, status = #{status}, updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
     int updateStatus(
@@ -167,7 +167,7 @@ public interface TaskMapper {
     int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
     @Update("""
-            UPDATE tasks SET evidence_note_id = NULL, updated_at = #{updatedAt}
+            UPDATE tasks SET version = version + 1, evidence_note_id = NULL, updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND evidence_note_id = #{noteId}
             """)
     int clearEvidenceNote(
@@ -177,7 +177,7 @@ public interface TaskMapper {
     );
 
     @Update("""
-            UPDATE tasks SET evidence_note_id = NULL, updated_at = #{updatedAt}
+            UPDATE tasks SET version = version + 1, evidence_note_id = NULL, updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND evidence_note_id = #{noteId}
               AND (#{projectId} IS NULL OR project_id != #{projectId})
             """)

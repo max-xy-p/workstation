@@ -91,6 +91,54 @@ public class TaskIssueService {
         audit.success(w,"TASK_ISSUE_LINK","TASK",task);
     }
     @Transactional
+    public TaskIssueSourceResponse confirm(Long w,Long task,IssueSourceConfirmRequest request) {
+        authorization.require(w,WorkspacePermission.TASK_WRITE);
+        authorization.require(w,WorkspacePermission.PROJECT_READ);
+        RequestChecks.requiredObject(request,"确认请求");
+        RequestChecks.requiredText(request.expectedLinkToken(),"关联代次");
+        RequestChecks.requiredObject(request.expectedSourceVersion(),"来源版本");
+        RequestChecks.requiredObject(request.expectedConfirmationVersion(),"确认版本");
+        RequestChecks.requiredObject(request.expectedTaskVersion(),"任务版本");
+        RequestChecks.requiredObject(request.action(),"处理方式");
+        sources.lockWorkspace(w);
+        IssueSource selected=sources.forTask(w,task);
+        if(selected==null) throw new TaskIssueConflictException("来源关联已变化，请刷新后重试");
+        // 与后台提交保持连接、仓库、来源的锁定顺序，确认不发起平台调用。
+        ExternalRepository repository=integrations.repository(w,selected.getRepositoryId());
+        RequestChecks.requiredExisting(repository,"来源仓库不存在");
+        if(repository.getConnectionId()!=null) integrations.lockConnection(w,repository.getConnectionId());
+        integrations.lockRepository(w,selected.getRepositoryId());
+        TaskResponse local=tasks.getLocked(w,task);
+        IssueSource current=sources.forTaskLocked(w,task);
+        checkConfirmationVersions(current,request);
+        if(!current.hasPendingChanges()) throw new TaskIssueConflictException("当前已没有来源差异，请刷新查看");
+        applyConfirmationAction(w,task,local,current,request.action());
+        sources.confirm(w,task,current.getLinkToken(),current.getTitle(),current.getStatus(),current.getStateReason(),principals.require().subjectId());
+        audit.success(w,"TASK_ISSUE_CONFIRM","TASK",task);
+        return IssueSourceAssembler.response(sources.forTaskLocked(w,task));
+    }
+    private void checkConfirmationVersions(IssueSource source,IssueSourceConfirmRequest request) {
+        if(source==null || !java.util.Objects.equals(source.getLinkToken(),request.expectedLinkToken())
+                || !java.util.Objects.equals(source.getSourceVersion(),request.expectedSourceVersion())
+                || !java.util.Objects.equals(source.getConfirmationVersion(),request.expectedConfirmationVersion())
+                || !java.util.Objects.equals(source.getTaskVersion(),request.expectedTaskVersion()))
+            throw new TaskIssueConflictException("来源、确认结果或任务已变化，请刷新后重新查看");
+    }
+    private void applyConfirmationAction(Long w,Long task,TaskResponse local,IssueSource source,IssueSourceConfirmRequest.Action action) {
+        if(action==IssueSourceConfirmRequest.Action.KEEP) return;
+        if(!"ACTIVE".equals(source.getTrackingStatus()))
+            throw new TaskIssueConflictException("来源尚未成功刷新或跟踪不可用，可保留任务并确认已知差异");
+        if(action==IssueSourceConfirmRequest.Action.COMPLETE) {
+            if(!"CLOSED".equals(source.getStatus()) || local.status()==TaskStatus.DONE)
+                throw new TaskIssueConflictException("当前来源或任务状态不适合完成操作");
+            tasks.updateStatus(w,task,TaskStatus.DONE);
+        } else {
+            if(!"OPEN".equals(source.getStatus()) || local.status()!=TaskStatus.DONE)
+                throw new TaskIssueConflictException("当前来源或任务状态不适合重新开启");
+            tasks.updateStatus(w,task,TaskStatus.IN_PROGRESS);
+        }
+    }
+    @Transactional
     public void unlink(Long w,Long task) {
         authorization.require(w,WorkspacePermission.TASK_WRITE);sources.lockWorkspace(w);tasks.get(w,task);
         if(sources.unlink(w,task)>0) audit.success(w,"TASK_ISSUE_UNLINK","TASK",task);

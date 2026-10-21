@@ -38,6 +38,8 @@ export type ProjectResponse = Schemas['ProjectResponse'];
 export type ProjectDetailResponse = Schemas['ProjectDetailResponse'];
 export type ProjectPageResponse = Schemas['ProjectPageResponse'];
 export type ProjectStatus = Schemas['ProjectStatus'];
+export type IssueSourceConfirmRequest = Schemas['IssueSourceConfirmRequest'];
+export type IssueSourceState = Schemas['IssueSourceState'];
 export type TaskIssueSourceResponse = Schemas['TaskIssueSourceResponse'];
 export type TaskIssueSourcePageResponse = Schemas['TaskIssueSourcePageResponse'];
 export type IssueTaskCreateRequest = Schemas['IssueTaskCreateRequest'];
@@ -196,6 +198,7 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
     },
     issueApi: {
+      confirm: (w: number, task: number, body: IssueSourceConfirmRequest) => transport.post<TaskIssueSourceResponse, IssueSourceConfirmRequest>(`${workspacePath(w)}/tasks/${task}/issue-source/confirm`, body),
       list: (w: number, projectId?: number, page = 0, size = 20) => transport.get<TaskIssueSourcePageResponse>(`${workspacePath(w)}/issue-sources`, { projectId, page, size }),
       listAll: (w: number, projectId?: number) => listAllPages<TaskIssueSourceResponse, { projectId?: number }>(transport, `${workspacePath(w)}/issue-sources`, { projectId }),
       create: (w: number, project: number, body: IssueTaskCreateRequest) => transport.post<IssueTaskResult, IssueTaskCreateRequest>(`${workspacePath(w)}/projects/${project}/issue-tasks`, body),

@@ -27,6 +27,9 @@ public class TaskIssueController {
     public IssueTaskResult link(@PathVariable Long workspaceId,@PathVariable Long id,@RequestBody IssueTaskLinkRequest request) {
         return service.link(workspaceId,id,request);
     }
+    @PostMapping("/tasks/{id}/issue-source/confirm")
+    public TaskIssueSourceResponse confirm(@PathVariable Long workspaceId,@PathVariable Long id,
+            @RequestBody IssueSourceConfirmRequest request) { return service.confirm(workspaceId,id,request); }
     @DeleteMapping("/tasks/{id}/issue-source")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlink(@PathVariable Long workspaceId,@PathVariable Long id) { service.unlink(workspaceId,id); }

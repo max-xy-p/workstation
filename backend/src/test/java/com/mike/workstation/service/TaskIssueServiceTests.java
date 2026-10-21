@@ -92,4 +92,57 @@ class TaskIssueServiceTests {
         assertThat(service.list(9L,20L,0,20).items()).singleElement().satisfies(s->assertThat(s.taskId()).isEqualTo(5L));
         assertThatThrownBy(()->service.list(9L,null,0,101)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    private IssueSourceConfirmRequest confirmation(IssueSourceConfirmRequest.Action action) {
+        return new IssueSourceConfirmRequest("generation",2L,0L,3L,action);
+    }
+    private void prepareConfirmation(TaskStatus status) {
+        source.setTaskId(5L);source.setTitle("新标题");source.setStatus("CLOSED");source.setConfirmedTitle("旧标题");
+        source.setConfirmedStatus("OPEN");source.setSourceVersion(2L);source.setConfirmationVersion(0L);source.setTaskVersion(3L);
+        source.setLinkToken("generation");source.setTrackingStatus("ACTIVE");
+        when(sources.forTask(9L,5L)).thenReturn(source);when(sources.forTaskLocked(9L,5L)).thenReturn(source);
+        Task entity=new Task();entity.setId(5L);entity.setStatus(status);when(tasks.getLocked(9L,5L)).thenReturn(TaskResponseAssembler.toResponse(entity));
+    }
+    @Test void keepConfirmsKnownDifferenceWithoutChangingTaskEvenWhenTrackingFails() {
+        prepareConfirmation(TaskStatus.TODO);source.setTrackingStatus("ERROR");
+        service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.KEEP));
+        verify(sources).confirm(9L,5L,"generation","新标题","CLOSED",null,"author");
+        verify(tasks,never()).updateStatus(anyLong(),anyLong(),any());verify(audit).success(9L,"TASK_ISSUE_CONFIRM","TASK",5L);
+    }
+    @Test void completeAndReopenUseExistingTaskStatusService() {
+        prepareConfirmation(TaskStatus.TODO);service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.COMPLETE));
+        verify(tasks).updateStatus(9L,5L,TaskStatus.DONE);
+        prepareConfirmation(TaskStatus.DONE);source.setStatus("OPEN");
+        service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.REOPEN));verify(tasks).updateStatus(9L,5L,TaskStatus.IN_PROGRESS);
+    }
+    @Test void rejectsEveryStaleVersionAndReplacedAssociation() {
+        prepareConfirmation(TaskStatus.TODO);
+        for(var request:List.of(new IssueSourceConfirmRequest("old",2L,0L,3L,IssueSourceConfirmRequest.Action.KEEP),
+                new IssueSourceConfirmRequest("generation",1L,0L,3L,IssueSourceConfirmRequest.Action.KEEP),
+                new IssueSourceConfirmRequest("generation",2L,1L,3L,IssueSourceConfirmRequest.Action.KEEP),
+                new IssueSourceConfirmRequest("generation",2L,0L,2L,IssueSourceConfirmRequest.Action.KEEP)))
+            assertThatThrownBy(()->service.confirm(9L,5L,request)).isInstanceOf(TaskIssueConflictException.class);
+        verify(sources,never()).confirm(anyLong(),anyLong(),any(),any(),any(),any(),any());
+    }
+    @Test void requiresPermissionsBeforeAnyConfirmationRead() {
+        when(auth.require(9L,WorkspacePermission.TASK_WRITE)).thenThrow(new org.springframework.security.access.AccessDeniedException("无权限"));
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.KEEP)))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        verify(sources,never()).forTask(anyLong(),anyLong());
+    }
+    @Test void noDifferenceOrMissingLinkCannotBeConfirmed() {
+        prepareConfirmation(TaskStatus.TODO);source.setConfirmedTitle(source.getTitle());source.setConfirmedStatus(source.getStatus());
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.KEEP))).isInstanceOf(TaskIssueConflictException.class);
+        when(sources.forTask(9L,5L)).thenReturn(null);
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.KEEP))).isInstanceOf(TaskIssueConflictException.class);
+    }
+    @Test void unavailableSourceCannotDriveTaskTransitionAndInvalidActionsAreRejected() {
+        prepareConfirmation(TaskStatus.DONE);
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.COMPLETE))).isInstanceOf(TaskIssueConflictException.class);
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.REOPEN))).isInstanceOf(TaskIssueConflictException.class);
+        source.setTrackingStatus("ERROR");
+        assertThatThrownBy(()->service.confirm(9L,5L,confirmation(IssueSourceConfirmRequest.Action.COMPLETE))).isInstanceOf(TaskIssueConflictException.class);
+        assertThatThrownBy(()->service.confirm(9L,5L,new IssueSourceConfirmRequest("generation",null,0L,3L,IssueSourceConfirmRequest.Action.KEEP)))
+                .isInstanceOf(BusinessException.class);
+    }
 }

@@ -36,7 +36,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 ## SonarQube 分析
 
-仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中运行 Backend 和 Gateway 的 Maven 验证，向 Java 分析器提供字节码，并通过 JaCoCo XML 报告提供两个模块的测试覆盖率。扫描前还会检查两个模块合并的 JaCoCo 行与分支覆盖率是否至少为 80%；未达标时该作业失败。扫描作业同时安装 Frontend 与 TypeScript SDK 的依赖。覆盖率指标当前只评估 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析。自动生成的 Python SDK、TypeScript Schema 和构建产物不参与分析；测试目录单独标记为测试代码。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
+仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中运行 Backend 和 Gateway 的 Maven 验证，向 Java 分析器提供字节码，并通过 JaCoCo XML 报告提供两个模块的测试覆盖率。扫描前还会检查两个模块合并的 JaCoCo 行与分支覆盖率是否至少为 80%；未达标时该作业失败。扫描作业同时安装 Frontend 与 TypeScript SDK 的依赖。覆盖率指标当前只评估 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析。自动生成的 Python SDK、TypeScript Schema 和构建产物不参与分析；测试目录单独标记为测试代码，包含 Backend、Gateway、TypeScript SDK、Python 认证层和 `frontend/tests`。测试包含模式自动将这些文件与业务代码分类分离，测试本身仍纳入对应分析；HTTP 等非法输入的拒绝用例不代表实际使用明文网络连接。分类行为见 [SonarQube Cloud 官方说明](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/excluding-files-based-on-patterns)。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
 
 启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。发布流程复用的 CI 不重复提交一次标签分析。
 
@@ -73,7 +73,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 ## 数据和身份配置
 
-容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql 和 migrate-github-webhooks.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
+容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql 和 migrate-source-confirmation.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 
 Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience、角色和用户变化需要受控更新，不能假设重启会覆盖数据库中的现有配置。
 
@@ -84,6 +84,8 @@ Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience�
 升级包含笔记回收站功能的已有数据库时，在备份后执行 `backend/src/main/resources/db/migrate-note-trash.sql`。脚本可重复执行，会增加删除时间、删除主体、查询索引和主体外键；全新数据库直接使用 `schema.sql`。字段保持可空，因此旧应用可以读取数据库，但旧版本不知道过滤软删除记录，不应在未恢复迁移前数据库的情况下回滚应用。迁移不由容器重启自动执行。
 
 GitHub Issue 任务关联版本需要在维护窗口备份并执行 `backend/src/main/resources/db/migrate-task-issues.sql`，随后更新配套应用；旧快照须重新同步后才能用于建立来源。新增表与关联不能随镜像回退自动撤销，回退前暂停任务写入和数据源同步，具体边界见 [Issue 与本地任务](integrations.md#github-issue-与本地任务)。
+
+来源变化确认升级需在维护窗口暂停写入及同步、备份后执行 `backend/src/main/resources/db/migrate-source-confirmation.sql`。新应用依赖新增版本和确认基准，不能与旧应用混合写入；迁移不改变已有任务状态，也不伪造历史确认。完整规则见 [来源变化待处理](integrations.md#来源变化待处理)。
 
 Webhook 升级需在备份、暂停写入和同步后执行 `backend/src/main/resources/db/migrate-github-webhooks.sql`，再部署配套版本。回调为独立签名认证入口，不能用扩大普通业务 API 匿名范围替代。端点和 Secret 由管理员在应用和 GitHub 配套配置；回退前先停用回调与相关作业，不能直接让旧应用处理 ISSUE_REFRESH。完整边界见 [Webhook 流程](integrations.md#github-webhook-与指定来源刷新)。
 

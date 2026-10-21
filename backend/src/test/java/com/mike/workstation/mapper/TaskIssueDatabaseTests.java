@@ -252,6 +252,94 @@ class TaskIssueDatabaseTests {
         var resumed=tx.execute(status->leases.claim());assertThat(resumed.getLeaseToken()).isNotEqualTo(abandoned.getLeaseToken());completeTarget(resumed,null);
         tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));assertThat(hooks.list(w,connection,0,20).get(0).getStatus()).isEqualTo("SUCCEEDED");
     }
+
+    private IssueSourceConfirmRequest confirmation(TaskIssueSourceResponse source,IssueSourceConfirmRequest.Action action) {
+        return new IssueSourceConfirmRequest(source.linkToken(),source.sourceVersion(),source.confirmationVersion(),source.taskVersion(),action);
+    }
+    private void changeSource(Long task,String title,String status,String reason) {
+        tx.executeWithoutResult(transaction->{
+            var source=sources.forTaskLocked(w,task);source.setTitle(title);source.setStatus(status);source.setStateReason(reason);
+            source.setLastAttemptAt(java.time.LocalDateTime.now());source.setLastSuccessAt(java.time.LocalDateTime.now());sources.update(source);
+        });
+    }
+    private TaskIssueSourceResponse currentSource() { return service.list(w,project,0,20).items().get(0); }
+    @Test void baselineStartsCleanAndRepeatedReadsDoNotRepeatChanges() {
+        Long task=create().task().id();assertThat(currentSource().pending()).isFalse();assertThat(currentSource().confirmedAt()).isNull();
+        changeSource(task,"新标题","CLOSED","completed");var changed=currentSource();assertThat(changed.pending()).isTrue();assertThat(changed.sourceVersion()).isEqualTo(1L);
+        changeSource(task,"新标题","CLOSED","completed");assertThat(currentSource().sourceVersion()).isEqualTo(changed.sourceVersion());
+        var result=tx.execute(transaction->service.confirm(w,task,confirmation(changed,IssueSourceConfirmRequest.Action.KEEP)));
+        assertThat(result.pending()).isFalse();assertThat(result.confirmedBy()).isEqualTo(subject);assertThat(result.confirmedAt()).isNotNull();
+        assertThat(tasks.get(w,task).status()).isEqualTo(TaskStatus.TODO);
+        changeSource(task,"新标题","OPEN","reopened");assertThat(currentSource().pending()).isTrue();
+    }
+    @Test void returnedStateAndFailuresDoNotCreateOrClearBusinessDifference() {
+        Long task=create().task().id();changeSource(task,"新标题","CLOSED",null);assertThat(currentSource().pending()).isTrue();
+        changeSource(task,"原始 Issue","OPEN",null);assertThat(currentSource().pending()).isFalse();
+        changeSource(task,"原始 issue","OPEN",null);assertThat(currentSource().pending()).isTrue();
+        jdbc.update("UPDATE external_issue_sources SET last_error='模拟失败' WHERE workspace_id=?",w);
+        assertThat(currentSource().pending()).isTrue();assertThat(currentSource().trackingStatus()).isEqualTo("ERROR");
+    }
+    @Test void staleSourceTaskConfirmationAndGenerationCannotAdvanceBaseline() {
+        Long task=create().task().id();changeSource(task,"新标题","CLOSED",null);var first=currentSource();
+        changeSource(task,"再变一次","CLOSED",null);
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(first,IssueSourceConfirmRequest.Action.KEEP)))).isInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+        var second=currentSource();tx.executeWithoutResult(t->tasks.updateStatus(w,task,TaskStatus.IN_PROGRESS));
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(second,IssueSourceConfirmRequest.Action.KEEP)))).isInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+        var third=currentSource();tx.execute(t->service.confirm(w,task,confirmation(third,IssueSourceConfirmRequest.Action.KEEP)));
+        changeSource(task,"新变化","OPEN",null);
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(third,IssueSourceConfirmRequest.Action.KEEP)))).isInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+        var old=currentSource();tx.executeWithoutResult(t->service.unlink(w,task));
+        tx.execute(t->service.link(w,project,new IssueTaskLinkRequest(candidate,true,task)));
+        assertThat(currentSource().pending()).isFalse();assertThat(currentSource().confirmedBy()).isNull();
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(old,IssueSourceConfirmRequest.Action.KEEP)))).isInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+    }
+    @Test void taskTransitionAndBaselineAreAtomicAndCanBeReopened() {
+        Long task=create().task().id();changeSource(task,"完成","CLOSED","completed");var before=currentSource();
+        doThrow(new IllegalStateException("模拟审计失败")).when(audit).success(w,"TASK_ISSUE_CONFIRM","TASK",task);
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(before,IssueSourceConfirmRequest.Action.COMPLETE)))).isInstanceOf(IllegalStateException.class);
+        assertThat(tasks.get(w,task).status()).isEqualTo(TaskStatus.TODO);assertThat(currentSource().pending()).isTrue();assertThat(currentSource().confirmationVersion()).isZero();
+        doNothing().when(audit).success(w,"TASK_ISSUE_CONFIRM","TASK",task);
+        tx.execute(t->service.confirm(w,task,confirmation(before,IssueSourceConfirmRequest.Action.COMPLETE)));
+        assertThat(tasks.get(w,task).status()).isEqualTo(TaskStatus.DONE);assertThat(currentSource().pending()).isFalse();
+        changeSource(task,"完成","OPEN","reopened");var reopened=currentSource();
+        tx.execute(t->service.confirm(w,task,confirmation(reopened,IssueSourceConfirmRequest.Action.REOPEN)));
+        assertThat(tasks.get(w,task).status()).isEqualTo(TaskStatus.IN_PROGRESS);assertThat(currentSource().pending()).isFalse();
+    }
+    @Test void simultaneousConfirmationsAllowOnlyOneSharedDecision() throws Exception {
+        Long task=create().task().id();changeSource(task,"待确认","CLOSED",null);var viewed=currentSource();
+        var pool=Executors.newFixedThreadPool(2);var start=new CountDownLatch(1);
+        try {
+            Callable<Boolean> action=()->{start.await();try { tx.execute(t->service.confirm(w,task,confirmation(viewed,IssueSourceConfirmRequest.Action.KEEP)));return true; }
+                catch(com.mike.workstation.exception.TaskIssueConflictException ex) { return false; }};
+            var a=pool.submit(action);var b=pool.submit(action);start.countDown();
+            assertThat(List.of(a.get(20,TimeUnit.SECONDS),b.get(20,TimeUnit.SECONDS))).containsExactlyInAnyOrder(true,false);
+            assertThat(currentSource().confirmationVersion()).isEqualTo(1L);
+        } finally { pool.shutdownNow(); }
+    }
+    @Test void confirmationAfterConcurrentSourceCommitRejectsEarlierSnapshot() throws Exception {
+        Long task=create().task().id();changeSource(task,"待确认","CLOSED",null);var viewed=currentSource();
+        var held=new CountDownLatch(1);var release=new CountDownLatch(1);var pool=Executors.newFixedThreadPool(2);
+        try {
+            var refresh=pool.submit(()->tx.executeWithoutResult(t->{
+                integrations.lockConnection(w,connection);integrations.lockRepository(w,repo);
+                var source=sources.lock(w,viewed.id());source.setTitle("后台再次更新");sources.update(source);
+                held.countDown();try { if(!release.await(5,TimeUnit.SECONDS)) throw new IllegalStateException("等待超时"); }
+                catch(InterruptedException ex) { Thread.currentThread().interrupt();throw new IllegalStateException(ex); }
+            }));
+            assertThat(held.await(5,TimeUnit.SECONDS)).isTrue();
+            var confirmation=pool.submit(()->tx.execute(t->service.confirm(w,task,confirmation(viewed,IssueSourceConfirmRequest.Action.KEEP))));
+            release.countDown();refresh.get(10,TimeUnit.SECONDS);
+            assertThatThrownBy(()->confirmation.get(10,TimeUnit.SECONDS)).hasCauseInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+            assertThat(currentSource().pending()).isTrue();assertThat(currentSource().confirmationVersion()).isZero();
+        } finally { release.countDown();pool.shutdownNow(); }
+    }
+    @Test void fullTaskSaveAlsoInvalidatesConfirmationVersion() {
+        Long task=create().task().id();changeSource(task,"待确认","CLOSED",null);var before=currentSource();
+        tx.executeWithoutResult(t->tasks.update(w,task,request()));assertThat(tasks.get(w,task).version()).isEqualTo(before.taskVersion()+1);
+        assertThatThrownBy(()->tx.execute(t->service.confirm(w,task,confirmation(before,IssueSourceConfirmRequest.Action.KEEP))))
+                .isInstanceOf(com.mike.workstation.exception.TaskIssueConflictException.class);
+        assertThat(sources.forTask(w+1000000,task)).isNull();
+    }
     /** 子进程领取真实队列后立即终止，不执行正常清理，模拟进程崩溃。 */
     public static class ClaimAndCrash {
         public static void main(String[] args) {

@@ -8,7 +8,8 @@ import org.apache.ibatis.annotations.*;
 @Mapper
 public interface IssueSourceMapper {
     String LINKED = """
-            SELECT s.*, l.task_id,l.link_token,t.project_id,CONCAT(r.namespace,'/',r.name) AS repository_name,
+            SELECT s.*, l.task_id,l.link_token,l.confirmed_title,l.confirmed_status,l.confirmed_state_reason,
+                l.confirmation_version,l.confirmed_by,l.confirmed_at,t.version AS task_version,t.project_id,CONCAT(r.namespace,'/',r.name) AS repository_name,
                 CASE WHEN p.project_id IS NULL OR p.project_id!=t.project_id OR c.id IS NULL
                       OR c.deleted=TRUE OR c.enabled=FALSE OR m.role IS NULL OR m.role NOT IN ('OWNER','ADMIN')
                      THEN 'STOPPED'
@@ -55,12 +56,26 @@ public interface IssueSourceMapper {
     @Select(LINKED+" WHERE s.workspace_id=#{w} AND l.task_id=#{task}")
     IssueSource forTask(@Param("w") Long w,@Param("task") Long task);
 
+    @Select(LINKED+" WHERE s.workspace_id=#{w} AND l.task_id=#{task} FOR UPDATE")
+    IssueSource forTaskLocked(@Param("w") Long w,@Param("task") Long task);
+
+    @Update("""
+            UPDATE task_issue_links SET confirmed_title=#{title},confirmed_status=#{status},confirmed_state_reason=#{stateReason},
+                confirmation_version=confirmation_version+1,confirmed_by=#{actor},confirmed_at=NOW()
+            WHERE workspace_id=#{w} AND task_id=#{task} AND link_token=#{token}
+            """)
+    int confirm(@Param("w") Long w,@Param("task") Long task,@Param("token") String token,
+            @Param("title") String title,@Param("status") String status,@Param("stateReason") String stateReason,
+            @Param("actor") String actor);
+
     @Select("SELECT task_id FROM task_issue_links WHERE workspace_id=#{w} AND source_id=#{source} FOR UPDATE")
     Long linkedTask(@Param("w") Long w,@Param("source") Long source);
 
     @Insert("""
-            INSERT INTO task_issue_links (workspace_id,task_id,source_id,link_token,actor_subject,created_at)
-            VALUES (#{w},#{task},#{source},UUID(),#{actor},NOW())
+            INSERT INTO task_issue_links (workspace_id,task_id,source_id,link_token,actor_subject,created_at,
+                confirmed_title,confirmed_status,confirmed_state_reason,baseline_initialized)
+            SELECT #{w},#{task},id,UUID(),#{actor},NOW(),title,status,state_reason,TRUE
+            FROM external_issue_sources WHERE workspace_id=#{w} AND id=#{source}
             """)
     int link(@Param("w") Long w,@Param("task") Long task,@Param("source") Long source,@Param("actor") String actor);
 
@@ -98,7 +113,8 @@ public interface IssueSourceMapper {
     Long boundProject(@Param("w") Long w,@Param("repo") Long repo);
 
     @Update("""
-            UPDATE external_issue_sources SET title=#{title},url=#{url},status=#{status},state_reason=#{stateReason},
+            UPDATE external_issue_sources SET source_version=source_version+
+                IF((BINARY title <=> BINARY #{title}) AND (BINARY status <=> BINARY #{status}) AND (BINARY state_reason <=> BINARY #{stateReason}),0,1),title=#{title},url=#{url},status=#{status},state_reason=#{stateReason},
                 source_updated_at=#{sourceUpdatedAt},last_attempt_at=#{lastAttemptAt},last_success_at=#{lastSuccessAt},last_error=#{lastError}
             WHERE workspace_id=#{workspaceId} AND id=#{id}
             """)

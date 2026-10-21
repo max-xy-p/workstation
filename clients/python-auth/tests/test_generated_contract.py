@@ -74,3 +74,16 @@ class GeneratedContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SourceConfirmationContractTests(unittest.TestCase):
+    def test_confirmation_keeps_versions_and_action(self) -> None:
+        from workstation_client.models.issue_source_confirm_request import IssueSourceConfirmRequest
+        from workstation_client.models.issue_source_confirm_request_action import IssueSourceConfirmRequestAction
+        from workstation_client.api.tasks.confirm_task_issue_source import _get_kwargs
+        request = IssueSourceConfirmRequest(expected_link_token="generation", expected_source_version=2,
+            expected_confirmation_version=0, expected_task_version=3, action=IssueSourceConfirmRequestAction.KEEP)
+        result = _get_kwargs(workspace_id=9, id=5, body=request)
+        self.assertEqual(result["url"], "/api/workspaces/9/tasks/5/issue-source/confirm")
+        self.assertEqual(result["json"]["expectedTaskVersion"], 3)
+        self.assertEqual(result["json"]["action"], "KEEP")

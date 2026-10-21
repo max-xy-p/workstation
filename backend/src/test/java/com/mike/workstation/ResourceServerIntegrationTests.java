@@ -50,6 +50,20 @@ class ResourceServerIntegrationTests {
     @MockitoBean
     private com.mike.workstation.service.GithubWebhookService githubWebhooks;
 
+    @MockitoBean
+    private com.mike.workstation.service.TaskIssueService taskIssues;
+
+    @Test void sourceConfirmationUsesProtectedContractAndConflictResponse() throws Exception {
+        String path="/api/workspaces/1/tasks/2/issue-source/confirm";
+        String body="{\"expectedLinkToken\":\"link\",\"expectedSourceVersion\":2,\"expectedConfirmationVersion\":0,\"expectedTaskVersion\":3,\"action\":\"KEEP\"}";
+        mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
+        when(taskIssues.confirm(eq(1L),eq(2L),any())).thenThrow(new com.mike.workstation.exception.TaskIssueConflictException("来源已变化"));
+        mockMvc.perform(post(path).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TASK_ISSUE_CONFLICT"));
+        mockMvc.perform(post(path).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                .contentType(MediaType.APPLICATION_JSON).content(body.replace("KEEP","INVALID"))).andExpect(status().isBadRequest());
+    }
+
     @Test void webhookHasDedicatedSignatureEntryAndDoesNotOpenManagementApi() throws Exception {
         mockMvc.perform(post("/api/hooks/github/endpoint").contentType(MediaType.APPLICATION_JSON)
                 .header("X-Hub-Signature-256","signature").header("X-GitHub-Delivery","delivery").header("X-GitHub-Event","ping")

@@ -15,7 +15,8 @@
               <option value="">全部优先级</option>
               <option v-for="priority in TASK_PRIORITIES" :key="priority.value" :value="priority.value">{{ priority.label }}</option>
             </select>
-            <button @click="load">筛选</button>
+            <select v-model="pendingOnly" aria-label="筛选来源变化"><option :value="false">全部来源状态</option><option :value="true">来源变化待处理</option></select>
+            <button @click="load">筛选 / 刷新</button>
           </div>
         </div>
 
@@ -34,7 +35,7 @@
                 <p class="meta">{{ task.projectName }} · {{ task.dueDate || '无截止日期' }}</p>
                 <p>{{ task.description || '未填写描述' }}</p>
                 <RouterLink v-if="task.evidenceNoteId" :to="{ name: 'note-edit', params: { workspaceId, id: task.evidenceNoteId } }">依据笔记：{{ task.evidenceNoteTitle || task.evidenceNoteId }}</RouterLink>
-                <TaskIssueSource v-if="sourceForTask(task.id)" :source="sourceForTask(task.id)" :task-status="task.status" :can-write="canWrite" :busy="pendingIds.has(task.id)" @unlink="unlinkSource(task.id)" @complete="move(task, 'DONE')" />
+                <TaskIssueSource v-if="sourceForTask(task.id)" :source="sourceForTask(task.id)" :task-status="task.status" :can-write="canWrite" :busy="pendingIds.has(task.id)" @unlink="unlinkSource(task.id)" @confirm="confirmSource(task, $event)" />
                 <div v-if="canWrite" class="actions">
                   <select :value="task.status" :aria-label="'修改任务状态：' + task.title" :disabled="pendingIds.has(task.id)" @change="move(task, $event.target.value)"><option v-for="status in KANBAN_COLUMNS" :key="status.value" :value="status.value">{{ status.label }}</option></select>
                   <button class="secondary" :disabled="pendingIds.has(task.id)" @click="edit(task)">编辑</button>
@@ -103,6 +104,8 @@ const canWrite = computed(() => workspace.hasPermission('TASK_WRITE'));
 const error = ref('');
 const tasks = ref([]);
 const issueSources = ref([]);
+const pendingOnly = ref(false);
+let loadGeneration = 0;
 const sourceForTask = (id) => issueSources.value.find((source) => source.taskId === id);
 const projects = ref([]);
 const evidenceNotes = ref([]);
@@ -126,7 +129,7 @@ function priorityLabel(value) {
 
 // 根据看板列状态筛选任务，模板中每一列都会调用它。
 function tasksByStatus(status) {
-  return tasks.value.filter((task) => task.status === status);
+  return tasks.value.filter((task) => task.status === status && (!pendingOnly.value || sourceForTask(task.id)?.pending));
 }
 
 // 重置任务表单，避免上一次编辑状态影响下一次新建。
@@ -169,11 +172,13 @@ async function loadProjects() {
 
 // 根据筛选条件重新加载看板任务。
 async function load() {
+  const generation = ++loadGeneration;
   try {
     error.value = '';
     const [loadedTasks, loadedSources] = await Promise.all([
       taskApi.listAll(workspaceId.value, filters), issueApi.listAll(workspaceId.value)
     ]);
+    if (generation !== loadGeneration) return;
     tasks.value = loadedTasks; issueSources.value = loadedSources;
   } catch (err) {
     error.value = err.message;
@@ -206,6 +211,25 @@ async function move(task, status) {
   } finally {
     pendingIds.delete(task.id);
   }
+}
+
+async function confirmSource(task, action) {
+  if (!canWrite.value || pendingIds.has(task.id)) return;
+  const source = sourceForTask(task.id);
+  if (!source?.pending) return;
+  pendingIds.add(task.id);
+  try {
+    error.value = '';
+    await issueApi.confirm(workspaceId.value, task.id, {
+      expectedLinkToken: source.linkToken,
+      expectedSourceVersion: source.sourceVersion,
+      expectedConfirmationVersion: source.confirmationVersion,
+      expectedTaskVersion: task.version,
+      action
+    });
+    await load();
+  } catch (err) { error.value = err.message; }
+  finally { pendingIds.delete(task.id); }
 }
 
 async function unlinkSource(id) {

@@ -951,6 +951,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/tasks/{id}/issue-source/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 确认已查看的来源变化，可原子修改本地任务状态 */
+        post: operations["confirmTaskIssueSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1494,6 +1514,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            /** Format: int64 */
+            version?: number;
         };
         TaskStatusRequest: {
             status: components["schemas"]["TaskStatus"];
@@ -1574,6 +1596,18 @@ export interface components {
             lastError: string | null;
             /** @enum {string} */
             trackingStatus: "WAITING" | "ACTIVE" | "ERROR" | "STOPPED";
+            /** Format: int64 */
+            sourceVersion?: number;
+            /** Format: int64 */
+            confirmationVersion?: number;
+            /** Format: int64 */
+            taskVersion?: number;
+            linkToken?: string;
+            pending?: boolean;
+            confirmedState?: components["schemas"]["IssueSourceState"];
+            confirmedBy?: string | null;
+            /** Format: date-time */
+            confirmedAt?: string | null;
         };
         TaskIssueSourcePageResponse: {
             items: components["schemas"]["TaskIssueSourceResponse"][];
@@ -1635,6 +1669,22 @@ export interface components {
             /** Format: int64 */
             total: number;
             hasMore: boolean;
+        };
+        IssueSourceState: {
+            title: string;
+            status: string;
+            stateReason: string | null;
+        };
+        IssueSourceConfirmRequest: {
+            expectedLinkToken: string;
+            /** Format: int64 */
+            expectedSourceVersion: number;
+            /** Format: int64 */
+            expectedConfirmationVersion: number;
+            /** Format: int64 */
+            expectedTaskVersion: number;
+            /** @enum {string} */
+            action: "KEEP" | "COMPLETE" | "REOPEN";
         };
     };
     responses: {
@@ -4438,6 +4488,38 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    confirmTaskIssueSource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueSourceConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description 已确认，返回最新关联来源 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskIssueSourceResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
 }

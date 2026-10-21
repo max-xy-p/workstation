@@ -19,3 +19,15 @@ export function sourceReasonLabel(reason) {
   if (!reason) return '未提供';
   return ({ completed: '已完成', not_planned: '不再计划处理', reopened: '已重新打开' })[reason] || `未识别原因（${reason}）`;
 }
+
+// 仅比较确认范围内的业务字段；时间与读取健康状态不作为业务差异。
+export function sourceChanges(source) {
+  if (!source?.confirmedState) return [];
+  const stateLabel = value => ({ OPEN: '开放', CLOSED: '已关闭' })[value] || value || '未提供';
+  return [
+    ['title', '标题', value => value || '未提供'],
+    ['status', '来源状态', stateLabel],
+    ['stateReason', '关闭原因', sourceReasonLabel]
+  ].filter(([field]) => (source[field] ?? null) !== (source.confirmedState[field] ?? null))
+    .map(([field, label, format]) => ({ field, label, before: format(source.confirmedState[field]), after: format(source[field]) }));
+}

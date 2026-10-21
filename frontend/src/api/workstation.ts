@@ -2,6 +2,8 @@ import { createWorkstationApi } from '@workstation/api-client';
 import { api, resetCsrfToken, submitWithCsrf } from './client';
 
 export type {
+  IssueSourceConfirmRequest,
+  IssueSourceState,
   TaskIssueSourceResponse,
   IssueTaskCreateRequest,
   IssueTaskLinkRequest,

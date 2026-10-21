@@ -67,6 +67,7 @@ export function createWorkstationApi(transport) {
             delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/projects/${id}`)
         },
         issueApi: {
+            confirm: (w, task, body) => transport.post(`${workspacePath(w)}/tasks/${task}/issue-source/confirm`, body),
             list: (w, projectId, page = 0, size = 20) => transport.get(`${workspacePath(w)}/issue-sources`, { projectId, page, size }),
             listAll: (w, projectId) => listAllPages(transport, `${workspacePath(w)}/issue-sources`, { projectId }),
             create: (w, project, body) => transport.post(`${workspacePath(w)}/projects/${project}/issue-tasks`, body),

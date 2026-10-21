@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 
 from ..models.task_issue_source_response_tracking_status import TaskIssueSourceResponseTrackingStatus
+from ..types import UNSET, Unset
+
+if TYPE_CHECKING:
+    from ..models.issue_source_state import IssueSourceState
+
 
 T = TypeVar("T", bound="TaskIssueSourceResponse")
 
@@ -31,6 +36,14 @@ class TaskIssueSourceResponse:
         last_success_at (datetime.datetime | None):
         last_error (None | str):
         tracking_status (TaskIssueSourceResponseTrackingStatus):
+        source_version (int | Unset):
+        confirmation_version (int | Unset):
+        task_version (int | Unset):
+        link_token (str | Unset):
+        pending (bool | Unset):
+        confirmed_state (IssueSourceState | Unset):
+        confirmed_by (None | str | Unset):
+        confirmed_at (datetime.datetime | None | Unset):
     """
 
     id: int
@@ -49,6 +62,14 @@ class TaskIssueSourceResponse:
     last_success_at: datetime.datetime | None
     last_error: None | str
     tracking_status: TaskIssueSourceResponseTrackingStatus
+    source_version: int | Unset = UNSET
+    confirmation_version: int | Unset = UNSET
+    task_version: int | Unset = UNSET
+    link_token: str | Unset = UNSET
+    pending: bool | Unset = UNSET
+    confirmed_state: IssueSourceState | Unset = UNSET
+    confirmed_by: None | str | Unset = UNSET
+    confirmed_at: datetime.datetime | None | Unset = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         id = self.id
@@ -98,6 +119,34 @@ class TaskIssueSourceResponse:
 
         tracking_status = self.tracking_status.value
 
+        source_version = self.source_version
+
+        confirmation_version = self.confirmation_version
+
+        task_version = self.task_version
+
+        link_token = self.link_token
+
+        pending = self.pending
+
+        confirmed_state: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.confirmed_state, Unset):
+            confirmed_state = self.confirmed_state.to_dict()
+
+        confirmed_by: None | str | Unset
+        if isinstance(self.confirmed_by, Unset):
+            confirmed_by = UNSET
+        else:
+            confirmed_by = self.confirmed_by
+
+        confirmed_at: None | str | Unset
+        if isinstance(self.confirmed_at, Unset):
+            confirmed_at = UNSET
+        elif isinstance(self.confirmed_at, datetime.datetime):
+            confirmed_at = self.confirmed_at.isoformat()
+        else:
+            confirmed_at = self.confirmed_at
+
         field_dict: dict[str, Any] = {}
 
         field_dict.update(
@@ -120,11 +169,29 @@ class TaskIssueSourceResponse:
                 "trackingStatus": tracking_status,
             }
         )
+        if source_version is not UNSET:
+            field_dict["sourceVersion"] = source_version
+        if confirmation_version is not UNSET:
+            field_dict["confirmationVersion"] = confirmation_version
+        if task_version is not UNSET:
+            field_dict["taskVersion"] = task_version
+        if link_token is not UNSET:
+            field_dict["linkToken"] = link_token
+        if pending is not UNSET:
+            field_dict["pending"] = pending
+        if confirmed_state is not UNSET:
+            field_dict["confirmedState"] = confirmed_state
+        if confirmed_by is not UNSET:
+            field_dict["confirmedBy"] = confirmed_by
+        if confirmed_at is not UNSET:
+            field_dict["confirmedAt"] = confirmed_at
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
+        from ..models.issue_source_state import IssueSourceState  # noqa: PLC0415
+
         d = dict(src_dict)
         id = d.pop("id")
 
@@ -212,6 +279,49 @@ class TaskIssueSourceResponse:
 
         tracking_status = TaskIssueSourceResponseTrackingStatus(d.pop("trackingStatus"))
 
+        source_version = d.pop("sourceVersion", UNSET)
+
+        confirmation_version = d.pop("confirmationVersion", UNSET)
+
+        task_version = d.pop("taskVersion", UNSET)
+
+        link_token = d.pop("linkToken", UNSET)
+
+        pending = d.pop("pending", UNSET)
+
+        _confirmed_state = d.pop("confirmedState", UNSET)
+        confirmed_state: IssueSourceState | Unset
+        if isinstance(_confirmed_state, Unset):
+            confirmed_state = UNSET
+        else:
+            confirmed_state = IssueSourceState.from_dict(_confirmed_state)
+
+        def _parse_confirmed_by(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        confirmed_by = _parse_confirmed_by(d.pop("confirmedBy", UNSET))
+
+        def _parse_confirmed_at(data: object) -> datetime.datetime | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                confirmed_at_type_0 = datetime.datetime.fromisoformat(data)
+
+                return confirmed_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None | Unset, data)
+
+        confirmed_at = _parse_confirmed_at(d.pop("confirmedAt", UNSET))
+
         task_issue_source_response = cls(
             id=id,
             task_id=task_id,
@@ -229,6 +339,14 @@ class TaskIssueSourceResponse:
             last_success_at=last_success_at,
             last_error=last_error,
             tracking_status=tracking_status,
+            source_version=source_version,
+            confirmation_version=confirmation_version,
+            task_version=task_version,
+            link_token=link_token,
+            pending=pending,
+            confirmed_state=confirmed_state,
+            confirmed_by=confirmed_by,
+            confirmed_at=confirmed_at,
         )
 
         return task_issue_source_response

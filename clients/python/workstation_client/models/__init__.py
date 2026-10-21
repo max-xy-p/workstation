@@ -31,6 +31,9 @@ from .integration_run_response_kind import IntegrationRunResponseKind
 from .integration_run_response_status import IntegrationRunResponseStatus
 from .integration_scope import IntegrationScope
 from .integration_trigger_request import IntegrationTriggerRequest
+from .issue_source_confirm_request import IssueSourceConfirmRequest
+from .issue_source_confirm_request_action import IssueSourceConfirmRequestAction
+from .issue_source_state import IssueSourceState
 from .issue_task_create_request import IssueTaskCreateRequest
 from .issue_task_link_request import IssueTaskLinkRequest
 from .issue_task_result import IssueTaskResult
@@ -117,6 +120,9 @@ __all__ = (
     "IntegrationRunResponseStatus",
     "IntegrationScope",
     "IntegrationTriggerRequest",
+    "IssueSourceConfirmRequest",
+    "IssueSourceConfirmRequestAction",
+    "IssueSourceState",
     "IssueTaskCreateRequest",
     "IssueTaskLinkRequest",
     "IssueTaskResult",

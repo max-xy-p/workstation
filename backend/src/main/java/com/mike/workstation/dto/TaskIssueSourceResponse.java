@@ -6,4 +6,6 @@ import java.time.OffsetDateTime;
 public record TaskIssueSourceResponse(Long id, Long taskId, Long projectId, Long repositoryId,
         String repositoryName, String externalId, Long issueNumber, String title, String url,
         String status, String stateReason, OffsetDateTime sourceUpdatedAt, OffsetDateTime lastAttemptAt,
-        OffsetDateTime lastSuccessAt, String lastError, String trackingStatus) { }
+        OffsetDateTime lastSuccessAt, String lastError, String trackingStatus,
+        Long sourceVersion,Long confirmationVersion,Long taskVersion,String linkToken,boolean pending,
+        IssueSourceState confirmedState,String confirmedBy,OffsetDateTime confirmedAt) { }

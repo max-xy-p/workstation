@@ -8,6 +8,7 @@ from attrs import define as _attrs_define
 
 from ..models.task_priority import TaskPriority
 from ..models.task_status import TaskStatus
+from ..types import UNSET, Unset
 
 T = TypeVar("T", bound="TaskResponse")
 
@@ -28,6 +29,7 @@ class TaskResponse:
         evidence_note_title (None | str):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
+        version (int | Unset):
     """
 
     id: int
@@ -42,6 +44,7 @@ class TaskResponse:
     evidence_note_title: None | str
     created_at: datetime.datetime
     updated_at: datetime.datetime
+    version: int | Unset = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         id = self.id
@@ -75,6 +78,8 @@ class TaskResponse:
 
         updated_at = self.updated_at.isoformat()
 
+        version = self.version
+
         field_dict: dict[str, Any] = {}
 
         field_dict.update(
@@ -93,6 +98,8 @@ class TaskResponse:
                 "updatedAt": updated_at,
             }
         )
+        if version is not UNSET:
+            field_dict["version"] = version
 
         return field_dict
 
@@ -151,6 +158,8 @@ class TaskResponse:
 
         updated_at = datetime.datetime.fromisoformat(d.pop("updatedAt"))
 
+        version = d.pop("version", UNSET)
+
         task_response = cls(
             id=id,
             title=title,
@@ -164,6 +173,7 @@ class TaskResponse:
             evidence_note_title=evidence_note_title,
             created_at=created_at,
             updated_at=updated_at,
+            version=version,
         )
 
         return task_response

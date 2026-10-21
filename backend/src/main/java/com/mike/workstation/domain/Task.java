@@ -9,6 +9,7 @@ import lombok.Data;
  * 项目任务实体，对应 tasks 表。
  */
 public class Task {
+    private Long version;
     private Long id;
     private Long workspaceId;
     private String title;

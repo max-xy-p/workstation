@@ -12,7 +12,7 @@ public final class TaskResponseAssembler {
                 task.getId(), task.getTitle(), task.getDescription(), task.getProjectId(), task.getProjectName(),
                 task.getStatus(), task.getPriority(), task.getDueDate(),
                 task.getEvidenceNoteId(), task.getEvidenceNoteTitle(),
-                ApiTime.toOffset(task.getCreatedAt()), ApiTime.toOffset(task.getUpdatedAt())
+                ApiTime.toOffset(task.getCreatedAt()), ApiTime.toOffset(task.getUpdatedAt()), task.getVersion()
         );
     }
 }
