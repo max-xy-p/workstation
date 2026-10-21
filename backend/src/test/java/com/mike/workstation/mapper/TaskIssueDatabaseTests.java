@@ -30,6 +30,11 @@ class TaskIssueDatabaseTests {
     private TaskMapper taskMapper;
     private TaskService tasks;
     private IntegrationStateService leases;
+    private GithubWebhookMapper hooks;
+    private GithubWebhookService webhook;
+    private GithubWebhookDispatcher dispatcher;
+    private GithubWebhookResponse hook;
+    private final String webhookSecret="webhook-test-secret-with-more-than-32-characters";
     private TaskIssueService service;
     private final AuditService audit=mock(AuditService.class);
     private final WorkspaceAuthorizationService auth=mock(WorkspaceAuthorizationService.class);
@@ -40,8 +45,8 @@ class TaskIssueDatabaseTests {
         var ds=new UnpooledDataSource("com.mysql.cj.jdbc.Driver",System.getProperty("workstation.test.db"),"root","");
         jdbc=new JdbcTemplate(ds);tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
         var cfg=new Configuration(new Environment("issues",new SpringManagedTransactionFactory(),ds));cfg.setMapUnderscoreToCamelCase(true);
-        for(Class<?> m:List.of(IssueSourceMapper.class,IntegrationMapper.class,TaskMapper.class,ProjectMapper.class,NoteMapper.class,WorkspaceMapper.class)) cfg.addMapper(m);
-        var session=new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(cfg));sources=session.getMapper(IssueSourceMapper.class);integrations=session.getMapper(IntegrationMapper.class);taskMapper=session.getMapper(TaskMapper.class);
+        for(Class<?> m:List.of(IssueSourceMapper.class,IntegrationMapper.class,TaskMapper.class,ProjectMapper.class,NoteMapper.class,WorkspaceMapper.class,GithubWebhookMapper.class)) cfg.addMapper(m);
+        var session=new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(cfg));sources=session.getMapper(IssueSourceMapper.class);integrations=session.getMapper(IntegrationMapper.class);taskMapper=session.getMapper(TaskMapper.class);hooks=session.getMapper(GithubWebhookMapper.class);
         subject="issue-"+UUID.randomUUID();jdbc.update("INSERT INTO security_principals VALUES (?,'USER','测试',NULL,NOW(),NOW())",subject);
         jdbc.update("INSERT INTO workspaces(name,type,created_by_subject,created_at,updated_at) VALUES (?,'SHARED',?,NOW(),NOW())",subject,subject);
         w=jdbc.queryForObject("SELECT id FROM workspaces WHERE created_by_subject=?",Long.class,subject);
@@ -59,11 +64,11 @@ class TaskIssueDatabaseTests {
         service=new TaskIssueService(sources,integrations,tasks,auth,principal,audit);
         leases=new IntegrationStateService(integrations,session.getMapper(ProjectMapper.class),session.getMapper(WorkspaceMapper.class),
                 auth,principal,mock(com.mike.workstation.integration.CredentialCipher.class),
-                new com.mike.workstation.config.IntegrationProperties(true,"v1",Map.of(),List.of(),15,10,100,180,30),audit,sources);
+                new com.mike.workstation.config.IntegrationProperties(true,"v1",Map.of(),List.of(),15,10,100,180,30),audit,sources,session.getMapper(GithubWebhookMapper.class));
     }
     @AfterEach void cleanup() {
         if(w==null)return;
-        for(String table:List.of("tasks","external_issue_sources","integration_sync_items","integration_sync_runs","external_development_items","external_development_snapshots","project_repositories","external_repositories","integration_connections","projects","workspace_members")) jdbc.update("DELETE FROM "+table+" WHERE workspace_id=?",w);
+        for(String table:List.of("github_webhook_deliveries","integration_issue_targets","integration_webhooks","tasks","external_issue_sources","integration_sync_items","integration_sync_runs","external_development_items","external_development_snapshots","project_repositories","external_repositories","integration_connections","projects","workspace_members")) jdbc.update("DELETE FROM "+table+" WHERE workspace_id=?",w);
         jdbc.update("DELETE FROM workspaces WHERE id=?",w);jdbc.update("DELETE FROM security_principals WHERE subject_id=?",subject);
     }
     private TaskRequest request() { return new TaskRequest("本地执行",null,project,TaskStatus.TODO,TaskPriority.HIGH,null,null); }
@@ -113,7 +118,7 @@ class TaskIssueDatabaseTests {
         var run=new IntegrationRun();run.setWorkspaceId(w);run.setConnectionId(connection);run.setKind("SYNC");run.setStatus("QUEUED");
         run.setActorSubject(subject);run.setConfigVersion(1);run.setRequestKey("tracking");run.setRequestHash("hash");run.setCreatedAt(java.time.LocalDateTime.now(java.time.ZoneId.systemDefault()));
         integrations.insertRun(run);run.setLeaseToken("tracking-lease");run.setStatus("RUNNING");run.setLeaseUntil(run.getCreatedAt().plusMinutes(3));integrations.claim(run);
-        var tracking=new IssueTrackingStateService(sources,integrations,leases);tx.executeWithoutResult(status->tracking.begin(run));
+        var tracking=new IssueTrackingStateService(sources,integrations,leases,mock(GithubWebhookMapper.class));tx.executeWithoutResult(status->tracking.begin(run));
         DevelopmentItem fresh=new DevelopmentItem();fresh.setExternalId("100");fresh.setIssueNumber(1L);fresh.setTitle("来源已关闭");fresh.setStatus("CLOSED");fresh.setStateReason("completed");fresh.setSourceUpdatedAt(run.getCreatedAt());
         tx.executeWithoutResult(status->tracking.complete(run,selected,fresh,null));
         IssueSource saved=sources.forTask(w,created.task().id());assertThat(saved.getStatus()).isEqualTo("CLOSED");assertThat(saved.getLastSuccessAt()).isNotNull();
@@ -137,5 +142,129 @@ class TaskIssueDatabaseTests {
             assertThat(integrations.countDevelopment(w,project,"ISSUE")).isEqualTo(1);
             status.setRollbackOnly();
         });
+    }
+
+    private void prepareWebhook() {
+        create();
+        var props=new com.mike.workstation.config.IntegrationProperties(true,"v1",Map.of("v1",Base64.getEncoder().encodeToString(new byte[32])),List.of(),15,10,100,180,30);
+        webhook=new GithubWebhookService(hooks,integrations,sources,leases,auth,new com.mike.workstation.integration.CredentialCipher(props),props,audit,new tools.jackson.databind.ObjectMapper());
+        dispatcher=new GithubWebhookDispatcher(hooks,integrations,sources,leases);
+        hook=tx.execute(status->webhook.configure(w,connection,new GithubWebhookRequest(true,0,webhookSecret)));
+    }
+    private void receive(String delivery) {
+        String endpoint=hook.endpointPath().substring(hook.endpointPath().lastIndexOf('/')+1);
+        byte[] body="{\"action\":\"closed\",\"repository\":{\"id\":1000},\"issue\":{\"id\":100,\"number\":1,\"title\":\"中文\"}}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        try {
+            var mac=javax.crypto.Mac.getInstance("HmacSHA256");mac.init(new javax.crypto.spec.SecretKeySpec(webhookSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8),"HmacSHA256"));
+            String signature="sha256="+HexFormat.of().formatHex(mac.doFinal(body));
+            tx.executeWithoutResult(status->webhook.receive(endpoint,delivery,"issues",signature,body));
+        } catch(java.security.GeneralSecurityException ex) { throw new IllegalStateException(ex); }
+    }
+    private IntegrationRun dispatchAndClaim() {
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));
+        IntegrationRun claimed=tx.execute(status->leases.claim());
+        assertThat(claimed).as("投递时间与状态：%s",jdbc.queryForList("SELECT status,next_attempt_at,NOW() AS db_now FROM github_webhook_deliveries WHERE workspace_id=?",w)).isNotNull();
+        return claimed;
+    }
+    private void completeTarget(IntegrationRun run,String error) {
+        var selected=hooks.targets(w,run.getId()).get(0);
+        var fresh=new DevelopmentItem();fresh.setExternalId("100");fresh.setIssueNumber(1L);fresh.setTitle("最新来源");fresh.setStatus("CLOSED");fresh.setSourceUpdatedAt(java.time.LocalDateTime.of(2026,10,20,12,0));
+        var tracking=new IssueTrackingStateService(sources,integrations,leases,hooks);
+        tx.executeWithoutResult(status->tracking.completeTarget(run,selected,fresh,error));
+        tx.executeWithoutResult(status->leases.finish(run,error==null?"SUCCEEDED":"PARTIAL",error));
+    }
+    @Test void webhookDuplicateAndBurstCoalesceButNewNotificationIsNotLost() {
+        prepareWebhook();receive("first");receive("first");receive("second");
+        assertThat(hooks.count(w,connection)).isEqualTo(2);
+        var run=dispatchAndClaim();assertThat(run.getKind()).isEqualTo("ISSUE_REFRESH");assertThat(hooks.targets(w,run.getId())).hasSize(1);
+        receive("during-running");tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));
+        assertThat(hooks.list(w,connection,0,20)).filteredOn(d->"RECEIVED".equals(d.getStatus())).hasSize(1);
+        completeTarget(run,null);
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));
+        assertThat(hooks.list(w,connection,0,20)).filteredOn(d->"SUCCEEDED".equals(d.getStatus())).hasSize(2);
+        var next=integrations.active(w,connection);assertThat(next.getId()).isNotEqualTo(run.getId());assertThat(hooks.targets(w,next.getId())).hasSize(1);
+        assertThat(integrations.connection(w,connection).getLastSyncedAt()).isNull();
+    }
+    @Test void webhookConcurrentDuplicateDeliveryCommitsOneInboxRow() throws Exception {
+        prepareWebhook();var pool=Executors.newFixedThreadPool(2);
+        try { var a=pool.submit(()->receive("same"));var b=pool.submit(()->receive("same"));a.get(15,TimeUnit.SECONDS);b.get(15,TimeUnit.SECONDS);assertThat(hooks.count(w,connection)).isEqualTo(1); }
+        finally { pool.shutdownNow(); }
+    }
+    @Test void webhookLeaseRecoveryReclaimsJobAndRejectsOldExecutor() {
+        prepareWebhook();receive("recover");var old=dispatchAndClaim();
+        jdbc.update("UPDATE integration_sync_runs SET lease_until=DATE_SUB(NOW(),INTERVAL 1 SECOND) WHERE id=?",old.getId());
+        var resumed=tx.execute(status->leases.claim());assertThat(resumed.getId()).isEqualTo(old.getId());assertThat(resumed.getLeaseToken()).isNotEqualTo(old.getLeaseToken());
+        assertThat(hooks.targets(w,resumed.getId())).hasSize(1);
+        assertThatThrownBy(()->tx.executeWithoutResult(status->leases.heartbeat(old))).isInstanceOf(com.mike.workstation.exception.IntegrationConflictException.class);
+        completeTarget(resumed,null);assertThat(hooks.targets(w,resumed.getId())).isEmpty();
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));assertThat(hooks.list(w,connection,0,20)).singleElement().satisfies(d->assertThat(d.getStatus()).isEqualTo("SUCCEEDED"));
+    }
+    @Test void webhookFailureBackoffExhaustionAndExplicitRetry() {
+        prepareWebhook();receive("failure");
+        for(int attempt=1;attempt<=3;attempt++) {
+            var run=dispatchAndClaim();completeTarget(run,"平台暂时不可用");tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));
+            var delivery=hooks.list(w,connection,0,20).get(0);assertThat(delivery.getAttempts()).isEqualTo(attempt);
+            assertThat(delivery.getStatus()).isEqualTo(attempt<3?"RETRY":"FAILED");
+            assertThat(integrations.active(w,connection)).isNull();
+            jdbc.update("UPDATE github_webhook_deliveries SET next_attempt_at=NOW() WHERE workspace_id=?",w);
+        }
+        var failed=hooks.list(w,connection,0,20).get(0);tx.executeWithoutResult(status->webhook.retry(w,connection,failed.getId()));
+        assertThat(hooks.list(w,connection,0,20).get(0).getAttempts()).isZero();assertThat(dispatchAndClaim()).isNotNull();
+    }
+    @Test void webhookRotationCancelsOldExecutionAndCannotRestoreIt() {
+        prepareWebhook();receive("rotate");var old=dispatchAndClaim();
+        tx.executeWithoutResult(status->webhook.configure(w,connection,new GithubWebhookRequest(false,1,null)));
+        assertThat(integrations.run(w,connection,old.getId()).getStatus()).isEqualTo("CANCELLED");
+        assertThatThrownBy(()->tx.executeWithoutResult(status->leases.heartbeat(old))).isInstanceOf(com.mike.workstation.exception.IntegrationConflictException.class);
+        assertThat(hooks.list(w,connection,0,20).get(0).getStatus()).isEqualTo("CANCELLED");
+    }
+    @Test void webhookOldGenerationIsIgnoredAfterUnlinkAndRelink() {
+        prepareWebhook();receive("old-generation");
+        Long task=sources.list(w,project,0,20).get(0).getTaskId();tx.executeWithoutResult(status->service.unlink(w,task));create();
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));assertThat(integrations.active(w,connection)).isNull();
+        assertThat(hooks.list(w,connection,0,20).get(0).getStatus()).isEqualTo("IGNORED");
+    }
+    @Test void webhookDuePollingGetsPriorityOverTargetedNotifications() {
+        prepareWebhook();receive("poll-first");jdbc.update("UPDATE integration_connections SET schedule_minutes=1,next_sync_at=DATE_SUB(NOW(),INTERVAL 1 SECOND) WHERE id=?",connection);
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));assertThat(integrations.active(w,connection)).isNull();
+        tx.executeWithoutResult(status->leases.schedule(w,connection));assertThat(integrations.active(w,connection).getKind()).isEqualTo("SYNC");
+    }
+    @Test void webhookReceiptAndTargetProgressRollbackTogetherOnFailure() {
+        prepareWebhook();receive("rollback");var run=dispatchAndClaim();
+        assertThatThrownBy(()->tx.executeWithoutResult(status->{
+            var selected=hooks.targets(w,run.getId()).get(0);new IssueTrackingStateService(sources,integrations,leases,hooks).completeTarget(run,selected,null,"模拟失败");
+            throw new IllegalStateException("事务回滚");
+        })).isInstanceOf(IllegalStateException.class);
+        assertThat(hooks.targets(w,run.getId())).hasSize(1);assertThat(sources.list(w,project,0,20).get(0).getLastAttemptAt()).isNull();
+    }
+
+    @Test void webhookClaimSurvivesAbruptJvmExit() throws Exception {
+        prepareWebhook();receive("process-crash");tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));
+        var queued=integrations.active(w,connection);
+        var output=java.nio.file.Path.of("target","webhook-crash-"+queued.getId()+".log").toFile();
+        String executable=java.nio.file.Path.of(System.getProperty("java.home"),"bin","java").toString();
+        var process=new ProcessBuilder(executable,"-cp",System.getProperty("java.class.path"),ClaimAndCrash.class.getName(),
+                System.getProperty("workstation.test.db"),queued.getId().toString()).redirectErrorStream(true).redirectOutput(output).start();
+        try { assertThat(process.waitFor(40,TimeUnit.SECONDS)).isTrue();assertThat(process.exitValue()).as(java.nio.file.Files.readString(output.toPath())).isEqualTo(17); }
+        finally { if(process.isAlive()) process.destroyForcibly(); }
+        var abandoned=integrations.run(w,connection,queued.getId());assertThat(abandoned.getStatus()).isEqualTo("RUNNING");assertThat(hooks.targets(w,queued.getId())).hasSize(1);
+        jdbc.update("UPDATE integration_sync_runs SET lease_until=DATE_SUB(NOW(),INTERVAL 1 SECOND) WHERE id=?",queued.getId());
+        var resumed=tx.execute(status->leases.claim());assertThat(resumed.getLeaseToken()).isNotEqualTo(abandoned.getLeaseToken());completeTarget(resumed,null);
+        tx.executeWithoutResult(status->dispatcher.dispatch(w,connection));assertThat(hooks.list(w,connection,0,20).get(0).getStatus()).isEqualTo("SUCCEEDED");
+    }
+    /** 子进程领取真实队列后立即终止，不执行正常清理，模拟进程崩溃。 */
+    public static class ClaimAndCrash {
+        public static void main(String[] args) {
+            var ds=new UnpooledDataSource("com.mysql.cj.jdbc.Driver",args[0],"root","");
+            var cfg=new Configuration(new Environment("crash",new SpringManagedTransactionFactory(),ds));cfg.setMapUnderscoreToCamelCase(true);cfg.addMapper(IntegrationMapper.class);
+            var mapper=new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(cfg)).getMapper(IntegrationMapper.class);
+            var tx=new TransactionTemplate(new DataSourceTransactionManager(ds));
+            var properties=new com.mike.workstation.config.IntegrationProperties(true,"v1",Map.of(),List.of(),15,10,100,180,30);
+            var state=new IntegrationStateService(mapper,mock(ProjectMapper.class),mock(WorkspaceMapper.class),mock(WorkspaceAuthorizationService.class),
+                    mock(CurrentPrincipalResolver.class),mock(com.mike.workstation.integration.CredentialCipher.class),properties,mock(AuditService.class),mock(IssueSourceMapper.class),mock(GithubWebhookMapper.class));
+            IntegrationRun run=tx.execute(status->state.claim());
+            if(run==null || !run.getId().toString().equals(args[1])) throw new IllegalStateException("未领取预期作业");
+            Runtime.getRuntime().halt(17);
+        }
     }
 }

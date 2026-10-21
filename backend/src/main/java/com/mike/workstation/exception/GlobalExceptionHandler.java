@@ -15,6 +15,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  * <p>把 Service 或框架抛出的异常转换为前端易处理的 JSON 错误响应。</p>
  */
 public class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleHttpStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ApiError.of("WEBHOOK_REQUEST_REJECTED",
+                ex.getReason()==null?"请求被拒绝":ex.getReason()));
+    }
+
     @ExceptionHandler(TaskIssueConflictException.class)
     public ResponseEntity<ApiError> handleTaskIssueConflict(TaskIssueConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of("TASK_ISSUE_CONFLICT",ex.getMessage()));

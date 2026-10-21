@@ -55,6 +55,10 @@ export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
+export type GithubWebhookResponse = Schemas['GithubWebhookResponse'];
+export type GithubWebhookRequest = Schemas['GithubWebhookRequest'];
+export type GithubWebhookDeliveryResponse = Schemas['GithubWebhookDeliveryResponse'];
+export type GithubWebhookDeliveryPageResponse = Schemas['GithubWebhookDeliveryPageResponse'];
 export type IntegrationProvider = Schemas['IntegrationProvider'];
 export type IntegrationScope = Schemas['IntegrationScope'];
 export type IntegrationConnectionRequest = Schemas['IntegrationConnectionRequest'];
@@ -110,6 +114,12 @@ async function listAllPages<T, P extends QueryParams>(
 export function createWorkstationApi(transport: WorkstationTransport) {
   const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
+    webhookApi: {
+      get: (w: number, id: number) => transport.get<GithubWebhookResponse>(`${workspacePath(w)}/integrations/${id}/webhook`),
+      configure: (w: number, id: number, body: GithubWebhookRequest) => transport.put<GithubWebhookResponse, GithubWebhookRequest>(`${workspacePath(w)}/integrations/${id}/webhook`, body),
+      deliveries: (w: number, id: number, page = 0, size = 20) => transport.get<GithubWebhookDeliveryPageResponse>(`${workspacePath(w)}/integrations/${id}/webhook/deliveries`, { page, size }),
+      retry: (w: number, id: number, delivery: number) => transport.post<GithubWebhookDeliveryResponse>(`${workspacePath(w)}/integrations/${id}/webhook/deliveries/${delivery}/retry`),
+    },
     integrationApi: {
       list: (w: number, page = 0, size = 20) => transport.get<IntegrationConnectionPageResponse>(`${workspacePath(w)}/integrations`, { page, size }),
       create: (w: number, body: IntegrationConnectionRequest) => transport.post<IntegrationConnectionResponse, IntegrationConnectionRequest>(`${workspacePath(w)}/integrations`, body),

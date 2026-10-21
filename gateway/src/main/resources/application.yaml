@@ -29,6 +29,18 @@ spring:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:30s}
           routes:
+            # 回调使用签名认证，不接触浏览器 Session 或平台访问 Token。
+            - id: workstation-github-webhook
+              order: -2
+              uri: ${BACKEND_BASE_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/hooks/github/*
+              filters:
+                - RemoveRequestHeader=Authorization
+                - RemoveRequestHeader=Cookie
+                - name: RequestSize
+                  args:
+                    maxSize: 1000000
             # 机器客户端自带 Bearer Token，不经过浏览器 Session 或 Token Relay。
             - id: workstation-backend-bearer
               order: -1

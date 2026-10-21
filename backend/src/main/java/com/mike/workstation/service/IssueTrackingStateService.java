@@ -14,8 +14,9 @@ public class IssueTrackingStateService {
     private final IssueSourceMapper sources;
     private final IntegrationMapper integrations;
     private final IntegrationStateService state;
-    public IssueTrackingStateService(IssueSourceMapper sources,IntegrationMapper integrations,IntegrationStateService state) {
-        this.sources=sources;this.integrations=integrations;this.state=state;
+    private final GithubWebhookMapper webhooks;
+    public IssueTrackingStateService(IssueSourceMapper sources,IntegrationMapper integrations,IntegrationStateService state,GithubWebhookMapper webhooks) {
+        this.sources=sources;this.integrations=integrations;this.state=state;this.webhooks=webhooks;
     }
     @Transactional
     public void begin(IntegrationRun run) {
@@ -28,20 +29,29 @@ public class IssueTrackingStateService {
     @Transactional
     public void complete(IntegrationRun run,IssueSource selected,DevelopmentItem fresh,String error) {
         state.heartbeat(run);
+        apply(run,selected,fresh,error);
+        run.setIssueCursor(selected.getId());run.setProcessed(run.getProcessed()+1);integrations.updateRun(run);
+    }
+    @Transactional
+    public void completeTarget(IntegrationRun run,IssueSource selected,DevelopmentItem fresh,String error) {
+        state.heartbeat(run);
+        String outcome=apply(run,selected,fresh,error);
+        webhooks.completeTarget(run.getWorkspaceId(),run.getId(),selected.getId(),outcome,
+                "FAILED".equals(outcome)?"来源刷新失败，请查看任务来源详情":null);
+        run.setProcessed(run.getProcessed()+1);integrations.updateRun(run);
+    }
+    private String apply(IntegrationRun run,IssueSource selected,DevelopmentItem fresh,String error) {
         integrations.lockRepository(run.getWorkspaceId(),selected.getRepositoryId());
         IssueSource stored=sources.lock(run.getWorkspaceId(),selected.getId());
         String currentToken=sources.linkToken(run.getWorkspaceId(),selected.getId());
         Long project=sources.boundProject(run.getWorkspaceId(),selected.getRepositoryId());
         ExternalRepository repo=integrations.repository(run.getWorkspaceId(),selected.getRepositoryId());
-        if(stored!=null && Objects.equals(currentToken,selected.getLinkToken()) && currentToken!=null
-                && Objects.equals(project,selected.getProjectId()) && repo!=null
-                && run.getConnectionId().equals(repo.getConnectionId())) {
-            save(stored,fresh,error);
-            if(stored.getLastError()!=null) run.setFailed(run.getFailed()+1);
-        }
-        run.setIssueCursor(selected.getId());
-        run.setProcessed(run.getProcessed()+1);
-        integrations.updateRun(run);
+        if(stored==null || currentToken==null || !Objects.equals(currentToken,selected.getLinkToken())
+                || !Objects.equals(project,selected.getProjectId()) || repo==null
+                || !run.getConnectionId().equals(repo.getConnectionId())) return "CANCELLED";
+        save(stored,fresh,error);
+        if(stored.getLastError()!=null) { run.setFailed(run.getFailed()+1);return "FAILED"; }
+        return "SUCCEEDED";
     }
     private void save(IssueSource stored,DevelopmentItem fresh,String error) {
         stored.setLastAttemptAt(LocalDateTime.now(ZoneId.systemDefault()));

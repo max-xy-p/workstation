@@ -29,11 +29,22 @@ import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
+    /** Webhook 专用入口使用原文签名认证，不接受 Cookie 或 Bearer 代替签名。 */
+    @Bean
+    @org.springframework.core.annotation.Order(0)
+    public SecurityFilterChain webhookSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http.securityMatcher("/api/hooks/github/*")
+                .authorizeHttpRequests(a->a.requestMatchers(org.springframework.http.HttpMethod.POST,"/api/hooks/github/*").permitAll().anyRequest().denyAll())
+                .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(c->c.disable()).requestCache(c->c.disable()).build();
+    }
+
     /**
      * Backend 是 OAuth2 Resource Server，只信任 Keycloak 签发的 Bearer Token。
      * 它不负责登录和浏览器 Session，但仍必须独立校验 Token，防止请求绕过 Gateway。
      */
     @Bean
+    @org.springframework.core.annotation.Order(10)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize

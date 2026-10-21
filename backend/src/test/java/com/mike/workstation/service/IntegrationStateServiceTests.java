@@ -27,7 +27,7 @@ class IntegrationStateServiceTests {
     private final CredentialCipher cipher=mock(CredentialCipher.class);
     private final AuditService audit=mock(AuditService.class);
     private final IntegrationProperties properties=new IntegrationProperties(true,"v1",Map.of(),List.of(),15,10,100,180,30);
-    private final IntegrationStateService state=new IntegrationStateService(mapper,projects,workspaces,authorization,principal,cipher,properties,audit,mock(IssueSourceMapper.class));
+    private final IntegrationStateService state=new IntegrationStateService(mapper,projects,workspaces,authorization,principal,cipher,properties,audit,mock(IssueSourceMapper.class),mock(GithubWebhookMapper.class));
     private IntegrationConnection c;
     private IntegrationRun run;
     @BeforeEach void setup() {

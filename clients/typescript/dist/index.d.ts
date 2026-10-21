@@ -52,6 +52,10 @@ export type DeletedNoteListParams = NonNullable<operations['listDeletedNotes']['
 export type ProjectListParams = NonNullable<operations['listProjects']['parameters']['query']>;
 export type TaskListParams = NonNullable<operations['listTasks']['parameters']['query']>;
 export type AuditEventListParams = NonNullable<operations['listAuditEvents']['parameters']['query']>;
+export type GithubWebhookResponse = Schemas['GithubWebhookResponse'];
+export type GithubWebhookRequest = Schemas['GithubWebhookRequest'];
+export type GithubWebhookDeliveryResponse = Schemas['GithubWebhookDeliveryResponse'];
+export type GithubWebhookDeliveryPageResponse = Schemas['GithubWebhookDeliveryPageResponse'];
 export type IntegrationProvider = Schemas['IntegrationProvider'];
 export type IntegrationScope = Schemas['IntegrationScope'];
 export type IntegrationConnectionRequest = Schemas['IntegrationConnectionRequest'];
@@ -82,6 +86,38 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    webhookApi: {
+        get: (w: number, id: number) => Promise<{
+            configured: boolean;
+            enabled: boolean;
+            version: number;
+            endpointPath: string | null;
+        }>;
+        configure: (w: number, id: number, body: GithubWebhookRequest) => Promise<{
+            configured: boolean;
+            enabled: boolean;
+            version: number;
+            endpointPath: string | null;
+        }>;
+        deliveries: (w: number, id: number, page?: number, size?: number) => Promise<{
+            items: components["schemas"]["GithubWebhookDeliveryResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        retry: (w: number, id: number, delivery: number) => Promise<{
+            id: number;
+            deliveryKey: string;
+            eventType: string;
+            action: string | null;
+            status: "RECEIVED" | "QUEUED" | "RETRY" | "SUCCEEDED" | "FAILED" | "IGNORED" | "CANCELLED";
+            attempts: number;
+            runId: number | null;
+            lastError: string | null;
+            receivedAt: string;
+        }>;
+    };
     integrationApi: {
         list: (w: number, page?: number, size?: number) => Promise<{
             items: components["schemas"]["IntegrationConnectionResponse"][];

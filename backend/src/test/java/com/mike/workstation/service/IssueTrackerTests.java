@@ -15,7 +15,7 @@ class IssueTrackerTests {
     private final IssueTrackingStateService state=mock(IssueTrackingStateService.class);
     private final IntegrationStateService leases=mock(IntegrationStateService.class);
     private final RepositoryProvider provider=mock(RepositoryProvider.class);
-    private final IssueTracker tracker=new IssueTracker(sources,integrations,state,leases);
+    private final IssueTracker tracker=new IssueTracker(sources,integrations,state,leases,mock(GithubWebhookMapper.class));
     private final IntegrationRun run=new IntegrationRun();
     private final IntegrationConnection connection=new IntegrationConnection();
     private final IssueSource source=new IssueSource();

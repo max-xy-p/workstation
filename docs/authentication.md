@@ -121,3 +121,9 @@ Gateway 的验证保护统一入口，并区分浏览器请求和机器请求；
 - 关键写操作通过 Transactional Outbox、XXL-JOB 和 RabbitMQ 异步写入只追加审计事件；权限拒绝采用独立事务尽力记录，审计故障不改变原授权响应。完整故障边界见 [`audit/README.md`](audit/README.md)。审计不记录 Token、Secret、密码或笔记正文。
 
 当前认证能力、待验证事项和已知问题见 [`STATUS.md`](STATUS.md)。
+
+## GitHub Webhook 专用认证
+
+`POST /api/hooks/github/{endpointId}` 使用独立的原文签名认证。Gateway 不读取或转发 Session、Cookie 与 Bearer Token，Backend 对原始请求执行 HMAC-SHA256 验签；浏览器登录或机器 Token 都不能替代签名。该例外只适用于准确的回调路径 POST，普通业务 API 的系统准入、Workspace 权限和浏览器 CSRF 要求不变。
+
+Webhook 配置、投递查询与显式重试仍是受认证的 Workspace 业务 API，仅允许有数据源管理权限的成员。有效签名只允许持久化通知，不能授予任意 Workspace 的业务访问；后台继续核对连接原主体、配置版本、仓库绑定和任务来源关系。密钥轮换与停用取消旧通知作业，详情见 [数据源流程](integrations.md#github-webhook-与指定来源刷新)。

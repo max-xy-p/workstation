@@ -61,6 +61,7 @@
           <header class="collection-heading"><div><h2>连接设置</h2><p>配置发现范围与同步策略，访问凭证始终隐藏。</p></div><button class="secondary" type="button" :disabled="busy" @click="edit(current)">编辑设置</button></header>
           <dl class="settings-facts"><div><dt>发现范围</dt><dd>{{ current.scope === 'OWNED' ? '本人拥有的仓库' : '本人及参与的组织 / 协作仓库' }}</dd></div><div><dt>Fork 仓库</dt><dd>{{ current.includeForks ? '包含' : '不包含' }}</dd></div><div><dt>归档仓库</dt><dd>{{ current.includeArchived ? '包含' : '不包含' }}</dd></div><div><dt>自动导入新仓库</dt><dd>{{ current.autoImport ? '已开启' : '已关闭' }}</dd></div><div><dt>自动同步</dt><dd>{{ schedule(current.scheduleMinutes) }}</dd></div><div><dt>访问凭证</dt><dd>已加密保存，不回显</dd></div></dl>
           <div class="actions"><button class="secondary" type="button" :disabled="busy" @click="validate(current)">验证连接</button><button class="secondary" type="button" :disabled="busy" @click="enable(current)">{{ current.enabled ? '暂停同步' : '启用同步' }}</button></div>
+          <GithubWebhookPanel v-if="current.provider === 'GITHUB'" :workspace-id="workspaceId" :connection-id="current.id" />
           <section class="connection-danger"><h3>移除连接</h3><p>停止同步并删除凭证，已导入的项目与快照保留。</p><button class="danger" type="button" :disabled="busy" @click="remove(current)">移除连接</button></section>
         </section>
       </template>
@@ -95,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import GithubWebhookPanel from '../components/GithubWebhookPanel.vue';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { integrationApi, projectApi, type IntegrationConnectionRequest, type IntegrationConnectionResponse,
@@ -145,7 +147,7 @@ const providerLabel = (v: string) => v === 'GITHUB' ? 'GitHub' : 'GitLab';
 const visibilityLabel = (v: string) => ({ PRIVATE: '私有', PUBLIC: '公开', INTERNAL: '内部', private: '私有', public: '公开', internal: '内部' }[v] || v);
 const safeUrl = (v: string) => /^https?:\/\//i.test(v) ? v : '#';
 const statusLabel = (s: string) => ({ QUEUED: '等待执行', RUNNING: '执行中', SUCCEEDED: '已完成', PARTIAL: '部分成功', FAILED: '失败', CANCELLED: '已取消' }[s] || s);
-const kindLabel = (s: string) => ({ DISCOVER: '发现仓库', IMPORT: '导入仓库', SYNC: '同步开发情况' }[s] || s);
+const kindLabel = (s: string) => ({ DISCOVER: '发现仓库', IMPORT: '导入仓库', SYNC: '同步开发情况', ISSUE_REFRESH: '刷新指定 Issue 来源' }[s] || s);
 const detailRoute = (id: number) => ({ name: 'integration-detail', params: { workspaceId, connectionId: id } });
 let disposed = false, polling = false, itemRequest = 0, repositoryRequest = 0, runRequest = 0;
 

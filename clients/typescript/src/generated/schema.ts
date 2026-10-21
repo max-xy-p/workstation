@@ -871,6 +871,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/integrations/{id}/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** 查询 GitHub Webhook 配置，不返回 Secret */
+        get: operations["getGithubWebhook"];
+        /** 保存、停用或轮换 Webhook 配置 */
+        put: operations["configureGithubWebhook"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/integrations/{id}/webhook/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** 分页查询已验签投递及处理结果 */
+        get: operations["listGithubWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/integrations/{id}/webhook/deliveries/{deliveryId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                deliveryId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 显式重试耗尽或取消的来源刷新，重新校验当前关联 */
+        post: operations["retryGithubWebhookDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hooks/github/{endpointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpointId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** GitHub 专用原文 HMAC-SHA256 验签回调，不使用 Session 或 Bearer 认证 */
+        post: operations["receiveGithubWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1519,6 +1600,42 @@ export interface components {
         IssueTaskResult: {
             task: components["schemas"]["TaskResponse"];
             created: boolean;
+        };
+        GithubWebhookResponse: {
+            configured: boolean;
+            enabled: boolean;
+            /** Format: int64 */
+            version: number;
+            endpointPath: string | null;
+        };
+        GithubWebhookRequest: {
+            enabled: boolean;
+            /** Format: int64 */
+            expectedVersion: number;
+            secret?: string | null;
+        };
+        GithubWebhookDeliveryResponse: {
+            /** Format: int64 */
+            id: number;
+            deliveryKey: string;
+            eventType: string;
+            action: string | null;
+            /** @enum {string} */
+            status: "RECEIVED" | "QUEUED" | "RETRY" | "SUCCEEDED" | "FAILED" | "IGNORED" | "CANCELLED";
+            attempts: number;
+            /** Format: int64 */
+            runId: number | null;
+            lastError: string | null;
+            /** Format: date-time */
+            receivedAt: string;
+        };
+        GithubWebhookDeliveryPageResponse: {
+            items: components["schemas"]["GithubWebhookDeliveryResponse"][];
+            page: number;
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
         };
     };
     responses: {
@@ -4151,6 +4268,177 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getGithubWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 端点配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubWebhookResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    configureGithubWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GithubWebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description 已保存配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubWebhookResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listGithubWebhookDeliveries: {
+        parameters: {
+            query?: {
+                /** @description 从 0 开始的页码 */
+                page?: components["parameters"]["Page"];
+                /** @description 每页数量 */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 投递记录 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubWebhookDeliveryPageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    retryGithubWebhookDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                deliveryId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已重新排队 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GithubWebhookDeliveryResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    receiveGithubWebhook: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Hub-Signature-256": string;
+                "X-GitHub-Delivery": string;
+                "X-GitHub-Event": string;
+            };
+            path: {
+                endpointId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 验签后的投递已持久化，重复投递不重复处理 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description 原文超过 1 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 功能关闭或无法持久化 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

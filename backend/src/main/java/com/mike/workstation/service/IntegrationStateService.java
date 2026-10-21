@@ -34,12 +34,13 @@ public class IntegrationStateService {
     private final IntegrationProperties properties;
     private final AuditService audit;
     private final IssueSourceMapper issueSources;
+    private final GithubWebhookMapper webhooks;
 
     public IntegrationStateService(IntegrationMapper mapper, ProjectMapper projects, WorkspaceMapper workspaces,
             WorkspaceAuthorizationService authorization, CurrentPrincipalResolver principals, CredentialCipher cipher,
-            IntegrationProperties properties, AuditService audit, IssueSourceMapper issueSources) {
+            IntegrationProperties properties, AuditService audit, IssueSourceMapper issueSources, GithubWebhookMapper webhooks) {
         this.mapper=mapper; this.projects=projects; this.workspaces=workspaces; this.authorization=authorization;
-        this.principals=principals; this.cipher=cipher; this.properties=properties; this.audit=audit;this.issueSources=issueSources;
+        this.principals=principals; this.cipher=cipher; this.properties=properties; this.audit=audit;this.issueSources=issueSources;this.webhooks=webhooks;
     }
     public void requireProject(Long w,Long project) {
         RequestChecks.requiredExisting(projects.findById(w,project),"项目不存在");
@@ -150,7 +151,8 @@ public class IntegrationStateService {
         IntegrationConnection c=locked(w,id);
         if(!c.isEnabled() || c.getScheduleMinutes()<=0 || c.getNextSyncAt()==null || c.getNextSyncAt().isAfter(LocalDateTime.now(ZoneId.systemDefault()))) return;
         if(!canManage(c)) { c.setEnabled(false); c.setVersion(c.getVersion()+1); mapper.cancel(w,id); mapper.updateConnection(c); return; }
-        if(mapper.active(w,id)==null) mapper.insertRun(newRun(c,"SYNC",UUID.randomUUID().toString(),hash("SCHEDULED"),c.getOwnerSubject()));
+        if(mapper.active(w,id)!=null) return;
+        mapper.insertRun(newRun(c,"SYNC",UUID.randomUUID().toString(),hash("SCHEDULED"),c.getOwnerSubject()));
         c.setNextSyncAt(LocalDateTime.now(ZoneId.systemDefault()).plusMinutes(c.getScheduleMinutes())); mapper.updateConnection(c);
     }
     @Transactional
@@ -164,6 +166,12 @@ public class IntegrationStateService {
         if(!c.isEnabled() || c.getVersion()!=run.getConfigVersion() || !canManage(c) ||
                 !manages(c.getWorkspaceId(),run.getActorSubject()) || mapper.lockRun(run)==null)
             throw new IntegrationConflictException("同步任务已取消或租约已失效");
+        if(run.getWebhookId()!=null) {
+            GithubWebhook hook=webhooks.get(run.getWorkspaceId(),run.getConnectionId());
+            if(hook==null || !hook.isEnabled() || !hook.getId().equals(run.getWebhookId())
+                    || !Integer.valueOf(hook.getVersion()).equals(run.getWebhookVersion()))
+                throw new IntegrationConflictException("Webhook 配置已变化");
+        }
         run.setLeaseUntil(LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(properties.leaseSeconds()));
         return c;
     }
@@ -261,7 +269,7 @@ public class IntegrationStateService {
         if(c==null || mapper.lockRun(run)==null) return;
         if(c.isDeleted() || !c.isEnabled() || c.getVersion()!=run.getConfigVersion() || !canManage(c) || !manages(c.getWorkspaceId(),run.getActorSubject())) status="CANCELLED";
         run.setStatus(status); run.setLastError(error); run.setFinishedAt(LocalDateTime.now(ZoneId.systemDefault())); mapper.updateRun(run);
-        if(!"CANCELLED".equals(status)) mapper.completed(c.getWorkspaceId(),c.getId(),run.getFinishedAt(),error);
+        if(!"CANCELLED".equals(status) && !"ISSUE_REFRESH".equals(run.getKind())) mapper.completed(c.getWorkspaceId(),c.getId(),run.getFinishedAt(),error);
         auditBackground(run.getWorkspaceId(),run.getActorSubject(),"SYNC_"+status,"SYNC_RUN",run.getId());
     }
     @Transactional

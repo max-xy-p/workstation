@@ -33,6 +33,13 @@ class GeneratedContractTests(unittest.TestCase):
         }
         self.assertEqual(TaskIssueSourceResponse.from_dict(payload).to_dict(), payload)
 
+    def test_webhook_configuration_never_requires_a_returned_secret(self) -> None:
+        from workstation_client.models import GithubWebhookRequest, GithubWebhookResponse
+        request = GithubWebhookRequest(enabled=False, expected_version=3, secret=None)
+        self.assertEqual(request.to_dict(), {"enabled": False, "expectedVersion": 3, "secret": None})
+        response = GithubWebhookResponse.from_dict({"configured": True, "enabled": False, "version": 4, "endpointPath": "/api/hooks/github/test"})
+        self.assertNotIn("secret", response.to_dict())
+
     def test_api_error_parses_offset_timestamp(self) -> None:
         error = ApiError.from_dict(
             {

@@ -49,12 +49,25 @@ import java.util.Map;
 public class SecurityConfig {
     private static final String ACCESS_DENIED_CODE = "ACCESS_DENIED";
     private static final String UNAUTHENTICATED_CODE = "UNAUTHENTICATED";
+    /** 此入口只转发平台签名通知，业务授权和 HMAC 由 Backend 独立核验。 */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public SecurityWebFilterChain webhookSecurityWebFilterChain(ServerHttpSecurity http) {
+        return http.securityMatcher(ServerWebExchangeMatchers.pathMatchers("/api/hooks/github/*"))
+                .authorizeExchange(a->a.pathMatchers(HttpMethod.POST,"/api/hooks/github/*").permitAll().anyExchange().denyAll())
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
+                .requestCache(ServerHttpSecurity.RequestCacheSpec::disable)
+                .exceptionHandling(e->e.authenticationEntryPoint((exchange,error)->writeError(exchange,HttpStatus.FORBIDDEN,ACCESS_DENIED_CODE,"Webhook 只允许 POST 通知")))
+                .build();
+    }
+
     /**
      * Python 等机器客户端携带自己的 Bearer Token。该链不读取浏览器 Session，
      * 也不执行 CSRF；只有通过 JWT、Audience 和 WORKSTATION_SERVICE 角色校验后才能访问业务 API。
      */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     public SecurityWebFilterChain bearerSecurityWebFilterChain(
             ServerHttpSecurity http,
             ReactiveJwtDecoder jwtDecoder) {
@@ -87,7 +100,7 @@ public class SecurityConfig {
      * Backend 不读取这个 Session；Gateway 转发请求时会把 Access Token 放进 Authorization 请求头。
      */
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
+    @Order(Ordered.HIGHEST_PRECEDENCE + 2)
     public SecurityWebFilterChain browserSecurityWebFilterChain(
             ServerHttpSecurity http,
             ReactiveClientRegistrationRepository clients,

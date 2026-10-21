@@ -26,20 +26,28 @@ public class IntegrationWorker {
     private final CredentialCipher cipher;
     private final IntegrationProperties properties;
     private final IssueTracker issueTracker;
+    private final GithubWebhookDispatcher webhooks;
     public IntegrationWorker(IntegrationMapper mapper,IntegrationStateService state,IntegrationService service,
-            CredentialCipher cipher,IntegrationProperties properties,IssueTracker issueTracker) {
-        this.mapper=mapper; this.state=state; this.service=service; this.cipher=cipher; this.properties=properties; this.issueTracker=issueTracker;
+            CredentialCipher cipher,IntegrationProperties properties,IssueTracker issueTracker,GithubWebhookDispatcher webhooks) {
+        this.mapper=mapper; this.state=state; this.service=service; this.cipher=cipher; this.properties=properties; this.issueTracker=issueTracker;this.webhooks=webhooks;
     }
     @Scheduled(fixedDelay=3000)
     @XxlJob("integrationQueueJob")
     public void execute() {
+        for(GithubWebhook hook:webhooks.pending()) {
+            try { webhooks.dispatch(hook.getWorkspaceId(),hook.getConnectionId()); }
+            catch(RuntimeException ex) {
+                org.slf4j.LoggerFactory.getLogger(IntegrationWorker.class).warn("Webhook 通知调度失败，将在后续周期重试");
+            }
+        }
         IntegrationRun run=state.claim(); if(run==null) return;
         try {
             state.heartbeat(run);
             IntegrationConnection c=service.require(run.getWorkspaceId(),run.getConnectionId());
             RepositoryProvider provider=service.provider(c.getProvider());
             String token=cipher.decrypt(c.getCredential(),c.getKeyVersion(),IntegrationService.context(c));
-            if("IMPORT".equals(run.getKind())) imports(run);
+            if("ISSUE_REFRESH".equals(run.getKind())) issueTracker.trackTargets(run,c,provider,token);
+            else if("IMPORT".equals(run.getKind())) imports(run);
             else {
                 if("DISCOVER".equals(run.getKind()) || c.isAutoImport()) discover(run,c,provider,token);
                 if("SYNC".equals(run.getKind())) {

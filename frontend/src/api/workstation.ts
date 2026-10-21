@@ -5,6 +5,10 @@ export type {
   TaskIssueSourceResponse,
   IssueTaskCreateRequest,
   IssueTaskLinkRequest,
+  GithubWebhookResponse,
+  GithubWebhookRequest,
+  GithubWebhookDeliveryResponse,
+  GithubWebhookDeliveryPageResponse,
   IntegrationProvider,
   IntegrationScope,
   IntegrationConnectionRequest,
@@ -97,6 +101,7 @@ const workstationApi = createWorkstationApi(api);
 
 export const {
   issueApi,
+  webhookApi,
   integrationApi,
   workspaceApi,
   auditApi,

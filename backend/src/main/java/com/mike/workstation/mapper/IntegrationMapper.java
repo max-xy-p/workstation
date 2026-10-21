@@ -142,8 +142,8 @@ public interface IntegrationMapper {
     int suppressRepository(@Param("w") Long w,@Param("project") Long project,@Param("repository") Long repository);
 
     @Insert("""
-            INSERT INTO integration_sync_runs (workspace_id,connection_id,kind,status,request_key,request_hash,actor_subject,config_version,created_at)
-            VALUES (#{workspaceId},#{connectionId},#{kind},#{status},#{requestKey},#{requestHash},#{actorSubject},#{configVersion},#{createdAt})
+            INSERT INTO integration_sync_runs (workspace_id,connection_id,kind,status,request_key,request_hash,actor_subject,config_version,created_at,webhook_id,webhook_version)
+            VALUES (#{workspaceId},#{connectionId},#{kind},#{status},#{requestKey},#{requestHash},#{actorSubject},#{configVersion},#{createdAt},#{webhookId},#{webhookVersion})
             """)
     @Options(useGeneratedKeys=true,keyProperty="id")
     int insertRun(IntegrationRun r);

@@ -14,9 +14,10 @@ public class IssueTracker {
     private final IntegrationMapper integrations;
     private final IssueTrackingStateService state;
     private final IntegrationStateService leases;
+    private final GithubWebhookMapper webhooks;
     public IssueTracker(IssueSourceMapper sources,IntegrationMapper integrations,IssueTrackingStateService state,
-            IntegrationStateService leases) {
-        this.sources=sources;this.integrations=integrations;this.state=state;this.leases=leases;
+            IntegrationStateService leases,GithubWebhookMapper webhooks) {
+        this.sources=sources;this.integrations=integrations;this.state=state;this.leases=leases;this.webhooks=webhooks;
     }
     public void track(IntegrationRun run,IntegrationConnection connection,RepositoryProvider provider,String token) {
         if(!"GITHUB".equals(connection.getProvider())) return;
@@ -24,18 +25,23 @@ public class IssueTracker {
         List<IssueSource> batch;
         do {
             batch=sources.pending(run.getWorkspaceId(),connection.getId(),run.getIssueCursor(),run.getIssueUpperBound());
-            for(IssueSource source:batch) refresh(run,provider,connection,token,source);
+            for(IssueSource source:batch) refresh(run,provider,connection,token,source,false);
         } while(!batch.isEmpty());
     }
-    private void refresh(IntegrationRun run,RepositoryProvider provider,IntegrationConnection connection,String token,IssueSource source) {
+    public void trackTargets(IntegrationRun run,IntegrationConnection connection,RepositoryProvider provider,String token) {
+        for(IssueSource source:webhooks.targets(run.getWorkspaceId(),run.getId())) refresh(run,provider,connection,token,source,true);
+    }
+    private void refresh(IntegrationRun run,RepositoryProvider provider,IntegrationConnection connection,String token,IssueSource source,boolean targeted) {
         leases.heartbeat(run);
-        DevelopmentItem fresh=null;String error=null;
+        DevelopmentItem fresh=null;
+        String error=null;
         try {
             ExternalRepository repository=integrations.repository(run.getWorkspaceId(),source.getRepositoryId());
             if(repository==null) error="来源仓库不可读取";
             else fresh=provider.issue(connection,token,repository,source.getIssueNumber());
         } catch(IntegrationConflictException ex) { throw ex; }
         catch(RuntimeException ex) { error=IntegrationWorker.safeError(ex); }
-        state.complete(run,source,fresh,error);
+        if(targeted) state.completeTarget(run,source,fresh,error);
+        else state.complete(run,source,fresh,error);
     }
 }

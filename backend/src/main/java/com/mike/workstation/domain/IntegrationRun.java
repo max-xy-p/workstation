@@ -6,6 +6,8 @@ import lombok.Data;
 @Data
 public class IntegrationRun {
     private Long id;
+    private String webhookId;
+    private Integer webhookVersion;
     private long issueCursor;
     private Long issueUpperBound;
     private Long workspaceId;

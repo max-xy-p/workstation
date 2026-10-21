@@ -47,6 +47,21 @@ class ResourceServerIntegrationTests {
     @MockitoBean
     private com.mike.workstation.service.WorkspaceService workspaceService;
 
+    @MockitoBean
+    private com.mike.workstation.service.GithubWebhookService githubWebhooks;
+
+    @Test void webhookHasDedicatedSignatureEntryAndDoesNotOpenManagementApi() throws Exception {
+        mockMvc.perform(post("/api/hooks/github/endpoint").contentType(MediaType.APPLICATION_JSON)
+                .header("X-Hub-Signature-256","signature").header("X-GitHub-Delivery","delivery").header("X-GitHub-Event","ping")
+                .header("Authorization","Bearer invalid-token").content("{}")).andExpect(status().isAccepted());
+        verify(githubWebhooks).receive(eq("endpoint"),eq("delivery"),eq("ping"),eq("signature"),any(byte[].class));
+        mockMvc.perform(get("/api/workspaces/1/integrations/2/webhook")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/hooks/github/endpoint/nested").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/hooks/github/endpoint").contentType(MediaType.APPLICATION_JSON)
+                .header("X-Hub-Signature-256","signature").header("X-GitHub-Delivery","delivery").header("X-GitHub-Event","ping")
+                .content("x".repeat(1_000_001))).andExpect(status().isPayloadTooLarge());
+    }
+
     @Test
     void noteHistoryEndpointsKeepWorkspaceAndConflictContract() throws Exception {
         when(noteRevisions.list(1L,2L,5L,0,20)).thenReturn(com.mike.workstation.dto.PageResponse.of(java.util.List.of(),0,20,0));

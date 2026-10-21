@@ -23,6 +23,12 @@ public interface IssueSourceMapper {
             LEFT JOIN workspace_members m ON m.workspace_id=c.workspace_id AND m.principal_subject=c.owner_subject
             """;
 
+    @Select(LINKED+" WHERE s.workspace_id=#{w} AND r.connection_id=#{c} AND r.external_id=#{repo} AND s.external_id=#{issue} AND s.provider='GITHUB' AND p.project_id=t.project_id")
+    IssueSource external(@Param("w") Long w,@Param("c") Long c,@Param("repo") String repo,@Param("issue") String issue);
+
+    @Select(LINKED+" WHERE s.workspace_id=#{w} AND s.id=#{id}")
+    IssueSource tracked(@Param("w") Long w,@Param("id") Long id);
+
     @Select("SELECT id FROM workspaces WHERE id=#{w} FOR UPDATE")
     Long lockWorkspace(Long w);
 

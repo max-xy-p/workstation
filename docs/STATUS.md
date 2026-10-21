@@ -4,9 +4,11 @@
 
 ## 当前状态
 
-项目以 Workspace 为边界支持多人协作。概览页是统一入口，所有业务页面共用导航、空间切换与页面操作区；用户可创建共享 Workspace 并管理成员。笔记使用文件树与编辑区，可主动进入专注模式，切换笔记保留树状态、切换空间重建上下文；服务端版本条件更新与本地草稿恢复继续生效。正文持久化在 MySQL，待确认草稿按用户、Workspace 和编辑会话隔离保存在浏览器 IndexedDB。项目任务可关联同项目的依据笔记；GitHub Issue 可创建或关联任务，来源状态独立展示并持续跟踪。统一搜索页查询当前 Workspace 的项目、任务与笔记。项目、任务、标签、文件夹和数据源通过按需抽屉编辑；数据源列表与连接详情分开，仓库选择和导入确认分步完成。
+项目以 Workspace 为边界支持多人协作。概览页是统一入口，所有业务页面共用导航、空间切换与页面操作区；用户可创建共享 Workspace 并管理成员。笔记使用文件树与编辑区，可主动进入专注模式，切换笔记保留树状态、切换空间重建上下文；服务端版本条件更新与本地草稿恢复继续生效。正文持久化在 MySQL，待确认草稿按用户、Workspace 和编辑会话隔离保存在浏览器 IndexedDB。项目任务可关联同项目的依据笔记；GitHub Issue 可创建或关联任务，来源状态独立展示并持续跟踪，GitHub Webhook 可触发指定来源刷新。统一搜索页查询当前 Workspace 的项目、任务与笔记。项目、任务、标签、文件夹和数据源通过按需抽屉编辑；数据源列表与连接详情分开，仓库选择和导入确认分步完成。
 
 ## 已完成
+
+- [x] GitHub Webhook 原文签名入口、加密端点配置、投递去重与持久化收件箱、通知合并、指定来源刷新、有限重试与管理页面；复用队列和提交规则，定时校准优先，包含真实子进程异常退出后的恢复验证
 
 - [x] GitHub Issue 单条创建任务、关联已有任务、解除来源、一对一并发保护与审计；持久化来源脱离近期快照重建，按队列游标定点刷新，展示状态差异且不覆盖本地任务
 
@@ -25,7 +27,7 @@
 - [x] Keycloak 用户/管理员/机器系统角色分离，Gateway 只做系统准入，Backend 执行业务授权
 - [x] 可搜索的 Workspace 切换器、个人/共享分组、创建入口、键盘与移动端操作，以及成员名称模糊查询和局部管理状态
 - [x] Frontend Workspace 路由和上下文，以及按用户、Workspace、笔记与编辑会话隔离的 IndexedDB 草稿键
-- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 同步为 `4.3.0`，包含笔记历史及兼容新增的 GitHub Issue 任务关联契约
+- [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 同步为 `4.4.0`，包含笔记历史、Issue 任务关联及 Webhook 管理与回调契约
 - [x] MySQL 分库保存 Workstation、Keycloak 和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计消息
 - [x] 笔记创建、详情、更新、软删除、回收站恢复、永久删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
@@ -56,6 +58,8 @@
 
 ## 进行中
 
+- [ ] Webhook 需要在目标环境维护窗口备份并执行迁移，再配置真实 GitHub 仓库 HTTPS 回调、Secret 并验收；本轮仅操作隔离数据库与模拟 API。当前源码 Sonar 完整分析仍待此前源码外传授权，MCP 查询的历史结果不能替代本轮结论。
+
 - [ ] GitHub Issue 关联的目标环境备份、任务来源迁移和真实 GitHub 账号同步需另行安排；当前仅验证隔离数据库和模拟 API 浏览器。Sonar 源码远程分析被自动审批拒绝，需用户明确授权向项目 max-xy-p_workstation 发送源码后才能继续，不能用历史云端 Quality Gate 代替本轮结论。
 
 - [ ] 在目标环境维护窗口暂停旧应用写入并备份，执行笔记历史迁移后切换配套版本；本轮只验证隔离数据库，未操作目标数据库。使用与升级边界见 [笔记历史](note-history.md)。
@@ -65,11 +69,13 @@
 
 ## 后续计划
 
-- [ ] 按实际使用需求扩展 GitHub App/OAuth、Webhook、GitLab Issue 关联及远端写回；当前使用 Token 与单向同步。
+- [ ] 按实际使用需求扩展 GitHub App/OAuth、GitLab Issue 关联及远端写回；当前使用 Token 与单向同步。
 - [ ] 文件夹拖拽排序与移动笔记，尚未确定实现时间
 - [ ] 根据真实查询量评估中文全文检索；当前仍使用 SQL `LIKE`
 
 ## 已知问题
+
+- Webhook 投递与指定目标暂无自动清理；移除连接后保留历史但当前管理入口不可用。Webhook 必须手动配置 GitHub 侧；没有定时周期时，漏收事件仍需管理员手动同步校准。应用与数据库须沿用部署中的一致时区约定。
 
 - 已关联 Issue 来源记录暂无自动清理，需纳入备份和容量观察；跨仓库转移首期不自动重绑，当前也未提供人工核实后的重绑入口。旧采集记录缺少 Issue 编号时，需管理员重新同步后才能建立关联。
 
@@ -80,7 +86,7 @@
 - 三方合并以 Markdown 行为单位，同一行内不同词语的修改仍可能冲突；插入与另一处修改边界重合时保守地要求选择，不进行语义合并。大文本、缺少可信基准和 Worker 不可用时降级手动核对。
 - 编辑器和后端没有图片/附件上传能力。
 - Markdown 导入读取后端机器路径，不是浏览器文件上传。
-- 全新数据库依次执行 `schema.sql`、`migrate-project-integrations.sql`、`migrate-note-revisions.sql` 与 `migrate-task-issues.sql`，Compose 已配置顺序；已有数据卷仍需明确执行迁移，没有 Flyway/Liquibase 等自动迁移机制。
+- 全新数据库依次执行 `schema.sql`、`migrate-project-integrations.sql`、`migrate-note-revisions.sql`、`migrate-task-issues.sql` 与 `migrate-github-webhooks.sql`，Compose 已配置顺序；已有数据卷仍需明确执行迁移，没有 Flyway/Liquibase 等自动迁移机制。
 - 已有数据卷不会自动创建 `audit_outbox`、`audit_events.event_id` 或 XXL-JOB 数据库；需备份后按审计文档执行独立迁移，本次没有执行数据库迁移。
 - 现有数据库和已有 Keycloak Realm 不会自动升级，启用 Workspace 版本前必须按升级说明手动处理并备份。
 - 旧 `.env.docker` 需将初始账号变量改为 `WORKSTATION_INITIAL_USERNAME` 和 `WORKSTATION_INITIAL_PASSWORD`。
@@ -93,6 +99,8 @@
 - `WorkspaceDatabaseTests` 会在隔离库中遗留成员搜索样例，复用同一个库重跑可能发生主键重复；当前验证需为每轮测试准备全新隔离库，测试数据清理仍待完善。
 
 ## 验证与说明
+
+- 2026-10-20 按确认方案实现 GitHub Webhook 与指定来源刷新，稳定规则已并入数据源、认证、架构和部署说明，完成方案已清理。Secret 加密且不回显，专用 POST 签名入口与 Session/Bearer 业务链隔离，原文限制 1 MB；投递去重、同来源合并、持久化目标、关联代次、配置轮换取消和三轮重试均已实现，指定刷新不推进批量游标、不延后整批校准。最后一次 Java 修改后的两个模块 `mvn.cmd -o clean verify` 均通过：Backend 244 项、Gateway 17 项，无失败、错误或跳过；Backend 包含 24 项真实数据库测试，其中任务来源与 Webhook 16 项。亲自执行覆盖率检查通过：Backend 86.56%、Gateway 83.87%、综合 86.37%，高于 80%。数据库验收覆盖并发重复投递、通知合并、运行中新通知不丢失、有限重试、配置撤销、关联代次、事务回滚，以及独立 JVM 领取真实队列后立即异常退出并重新领取完成。前端类型检查、36 项 Node 测试和生产构建通过，TypeScript SDK 类型检查、构建与 7 项测试、Python 7 项测试通过。Edge 与模拟 API 的 8 组浏览器验收通过，含配置冲突保留、隐藏密钥、停用版本、重试失败提示、成功重试、只读边界和移动端，未出现未处理异常，截图已检查。本轮通过 MCP 查询历史问题与 S1659 规则，并修正涉及 Tracker 的声明格式；没有向云端发送本轮源码，不能声称当前源码完整 Sonar 分析通过。全新初始化、保留旧任务及旧同步运行的升级库、重复迁移均已验证；两份 Compose 配置检查、两份 Python 4.4.0 wheel 构建、SDK 版本一致性与 183 个生成源码及产物文件重复生成无漂移检查通过。文档编码、换行、本地链接与 Git 差异空白检查通过；临时 MySQL 容器已移除，Edge 与 Vite 验证服务已停止。主包仍约 729 kB，真实平台配置、生产迁移与 GitHub 实际投递尚未操作。
 
 - 2026-10-20 实现 GitHub Issue 与任务单向关联：独立来源接口、一对一关系、同事务创建和审计、关联代次、来源状态与本地状态分离，以及 50 条一批的持久化上界和游标跟踪；未增加远端写入、Webhook 或负责人模块。最后一次 Java 修改后 Backend 与 Gateway 的 `mvn.cmd -o clean verify` 均通过，Backend 217 项、Gateway 16 项，均无失败、错误或跳过；Backend 包含 15 项真实数据库测试，其中新增任务来源 7 项涵盖并发创建、回滚、快照重建、删除级联、同步游标及超过单批上限的来源。亲自执行 `python scripts/check_java_coverage.py` 通过：Backend 87.12%、Gateway 83.40%、综合 86.84%，高于 80%。Frontend 类型检查、36 项 Node 测试与生产构建通过；TypeScript SDK 类型检查、构建与 6 项测试，Python 6 项测试、两份 4.3.0 wheel 及 SDK 版本一致性检查通过。隔离 MySQL 验证新安装、已有任务和旧快照升级及重复迁移，无自动转化或内容改变；两份 Compose 静默配置检查通过。Edge 与模拟 API 的 10 组浏览器验收通过，含失败保留、已有任务关联、显式本地完成、解除失败、只读和移动端，未捕获未处理异常，桌面和移动端截图已检查。MCP 仅能查询历史分析；本机向 Sonar 发送源码的分析被自动审批拒绝，本轮 Sonar 分析未完成。真实账号、目标环境数据库与部署未操作。两种 SDK 重复生成的 172 个源码及产物文件无漂移；文档编码、结尾换行、本地链接和 Git 差异空白检查通过。本轮隔离 MySQL 容器已移除，临时 Edge 与 Vite 服务已停止。前端仍有主包约 723 kB 的体积提示。
 

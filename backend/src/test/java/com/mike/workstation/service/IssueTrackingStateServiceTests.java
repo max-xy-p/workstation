@@ -11,7 +11,7 @@ class IssueTrackingStateServiceTests {
     private final IssueSourceMapper sources=mock(IssueSourceMapper.class);
     private final IntegrationMapper integrations=mock(IntegrationMapper.class);
     private final IntegrationStateService leases=mock(IntegrationStateService.class);
-    private final IssueTrackingStateService state=new IssueTrackingStateService(sources,integrations,leases);
+    private final IssueTrackingStateService state=new IssueTrackingStateService(sources,integrations,leases,mock(GithubWebhookMapper.class));
     private IntegrationRun run;
     private IssueSource source;
     private DevelopmentItem fresh;
