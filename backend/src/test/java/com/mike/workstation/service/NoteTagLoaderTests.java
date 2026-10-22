@@ -7,21 +7,21 @@ import static org.mockito.Mockito.when;
 import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.NoteTagRow;
 import com.mike.workstation.mapper.TagMapper;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class NoteTagLoaderTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @Mock
-    private TagMapper tagMapper;
-    @InjectMocks
-    private NoteTagLoader noteTagLoader;
+    @Mock private TagMapper tagMapper;
+    @InjectMocks private NoteTagLoader noteTagLoader;
 
     @Test
     void loadsTagsForAllNotesWithOneMapperCall() {

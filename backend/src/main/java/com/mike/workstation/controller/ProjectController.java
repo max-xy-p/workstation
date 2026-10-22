@@ -1,13 +1,14 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.domain.ProjectStatus;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.dto.ProjectResponse;
-import com.mike.workstation.dto.ProjectSummaryResponse;
-import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.ProjectStatusRequest;
+import com.mike.workstation.dto.ProjectSummaryResponse;
 import com.mike.workstation.service.ProjectService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,14 +22,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/workspaces/{workspaceId}/projects")
 /**
  * 项目接口控制器。
  *
- * <p>负责接收前端关于“软件项目”的 REST 请求，并把具体业务处理交给 {@link ProjectService}。
- * Controller 只做请求参数承接和响应返回，不直接编写数据库访问或删除规则。</p>
+ * <p>负责接收前端关于“软件项目”的 REST 请求，并把具体业务处理交给 {@link ProjectService}。 Controller
+ * 只做请求参数承接和响应返回，不直接编写数据库访问或删除规则。
  */
+@RestController
+@RequestMapping("/api/workspaces/{workspaceId}/projects")
 public class ProjectController {
     private final ProjectService projectService;
 
@@ -49,15 +50,14 @@ public class ProjectController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "20") int size) {
         return projectService.list(workspaceId, keyword, status, page, size);
     }
 
     /**
      * 查询项目详情。
      *
-     * <p>详情中除了项目本身，还包含该项目关联的任务和笔记。</p>
+     * <p>详情中除了项目本身，还包含该项目关联的任务和笔记。
      *
      * @param id 项目 ID
      * @return 项目详情聚合数据
@@ -75,7 +75,8 @@ public class ProjectController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProjectResponse create(@PathVariable Long workspaceId, @RequestBody ProjectRequest request) {
+    public ProjectResponse create(
+            @PathVariable Long workspaceId, @RequestBody ProjectRequest request) {
         return projectService.create(workspaceId, request);
     }
 
@@ -88,15 +89,16 @@ public class ProjectController {
      */
     @PutMapping("/{id}")
     public ProjectResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody ProjectRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody ProjectRequest request) {
         return projectService.update(workspaceId, id, request);
     }
 
     /**
      * 单独更新项目状态。
      *
-     * <p>用于项目列表或详情页上的快捷状态切换。</p>
+     * <p>用于项目列表或详情页上的快捷状态切换。
      *
      * @param id 项目 ID
      * @param request 状态更新请求
@@ -104,15 +106,16 @@ public class ProjectController {
      */
     @PatchMapping("/{id}/status")
     public ProjectResponse updateStatus(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody ProjectStatusRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody ProjectStatusRequest request) {
         return projectService.updateStatus(workspaceId, id, request.status());
     }
 
     /**
      * 删除项目。
      *
-     * <p>删除规则在 Service 层实现：存在任务时拒绝删除；仅有关联笔记时会清空笔记的项目关联。</p>
+     * <p>删除规则在 Service 层实现：存在任务时拒绝删除；仅有关联笔记时会清空笔记的项目关联。
      *
      * @param id 项目 ID
      */

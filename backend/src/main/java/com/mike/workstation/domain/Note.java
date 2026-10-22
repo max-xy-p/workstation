@@ -1,14 +1,13 @@
 package com.mike.workstation.domain;
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Data;
 
+/** Markdown 技术笔记实体，对应 notes 表。 */
 @Data
-/**
- * Markdown 技术笔记实体，对应 notes 表。
- */
 public class Note {
     private Long id;
     private Long workspaceId;

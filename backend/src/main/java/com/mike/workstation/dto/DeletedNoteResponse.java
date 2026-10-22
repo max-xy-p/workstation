@@ -16,6 +16,4 @@ public record DeletedNoteResponse(
         List<TagResponse> tags,
         OffsetDateTime deletedAt,
         String deletedBySubject,
-        String deletedByDisplayName
-) {
-}
+        String deletedByDisplayName) {}

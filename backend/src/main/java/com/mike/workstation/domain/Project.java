@@ -1,12 +1,11 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
+/** 软件项目实体，对应 projects 表。 */
 @Data
-/**
- * 软件项目实体，对应 projects 表。
- */
 public class Project {
     private Long id;
     private Long workspaceId;

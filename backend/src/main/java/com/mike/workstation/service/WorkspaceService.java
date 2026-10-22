@@ -8,8 +8,8 @@ import com.mike.workstation.domain.WorkspaceMember;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.domain.WorkspaceRole;
 import com.mike.workstation.domain.WorkspaceType;
-import com.mike.workstation.dto.WorkspaceMemberRequest;
 import com.mike.workstation.dto.WorkspaceMemberCandidate;
+import com.mike.workstation.dto.WorkspaceMemberRequest;
 import com.mike.workstation.dto.WorkspaceMemberResponse;
 import com.mike.workstation.dto.WorkspaceRequest;
 import com.mike.workstation.dto.WorkspaceResponse;
@@ -18,14 +18,16 @@ import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 import com.mike.workstation.mapper.WorkspaceMapper;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
 /** 工作空间初始化、查询和成员管理。 */
+@Service
 public class WorkspaceService {
     private static final String WORKSPACE_MEMBER_RESOURCE = "WORKSPACE_MEMBER";
     private static final String WORKSPACE_RESOURCE = "WORKSPACE";
@@ -39,8 +41,7 @@ public class WorkspaceService {
             WorkspaceMapper workspaceMapper,
             CurrentPrincipalResolver principalResolver,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
-    ) {
+            AuditService auditService) {
         this.workspaceMapper = workspaceMapper;
         this.principalResolver = principalResolver;
         this.authorization = authorization;
@@ -50,7 +51,11 @@ public class WorkspaceService {
     @Transactional
     public List<WorkspaceResponse> list() {
         CurrentPrincipal principal = principalResolver.require();
-        upsertPrincipal(principal.subjectId(), principal.principalType(), principal.username(), principal.displayName());
+        upsertPrincipal(
+                principal.subjectId(),
+                principal.principalType(),
+                principal.username(),
+                principal.displayName());
         if (principal.principalType() == PrincipalType.USER) {
             ensurePersonalWorkspace(principal);
         }
@@ -74,7 +79,11 @@ public class WorkspaceService {
         RequestChecks.requiredText(request.name(), WORKSPACE_NAME);
         String name = request.name().trim();
         RequestChecks.maxLength(name, 120, WORKSPACE_NAME);
-        upsertPrincipal(principal.subjectId(), principal.principalType(), principal.username(), principal.displayName());
+        upsertPrincipal(
+                principal.subjectId(),
+                principal.principalType(),
+                principal.username(),
+                principal.displayName());
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         Workspace workspace = new Workspace();
         workspace.setName(name);
@@ -89,7 +98,8 @@ public class WorkspaceService {
         owner.setRole(WorkspaceRole.OWNER);
         owner.setJoinedAt(now);
         workspaceMapper.insertMember(owner);
-        auditService.success(workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
+        auditService.success(
+                workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
         return get(workspace.getId());
     }
 
@@ -99,14 +109,19 @@ public class WorkspaceService {
         String keyword = username.trim();
         RequestChecks.maxLength(keyword, 255, "搜索关键词");
         return workspaceMapper.findUsersByUsername(keyword).stream()
-                .map(candidate -> new WorkspaceMemberCandidate(
-                        candidate.getSubjectId(), candidate.getUsername(), candidate.getDisplayName()))
+                .map(
+                        candidate ->
+                                new WorkspaceMemberCandidate(
+                                        candidate.getSubjectId(),
+                                        candidate.getUsername(),
+                                        candidate.getDisplayName()))
                 .toList();
     }
 
     @Transactional
     public WorkspaceResponse update(Long workspaceId, WorkspaceRequest request) {
-        Workspace workspace = authorization.require(workspaceId, WorkspacePermission.WORKSPACE_WRITE);
+        Workspace workspace =
+                authorization.require(workspaceId, WorkspacePermission.WORKSPACE_WRITE);
         RequestChecks.requiredObject(request, "工作空间请求");
         RequestChecks.requiredText(request.name(), WORKSPACE_NAME);
         RequestChecks.maxLength(request.name().trim(), 120, WORKSPACE_NAME);
@@ -127,9 +142,11 @@ public class WorkspaceService {
     @Transactional
     public WorkspaceMemberResponse addMember(Long workspaceId, WorkspaceMemberRequest request) {
         workspaceMapper.lockWorkspace(workspaceId);
-        Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
+        Workspace actorWorkspace =
+                authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         validateMemberRequest(request);
-        if (request.role() == WorkspaceRole.OWNER && actorWorkspace.getRole() != WorkspaceRole.OWNER) {
+        if (request.role() == WorkspaceRole.OWNER
+                && actorWorkspace.getRole() != WorkspaceRole.OWNER) {
             denyOwnerChange(workspaceId, "只有 Owner 可以添加 Owner");
         }
         if (workspaceMapper.findMember(workspaceId, request.subjectId()) != null) {
@@ -152,31 +169,37 @@ public class WorkspaceService {
     }
 
     @Transactional
-    public WorkspaceMemberResponse updateMemberRole(Long workspaceId, String subjectId, WorkspaceRole role) {
+    public WorkspaceMemberResponse updateMemberRole(
+            Long workspaceId, String subjectId, WorkspaceRole role) {
         workspaceMapper.lockWorkspace(workspaceId);
-        Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
+        Workspace actorWorkspace =
+                authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         RequestChecks.requiredText(subjectId, "主体标识");
         RequestChecks.requiredObject(role, "成员角色");
         WorkspaceMember target = workspaceMapper.findMember(workspaceId, subjectId);
         RequestChecks.requiredExisting(target, "工作空间成员不存在");
         requireOwnerForOwnerChange(workspaceId, actorWorkspace, target.getRole(), role);
-        if (target.getRole() == WorkspaceRole.OWNER && role != WorkspaceRole.OWNER
+        if (target.getRole() == WorkspaceRole.OWNER
+                && role != WorkspaceRole.OWNER
                 && workspaceMapper.countOwners(workspaceId) <= 1) {
             throw new BusinessException("不能降级工作空间的最后一个 Owner");
         }
         workspaceMapper.updateMemberRole(workspaceId, subjectId, role);
         auditService.success(workspaceId, "MEMBER_ROLE_UPDATE", WORKSPACE_MEMBER_RESOURCE, null);
-        return WorkspaceResponseAssembler.toMemberResponse(workspaceMapper.findMember(workspaceId, subjectId));
+        return WorkspaceResponseAssembler.toMemberResponse(
+                workspaceMapper.findMember(workspaceId, subjectId));
     }
 
     @Transactional
     public void removeMember(Long workspaceId, String subjectId) {
         workspaceMapper.lockWorkspace(workspaceId);
-        Workspace actorWorkspace = authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
+        Workspace actorWorkspace =
+                authorization.require(workspaceId, WorkspacePermission.MEMBER_MANAGE);
         WorkspaceMember target = workspaceMapper.findMember(workspaceId, subjectId);
         RequestChecks.requiredExisting(target, "工作空间成员不存在");
         requireOwnerForOwnerChange(workspaceId, actorWorkspace, target.getRole(), null);
-        if (target.getRole() == WorkspaceRole.OWNER && workspaceMapper.countOwners(workspaceId) <= 1) {
+        if (target.getRole() == WorkspaceRole.OWNER
+                && workspaceMapper.countOwners(workspaceId) <= 1) {
             throw new BusinessException("不能移除工作空间的最后一个 Owner");
         }
         workspaceMapper.deleteMember(workspaceId, subjectId);
@@ -205,13 +228,13 @@ public class WorkspaceService {
         member.setJoinedAt(now);
         workspaceMapper.insertMember(member);
         if (created) {
-            auditService.success(workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
+            auditService.success(
+                    workspace.getId(), "WORKSPACE_CREATE", WORKSPACE_RESOURCE, workspace.getId());
         }
     }
 
     private void upsertPrincipal(
-            String subjectId, PrincipalType type, String username, String displayName
-    ) {
+            String subjectId, PrincipalType type, String username, String displayName) {
         SecurityPrincipal principal = new SecurityPrincipal();
         principal.setSubjectId(subjectId);
         principal.setPrincipalType(type);
@@ -231,8 +254,10 @@ public class WorkspaceService {
     }
 
     private void requireOwnerForOwnerChange(
-            Long workspaceId, Workspace actorWorkspace, WorkspaceRole currentRole, WorkspaceRole nextRole
-    ) {
+            Long workspaceId,
+            Workspace actorWorkspace,
+            WorkspaceRole currentRole,
+            WorkspaceRole nextRole) {
         if ((currentRole == WorkspaceRole.OWNER || nextRole == WorkspaceRole.OWNER)
                 && actorWorkspace.getRole() != WorkspaceRole.OWNER) {
             denyOwnerChange(workspaceId, "只有 Owner 可以变更 Owner 成员");

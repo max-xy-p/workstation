@@ -1,19 +1,20 @@
 package com.mike.workstation.controller;
 
-import com.mike.workstation.dto.NoteDetailResponse;
-import com.mike.workstation.dto.NoteRevisionResponse;
-import com.mike.workstation.dto.NoteRevisionSummaryResponse;
-import com.mike.workstation.dto.NoteRevisionRestoreRequest;
 import com.mike.workstation.dto.DeletedNoteResponse;
+import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteImportRequest;
 import com.mike.workstation.dto.NoteImportResponse;
 import com.mike.workstation.dto.NoteRequest;
-import com.mike.workstation.dto.NoteUpdateRequest;
+import com.mike.workstation.dto.NoteRevisionResponse;
+import com.mike.workstation.dto.NoteRevisionRestoreRequest;
+import com.mike.workstation.dto.NoteRevisionSummaryResponse;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.service.NoteImportService;
-import com.mike.workstation.service.NoteService;
 import com.mike.workstation.service.NoteRevisionService;
+import com.mike.workstation.service.NoteService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,40 +27,49 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/workspaces/{workspaceId}/notes")
 /**
  * 笔记接口控制器。
  *
- * <p>提供 Markdown 笔记的列表筛选、详情、创建、编辑、删除和本地 Markdown 导入接口。</p>
+ * <p>提供 Markdown 笔记的列表筛选、详情、创建、编辑、删除和本地 Markdown 导入接口。
  */
+@RestController
+@RequestMapping("/api/workspaces/{workspaceId}/notes")
 public class NoteController {
     private final NoteService noteService;
     private final NoteImportService noteImportService;
     private final NoteRevisionService revisions;
 
-    public NoteController(NoteService noteService, NoteImportService noteImportService, NoteRevisionService revisions) {
+    public NoteController(
+            NoteService noteService,
+            NoteImportService noteImportService,
+            NoteRevisionService revisions) {
         this.noteService = noteService;
         this.noteImportService = noteImportService;
         this.revisions = revisions;
     }
 
     @GetMapping("/{id}/revisions")
-    public PageResponse<NoteRevisionSummaryResponse> revisions(@PathVariable Long workspaceId, @PathVariable Long id,
-            @RequestParam(required=false) Long upToVersion, @RequestParam(defaultValue="0") int page,
-            @RequestParam(defaultValue="20") int size) {
+    public PageResponse<NoteRevisionSummaryResponse> revisions(
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestParam(required = false) Long upToVersion,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return revisions.list(workspaceId, id, upToVersion, page, size);
     }
 
     @GetMapping("/{id}/revisions/{revisionId}")
-    public NoteRevisionResponse revision(@PathVariable Long workspaceId, @PathVariable Long id,
-            @PathVariable Long revisionId) {
+    public NoteRevisionResponse revision(
+            @PathVariable Long workspaceId, @PathVariable Long id, @PathVariable Long revisionId) {
         return revisions.get(workspaceId, id, revisionId);
     }
 
     @PostMapping("/{id}/revisions/{revisionId}/restore")
-    public NoteDetailResponse restoreRevision(@PathVariable Long workspaceId, @PathVariable Long id,
-            @PathVariable Long revisionId, @RequestBody NoteRevisionRestoreRequest request) {
+    public NoteDetailResponse restoreRevision(
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @PathVariable Long revisionId,
+            @RequestBody NoteRevisionRestoreRequest request) {
         return noteService.restoreRevision(workspaceId, id, revisionId, request);
     }
 
@@ -80,8 +90,7 @@ public class NoteController {
             @RequestParam(required = false) Long tagId,
             @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "20") int size) {
         return noteService.list(workspaceId, keyword, folderId, tagId, projectId, page, size);
     }
 
@@ -91,8 +100,7 @@ public class NoteController {
             @PathVariable Long workspaceId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "20") int size) {
         return noteService.listDeleted(workspaceId, keyword, page, size);
     }
 
@@ -115,20 +123,22 @@ public class NoteController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NoteDetailResponse create(@PathVariable Long workspaceId, @RequestBody NoteRequest request) {
+    public NoteDetailResponse create(
+            @PathVariable Long workspaceId, @RequestBody NoteRequest request) {
         return noteService.create(workspaceId, request);
     }
 
     /**
      * 从本机路径导入 Markdown 笔记。
      *
-     * <p>导入路径必须位于配置允许的根目录下，避免接口读取任意系统文件。</p>
+     * <p>导入路径必须位于配置允许的根目录下，避免接口读取任意系统文件。
      *
      * @param request 导入请求，包含源路径、文件夹、项目、标签和重复标题处理策略
      * @return 导入结果汇总和每个文件的处理明细
      */
     @PostMapping("/import")
-    public NoteImportResponse importMarkdown(@PathVariable Long workspaceId, @RequestBody NoteImportRequest request) {
+    public NoteImportResponse importMarkdown(
+            @PathVariable Long workspaceId, @RequestBody NoteImportRequest request) {
         return noteImportService.importMarkdown(workspaceId, request);
     }
 
@@ -141,8 +151,9 @@ public class NoteController {
      */
     @PutMapping("/{id}")
     public NoteDetailResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteUpdateRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody NoteUpdateRequest request) {
         return noteService.update(workspaceId, id, request);
     }
 

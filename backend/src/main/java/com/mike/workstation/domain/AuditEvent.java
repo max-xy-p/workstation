@@ -1,10 +1,11 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
 
-@Data
+import java.time.LocalDateTime;
+
 /** 不包含正文或凭证的权限与业务审计事件。 */
+@Data
 public class AuditEvent {
     private Long id;
     private String eventId;

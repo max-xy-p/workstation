@@ -3,7 +3,7 @@ package com.mike.workstation.controller;
 import com.mike.workstation.dto.TagRequest;
 import com.mike.workstation.dto.TagResponse;
 import com.mike.workstation.service.TagService;
-import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,13 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/workspaces/{workspaceId}/tags")
+import java.util.List;
+
 /**
  * 标签接口控制器。
  *
- * <p>标签用于给笔记打多个主题标记，笔记和标签之间是多对多关系。</p>
+ * <p>标签用于给笔记打多个主题标记，笔记和标签之间是多对多关系。
  */
+@RestController
+@RequestMapping("/api/workspaces/{workspaceId}/tags")
 public class TagController {
     private final TagService tagService;
 
@@ -71,15 +73,16 @@ public class TagController {
      */
     @PutMapping("/{id}")
     public TagResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TagRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody TagRequest request) {
         return tagService.update(workspaceId, id, request);
     }
 
     /**
      * 删除标签。
      *
-     * <p>删除标签前会先解除它与笔记的关联，笔记本身不会被删除。</p>
+     * <p>删除标签前会先解除它与笔记的关联，笔记本身不会被删除。
      *
      * @param id 标签 ID
      */

@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
+
 import reactor.core.publisher.Mono;
+
 import java.util.List;
 
 @RestController
@@ -23,10 +25,12 @@ public class AuthController {
         if (token == null) {
             return Mono.error(new IllegalStateException("CSRF Token 未初始化"));
         }
-        return token.map(value -> new CsrfResponse(
-                value.getHeaderName(),
-                value.getParameterName(),
-                value.getToken()))
+        return token.map(
+                        value ->
+                                new CsrfResponse(
+                                        value.getHeaderName(),
+                                        value.getParameterName(),
+                                        value.getToken()))
                 .switchIfEmpty(Mono.error(new IllegalStateException("CSRF Token 未初始化")));
     }
 
@@ -45,24 +49,22 @@ public class AuthController {
             username = user.getPreferredUsername();
             displayName = user.getFullName();
         }
-        List<String> systemRoles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(authority -> authority.startsWith("ROLE_WORKSTATION_"))
-                .map(authority -> authority.substring("ROLE_".length()))
-                .sorted()
-                .toList();
+        List<String> systemRoles =
+                authentication.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .filter(authority -> authority.startsWith("ROLE_WORKSTATION_"))
+                        .map(authority -> authority.substring("ROLE_".length()))
+                        .sorted()
+                        .toList();
         return new CurrentUserResponse(subjectId, username, displayName, "USER", systemRoles);
     }
 
-    public record CsrfResponse(String headerName, String parameterName, String token) {
-    }
+    public record CsrfResponse(String headerName, String parameterName, String token) {}
 
     public record CurrentUserResponse(
             String subjectId,
             String username,
             String displayName,
             String principalType,
-            List<String> systemRoles
-    ) {
-    }
+            List<String> systemRoles) {}
 }

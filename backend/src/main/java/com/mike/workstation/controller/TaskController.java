@@ -2,11 +2,12 @@ package com.mike.workstation.controller;
 
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
-import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.TaskStatusRequest;
 import com.mike.workstation.service.TaskService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,13 +21,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/api/workspaces/{workspaceId}/tasks")
 /**
  * 任务接口控制器。
  *
- * <p>提供任务看板所需的查询、创建、编辑、删除和状态流转接口。</p>
+ * <p>提供任务看板所需的查询、创建、编辑、删除和状态流转接口。
  */
+@RestController
+@RequestMapping("/api/workspaces/{workspaceId}/tasks")
 public class TaskController {
     private final TaskService taskService;
 
@@ -51,8 +52,7 @@ public class TaskController {
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(required = false) TaskPriority priority,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+            @RequestParam(defaultValue = "20") int size) {
         return taskService.list(workspaceId, keyword, projectId, status, priority, page, size);
     }
 
@@ -88,15 +88,16 @@ public class TaskController {
      */
     @PutMapping("/{id}")
     public TaskResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TaskRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody TaskRequest request) {
         return taskService.update(workspaceId, id, request);
     }
 
     /**
      * 单独更新任务状态。
      *
-     * <p>主要用于看板页面中把任务移动到另一个状态列。</p>
+     * <p>主要用于看板页面中把任务移动到另一个状态列。
      *
      * @param id 任务 ID
      * @param request 状态更新请求
@@ -104,15 +105,16 @@ public class TaskController {
      */
     @PatchMapping("/{id}/status")
     public TaskResponse updateStatus(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody TaskStatusRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody TaskStatusRequest request) {
         return taskService.updateStatus(workspaceId, id, request.status());
     }
 
     /**
      * 删除任务。
      *
-     * <p>删除任务不会影响所属项目。</p>
+     * <p>删除任务不会影响所属项目。
      *
      * @param id 任务 ID
      */

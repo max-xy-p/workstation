@@ -8,13 +8,15 @@ import com.mike.workstation.dto.NoteFolderResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NoteFolderService {
@@ -28,8 +30,7 @@ public class NoteFolderService {
             NoteFolderMapper folderMapper,
             NoteMapper noteMapper,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
-    ) {
+            AuditService auditService) {
         this.folderMapper = folderMapper;
         this.noteMapper = noteMapper;
         this.authorization = authorization;
@@ -38,7 +39,9 @@ public class NoteFolderService {
 
     public List<NoteFolderResponse> list(Long workspaceId) {
         authorization.require(workspaceId, WorkspacePermission.FOLDER_READ);
-        return folderMapper.list(workspaceId).stream().map(NoteFolderResponseAssembler::toResponse).toList();
+        return folderMapper.list(workspaceId).stream()
+                .map(NoteFolderResponseAssembler::toResponse)
+                .toList();
     }
 
     public NoteFolderResponse get(Long workspaceId, Long id) {

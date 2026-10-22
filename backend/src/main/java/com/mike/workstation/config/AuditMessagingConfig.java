@@ -5,15 +5,14 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
  * 审计事件的 RabbitMQ 主队列和死信队列拓扑。
  *
- * <p>正常消息进入主队列；消费者多次失败并拒绝消息后，RabbitMQ 根据主队列上的 DLX 参数
- * 将消息转入死信队列，避免有问题的消息无限立即重试。</p>
+ * <p>正常消息进入主队列；消费者多次失败并拒绝消息后，RabbitMQ 根据主队列上的 DLX 参数 将消息转入死信队列，避免有问题的消息无限立即重试。
  */
 @Configuration(proxyBeanMethods = false)
 public class AuditMessagingConfig {
@@ -41,8 +40,7 @@ public class AuditMessagingConfig {
     @Bean
     Binding auditBinding(
             @Qualifier("auditExchange") DirectExchange auditExchange,
-            @Qualifier("auditQueue") Queue auditQueue
-    ) {
+            @Qualifier("auditQueue") Queue auditQueue) {
         return BindingBuilder.bind(auditQueue).to(auditExchange).with(ROUTING_KEY);
     }
 
@@ -59,8 +57,7 @@ public class AuditMessagingConfig {
     @Bean
     Binding auditDeadLetterBinding(
             @Qualifier("auditDeadLetterExchange") DirectExchange auditDeadLetterExchange,
-            @Qualifier("auditDeadLetterQueue") Queue auditDeadLetterQueue
-    ) {
+            @Qualifier("auditDeadLetterQueue") Queue auditDeadLetterQueue) {
         return BindingBuilder.bind(auditDeadLetterQueue)
                 .to(auditDeadLetterExchange)
                 .with(DEAD_LETTER_ROUTING_KEY);

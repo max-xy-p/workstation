@@ -6,19 +6,19 @@ import java.util.regex.Pattern;
 final class MarkdownTitleExtractor {
     private static final Pattern NOTION_FILE_ID_SUFFIX = Pattern.compile("\\s+[0-9a-fA-F]{32}$");
 
-    private MarkdownTitleExtractor() {
-    }
+    private MarkdownTitleExtractor() {}
 
     static String extract(String content, Path path) {
         // Notion 导出的 Markdown 通常第一行就是页面标题，优先使用它而不是文件名。
-        String heading = content.lines()
-                .map(String::trim)
-                .map(line -> line.startsWith("\uFEFF") ? line.substring(1).trim() : line)
-                .filter(line -> line.startsWith("# "))
-                .map(line -> line.substring(2).trim())
-                .filter(line -> !line.isBlank())
-                .findFirst()
-                .orElse(null);
+        String heading =
+                content.lines()
+                        .map(String::trim)
+                        .map(line -> line.startsWith("\uFEFF") ? line.substring(1).trim() : line)
+                        .filter(line -> line.startsWith("# "))
+                        .map(line -> line.substring(2).trim())
+                        .filter(line -> !line.isBlank())
+                        .findFirst()
+                        .orElse(null);
         if (heading != null) {
             return heading;
         }

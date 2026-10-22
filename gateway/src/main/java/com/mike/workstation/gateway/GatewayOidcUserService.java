@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.util.StringUtils;
+
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
@@ -35,9 +36,12 @@ final class GatewayOidcUserService implements ReactiveOAuth2UserService<OidcUser
     @Override
     public Mono<OidcUser> loadUser(OidcUserRequest request) {
         // 复用 Gateway 的签名、Issuer、Audience 和有效期校验；失败时不创建登录会话。
-        return jwtDecoder.decode(request.getAccessToken().getTokenValue())
-                .flatMap(accessToken -> delegate.loadUser(request)
-                        .map(user -> withSystemRoles(request, user, accessToken)));
+        return jwtDecoder
+                .decode(request.getAccessToken().getTokenValue())
+                .flatMap(
+                        accessToken ->
+                                delegate.loadUser(request)
+                                        .map(user -> withSystemRoles(request, user, accessToken)));
     }
 
     private OidcUser withSystemRoles(OidcUserRequest request, OidcUser user, Jwt accessToken) {
@@ -50,11 +54,15 @@ final class GatewayOidcUserService implements ReactiveOAuth2UserService<OidcUser
                 }
             }
         }
-        String userNameAttributeName = request.getClientRegistration().getProviderDetails()
-                .getUserInfoEndpoint().getUserNameAttributeName();
+        String userNameAttributeName =
+                request.getClientRegistration()
+                        .getProviderDetails()
+                        .getUserInfoEndpoint()
+                        .getUserNameAttributeName();
         // 保留原 OIDC 身份与 UserInfo，只有权限来源改为 Access Token。
         return StringUtils.hasText(userNameAttributeName)
-                ? new DefaultOidcUser(authorities, user.getIdToken(), user.getUserInfo(), userNameAttributeName)
+                ? new DefaultOidcUser(
+                        authorities, user.getIdToken(), user.getUserInfo(), userNameAttributeName)
                 : new DefaultOidcUser(authorities, user.getIdToken(), user.getUserInfo());
     }
 }

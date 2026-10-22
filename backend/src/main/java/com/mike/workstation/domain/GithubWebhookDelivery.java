@@ -1,6 +1,8 @@
 package com.mike.workstation.domain;
-import java.time.LocalDateTime;
+
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 /** 只保存验签后的必要元数据与原文哈希，不保存平台正文。 */
 @Data

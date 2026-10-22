@@ -8,9 +8,11 @@ import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.domain.Tag;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteSummaryResponse;
+
+import org.junit.jupiter.api.Test;
+
 import java.time.LocalDateTime;
 import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class ResponseAssemblerTests {
     @Test
@@ -32,7 +34,9 @@ class ResponseAssemblerTests {
                 .extracting(component -> component.getName())
                 .doesNotContain("content");
         assertThat(detail.content()).isEqualTo("# persisted markdown");
-        assertThat(summary.tags()).extracting(tagResponse -> tagResponse.name()).containsExactly("architecture");
+        assertThat(summary.tags())
+                .extracting(tagResponse -> tagResponse.name())
+                .containsExactly("architecture");
     }
 
     @Test
@@ -46,7 +50,8 @@ class ResponseAssemblerTests {
         assertThat(ProjectResponseAssembler.toSummary(project).getClass().getRecordComponents())
                 .extracting(component -> component.getName())
                 .doesNotContain("runGuide");
-        assertThat(ProjectResponseAssembler.toResponse(project).runGuide()).isEqualTo("mvn spring-boot:run");
+        assertThat(ProjectResponseAssembler.toResponse(project).runGuide())
+                .isEqualTo("mvn spring-boot:run");
     }
 
     @Test

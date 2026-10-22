@@ -7,31 +7,35 @@ import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
 import com.mike.workstation.domain.WorkspacePermission;
-import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.PageResponse;
+import com.mike.workstation.dto.ProjectDetailResponse;
 import com.mike.workstation.dto.ProjectRequest;
 import com.mike.workstation.dto.ProjectResponse;
 import com.mike.workstation.dto.ProjectSummaryResponse;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.mapper.IntegrationMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
 /**
  * 项目业务服务。
  *
- * <p>集中处理项目的校验、详情聚合和删除规则，Controller 不直接理解这些业务约束。</p>
+ * <p>集中处理项目的校验、详情聚合和删除规则，Controller 不直接理解这些业务约束。
  */
+@Service
 public class ProjectService {
     private static final String PROJECT_RESOURCE = "PROJECT";
     private final ProjectMapper projectMapper;
-    private final com.mike.workstation.mapper.IntegrationMapper integrationMapper;
+    private final IntegrationMapper integrationMapper;
     private final TaskMapper taskMapper;
     private final NoteMapper noteMapper;
     private final NoteTagLoader noteTagLoader;
@@ -39,14 +43,13 @@ public class ProjectService {
     private final AuditService auditService;
 
     public ProjectService(
-            com.mike.workstation.mapper.IntegrationMapper integrationMapper,
+            IntegrationMapper integrationMapper,
             ProjectMapper projectMapper,
             TaskMapper taskMapper,
             NoteMapper noteMapper,
             NoteTagLoader noteTagLoader,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
-    ) {
+            AuditService auditService) {
         this.projectMapper = projectMapper;
         this.integrationMapper = integrationMapper;
         this.taskMapper = taskMapper;
@@ -64,14 +67,17 @@ public class ProjectService {
      * @return 项目列表
      */
     public PageResponse<ProjectSummaryResponse> list(
-            Long workspaceId, String keyword, ProjectStatus status, int page, int size
-    ) {
+            Long workspaceId, String keyword, ProjectStatus status, int page, int size) {
         authorization.require(workspaceId, WorkspacePermission.PROJECT_READ);
         PageQuery query = PageQuery.of(page, size);
-        var items = projectMapper.listPage(workspaceId, keyword, status, query.offset(), query.size()).stream()
-                .map(ProjectResponseAssembler::toSummary)
-                .toList();
-        return PageResponse.of(items, page, size, projectMapper.count(workspaceId, keyword, status));
+        var items =
+                projectMapper
+                        .listPage(workspaceId, keyword, status, query.offset(), query.size())
+                        .stream()
+                        .map(ProjectResponseAssembler::toSummary)
+                        .toList();
+        return PageResponse.of(
+                items, page, size, projectMapper.count(workspaceId, keyword, status));
     }
 
     /**
@@ -95,7 +101,7 @@ public class ProjectService {
     /**
      * 查询项目详情聚合数据。
      *
-     * <p>项目详情页需要同时展示项目、关联任务和关联笔记，因此在这里组装成一个响应对象。</p>
+     * <p>项目详情页需要同时展示项目、关联任务和关联笔记，因此在这里组装成一个响应对象。
      *
      * @param id 项目 ID
      * @return 项目详情、关联任务和关联笔记
@@ -107,9 +113,10 @@ public class ProjectService {
         noteTagLoader.attachTags(workspaceId, notes);
         return new ProjectDetailResponse(
                 ProjectResponseAssembler.toResponse(project),
-                taskMapper.listByProjectId(workspaceId, id).stream().map(TaskResponseAssembler::toResponse).toList(),
-                notes.stream().map(NoteResponseAssembler::toSummary).toList()
-        );
+                taskMapper.listByProjectId(workspaceId, id).stream()
+                        .map(TaskResponseAssembler::toResponse)
+                        .toList(),
+                notes.stream().map(NoteResponseAssembler::toSummary).toList());
     }
 
     /**
@@ -167,7 +174,8 @@ public class ProjectService {
         authorization.require(workspaceId, WorkspacePermission.PROJECT_WRITE);
         RequestChecks.requiredObject(status, "项目状态");
         getEntity(workspaceId, id);
-        projectMapper.updateStatus(workspaceId, id, status, LocalDateTime.now(ZoneId.systemDefault()));
+        projectMapper.updateStatus(
+                workspaceId, id, status, LocalDateTime.now(ZoneId.systemDefault()));
         auditService.success(workspaceId, "PROJECT_STATUS_UPDATE", PROJECT_RESOURCE, id);
         return get(workspaceId, id);
     }
@@ -175,7 +183,7 @@ public class ProjectService {
     /**
      * 删除项目。
      *
-     * <p>项目下存在任务时拒绝删除；仅有关联笔记时，先解除笔记关联再删除项目。</p>
+     * <p>项目下存在任务时拒绝删除；仅有关联笔记时，先解除笔记关联再删除项目。
      *
      * @param id 项目 ID
      */
@@ -197,7 +205,7 @@ public class ProjectService {
     /**
      * 校验项目请求。
      *
-     * <p>项目状态不使用后端默认值，调用方必须明确传入。</p>
+     * <p>项目状态不使用后端默认值，调用方必须明确传入。
      */
     private void validate(ProjectRequest request) {
         RequestChecks.requiredObject(request, "项目请求");
@@ -207,9 +215,11 @@ public class ProjectService {
         RequestChecks.maxLength(request.repositoryUrl(), 500, "仓库地址");
         RequestChecks.maxLength(request.homepageUrl(), 500, "项目入口");
         if (request.homepageUrl() != null && !request.homepageUrl().isBlank()) {
-            java.net.URI url = java.net.URI.create(request.homepageUrl());
-            if ((!"https".equals(url.getScheme()) && !"http".equals(url.getScheme())) || url.getHost() == null)
+            URI url = URI.create(request.homepageUrl());
+            if ((!"https".equals(url.getScheme()) && !"http".equals(url.getScheme()))
+                    || url.getHost() == null) {
                 throw new BusinessException("项目入口必须为 HTTP 或 HTTPS 地址");
+            }
         }
         RequestChecks.maxLength(request.techStack(), 500, "技术栈");
     }
@@ -217,7 +227,7 @@ public class ProjectService {
     /**
      * 把请求对象复制到领域对象。
      *
-     * <p>单独拆出是为了让创建和更新共用同一套字段映射。</p>
+     * <p>单独拆出是为了让创建和更新共用同一套字段映射。
      */
     private void applyRequest(Project project, ProjectRequest request) {
         project.setName(request.name().trim());

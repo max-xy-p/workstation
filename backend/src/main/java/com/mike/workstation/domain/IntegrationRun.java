@@ -2,6 +2,8 @@ package com.mike.workstation.domain;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /** 外部数据接入的持久化记录。 */
 @Data
 public class IntegrationRun {
@@ -22,7 +24,7 @@ public class IntegrationRun {
     private int configVersion;
     private int processed;
     private int failed;
-    private java.time.LocalDateTime createdAt;
-    private java.time.LocalDateTime finishedAt;
-    private java.time.LocalDateTime leaseUntil;
+    private LocalDateTime createdAt;
+    private LocalDateTime finishedAt;
+    private LocalDateTime leaseUntil;
 }

@@ -1,10 +1,11 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
 
-@Data
+import java.time.LocalDateTime;
+
 /** Keycloak 主体在业务库中的最小投影。 */
+@Data
 public class SecurityPrincipal {
     private String subjectId;
     private PrincipalType principalType;

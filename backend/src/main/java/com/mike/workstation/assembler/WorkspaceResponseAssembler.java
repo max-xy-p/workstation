@@ -8,8 +8,7 @@ import com.mike.workstation.dto.WorkspaceResponse;
 
 /** 工作空间领域对象到 API Response 的转换。 */
 public final class WorkspaceResponseAssembler {
-    private WorkspaceResponseAssembler() {
-    }
+    private WorkspaceResponseAssembler() {}
 
     public static WorkspaceResponse toResponse(Workspace workspace) {
         return new WorkspaceResponse(
@@ -19,8 +18,7 @@ public final class WorkspaceResponseAssembler {
                 workspace.getRole(),
                 WorkspacePermission.forRole(workspace.getRole()).stream().toList(),
                 ApiTime.toOffset(workspace.getCreatedAt()),
-                ApiTime.toOffset(workspace.getUpdatedAt())
-        );
+                ApiTime.toOffset(workspace.getUpdatedAt()));
     }
 
     public static WorkspaceMemberResponse toMemberResponse(WorkspaceMember member) {
@@ -30,7 +28,6 @@ public final class WorkspaceResponseAssembler {
                 member.getUsername(),
                 member.getDisplayName(),
                 member.getRole(),
-                ApiTime.toOffset(member.getJoinedAt())
-        );
+                ApiTime.toOffset(member.getJoinedAt()));
     }
 }

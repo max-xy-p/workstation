@@ -4,13 +4,13 @@ import com.mike.workstation.domain.AuditEvent;
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditResult;
 import com.mike.workstation.domain.PrincipalType;
+
 import java.time.LocalDateTime;
 
 /**
  * RabbitMQ 中传递的不可变审计事件快照。
  *
- * <p>消息必须包含最终落库所需的全部信息，消费者不能再读取原请求的 SecurityContext，
- * 也不应重新查询可能已经变化的业务对象来拼装历史事件。</p>
+ * <p>消息必须包含最终落库所需的全部信息，消费者不能再读取原请求的 SecurityContext， 也不应重新查询可能已经变化的业务对象来拼装历史事件。
  */
 public record AuditMessage(
         String eventId,
@@ -22,8 +22,7 @@ public record AuditMessage(
         Long resourceId,
         AuditResult result,
         LocalDateTime occurredAt,
-        String traceId
-) {
+        String traceId) {
     public static AuditMessage from(AuditOutbox event) {
         return new AuditMessage(
                 event.getEventId(),
@@ -35,8 +34,7 @@ public record AuditMessage(
                 event.getResourceId(),
                 event.getResult(),
                 event.getOccurredAt(),
-                event.getTraceId()
-        );
+                event.getTraceId());
     }
 
     public AuditEvent toEvent() {

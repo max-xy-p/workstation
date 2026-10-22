@@ -1,10 +1,10 @@
 package com.mike.workstation.service;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.NoteFolder;
@@ -12,33 +12,34 @@ import com.mike.workstation.dto.NoteFolderRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NoteFolderServiceTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @Mock
-    private NoteFolderMapper folderMapper;
-    @Mock
-    private NoteMapper noteMapper;
-    @Mock
-    private WorkspaceAuthorizationService authorization;
-    @Mock
-    private AuditService auditService;
-    @InjectMocks
-    private NoteFolderService folderService;
+    @Mock private NoteFolderMapper folderMapper;
+    @Mock private NoteMapper noteMapper;
+    @Mock private WorkspaceAuthorizationService authorization;
+    @Mock private AuditService auditService;
+    @InjectMocks private NoteFolderService folderService;
 
     @Test
     void updateRejectsMovingFolderIntoItsDescendant() {
         when(folderMapper.findById(WORKSPACE_ID, 1L)).thenReturn(folder(1L, null));
         when(folderMapper.findById(WORKSPACE_ID, 2L)).thenReturn(folder(2L, 1L));
 
-        assertThatThrownBy(() -> folderService.update(WORKSPACE_ID, 1L, new NoteFolderRequest("Root", 2L)))
+        assertThatThrownBy(
+                        () ->
+                                folderService.update(
+                                        WORKSPACE_ID, 1L, new NoteFolderRequest("Root", 2L)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("子文件夹");
     }
@@ -66,17 +67,20 @@ class NoteFolderServiceTests {
     @Test
     void createUnderExistingParentTrimsNameAndAudits() {
         when(folderMapper.findById(WORKSPACE_ID, 2L)).thenReturn(folder(2L, null));
-        org.mockito.Mockito.doAnswer(invocation -> {
-            NoteFolder inserted = invocation.getArgument(0);
-            inserted.setId(3L);
-            return 1;
-        }).when(folderMapper).insert(any(NoteFolder.class));
+        Mockito.doAnswer(
+                        invocation -> {
+                            NoteFolder inserted = invocation.getArgument(0);
+                            inserted.setId(3L);
+                            return 1;
+                        })
+                .when(folderMapper)
+                .insert(any(NoteFolder.class));
         when(folderMapper.findById(WORKSPACE_ID, 3L)).thenReturn(folder(3L, 2L));
 
         var created = folderService.create(WORKSPACE_ID, new NoteFolderRequest("  新目录  ", 2L));
 
         assertThat(created.id()).isEqualTo(3L);
-        var captor = org.mockito.ArgumentCaptor.forClass(NoteFolder.class);
+        var captor = ArgumentCaptor.forClass(NoteFolder.class);
         verify(folderMapper).insert(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo("新目录");
         assertThat(captor.getValue().getParentId()).isEqualTo(2L);
@@ -90,7 +94,7 @@ class NoteFolderServiceTests {
 
         folderService.update(WORKSPACE_ID, 1L, new NoteFolderRequest("  调整后  ", 2L));
 
-        var captor = org.mockito.ArgumentCaptor.forClass(NoteFolder.class);
+        var captor = ArgumentCaptor.forClass(NoteFolder.class);
         verify(folderMapper).update(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo("调整后");
         assertThat(captor.getValue().getParentId()).isEqualTo(2L);
@@ -101,7 +105,10 @@ class NoteFolderServiceTests {
     void duplicateSiblingNameIsRejectedBeforeInsert() {
         when(folderMapper.countSiblingName(WORKSPACE_ID, "重复", null, null)).thenReturn(1L);
 
-        assertThatThrownBy(() -> folderService.create(WORKSPACE_ID, new NoteFolderRequest(" 重复 ", null)))
+        assertThatThrownBy(
+                        () ->
+                                folderService.create(
+                                        WORKSPACE_ID, new NoteFolderRequest(" 重复 ", null)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("同名");
         verify(folderMapper, never()).insert(any(NoteFolder.class));

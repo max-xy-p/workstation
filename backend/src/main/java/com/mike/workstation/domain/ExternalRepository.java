@@ -2,6 +2,8 @@ package com.mike.workstation.domain;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /** 外部数据接入的持久化记录。 */
 @Data
 public class ExternalRepository {
@@ -26,6 +28,6 @@ public class ExternalRepository {
     private boolean archived;
     private boolean fork;
     private boolean autoImportSuppressed;
-    private java.time.LocalDateTime lastPushedAt;
-    private java.time.LocalDateTime lastSyncedAt;
+    private LocalDateTime lastPushedAt;
+    private LocalDateTime lastSyncedAt;
 }

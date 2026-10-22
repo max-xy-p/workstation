@@ -2,16 +2,19 @@ package com.mike.workstation.mapper;
 
 import com.mike.workstation.domain.AuditEvent;
 import com.mike.workstation.domain.AuditResult;
-import java.util.List;
+
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /** 只追加的工作空间审计事件数据访问。 */
 @Mapper
 public interface AuditMapper {
-    @Insert("""
+    @Insert(
+            """
             INSERT INTO audit_events
                 (event_id, workspace_id, actor_subject, actor_type, action, resource_type,
                  resource_id, result, occurred_at, trace_id)
@@ -23,7 +26,8 @@ public interface AuditMapper {
     /* event_id 唯一；重复消息执行无副作用更新，从而让消费者能够安全 ACK。 */
     int insert(AuditEvent event);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT id, event_id, workspace_id, actor_subject, actor_type, action, resource_type,
                    resource_id, result, occurred_at, trace_id
@@ -44,10 +48,10 @@ public interface AuditMapper {
             @Param("resourceType") String resourceType,
             @Param("result") AuditResult result,
             @Param("offset") long offset,
-            @Param("size") int size
-    );
+            @Param("size") int size);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT COUNT(*) FROM audit_events
             WHERE workspace_id = #{workspaceId}
@@ -62,6 +66,5 @@ public interface AuditMapper {
             @Param("actorSubject") String actorSubject,
             @Param("action") String action,
             @Param("resourceType") String resourceType,
-            @Param("result") AuditResult result
-    );
+            @Param("result") AuditResult result);
 }

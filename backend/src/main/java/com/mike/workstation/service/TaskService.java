@@ -5,31 +5,34 @@ import com.mike.workstation.domain.Task;
 import com.mike.workstation.domain.TaskPriority;
 import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.domain.WorkspacePermission;
+import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
-import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.exception.BusinessException;
-import com.mike.workstation.mapper.ProjectMapper;
+import com.mike.workstation.mapper.IssueSourceMapper;
 import com.mike.workstation.mapper.NoteMapper;
+import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 /**
  * 任务业务服务。
  *
- * <p>负责任务的必填校验、所属项目校验，以及看板状态流转。</p>
+ * <p>负责任务的必填校验、所属项目校验，以及看板状态流转。
  */
+@Service
 public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectMapper projectMapper;
     private final NoteMapper noteMapper;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
-    private final com.mike.workstation.mapper.IssueSourceMapper issueSources;
+    private final IssueSourceMapper issueSources;
 
     public TaskService(
             TaskMapper taskMapper,
@@ -37,8 +40,7 @@ public class TaskService {
             NoteMapper noteMapper,
             WorkspaceAuthorizationService authorization,
             AuditService auditService,
-            com.mike.workstation.mapper.IssueSourceMapper issueSources
-    ) {
+            IssueSourceMapper issueSources) {
         this.taskMapper = taskMapper;
         this.projectMapper = projectMapper;
         this.noteMapper = noteMapper;
@@ -57,17 +59,33 @@ public class TaskService {
      * @return 任务列表
      */
     public PageResponse<TaskResponse> list(
-            Long workspaceId, String keyword, Long projectId, TaskStatus status, TaskPriority priority,
-            int page, int size
-    ) {
+            Long workspaceId,
+            String keyword,
+            Long projectId,
+            TaskStatus status,
+            TaskPriority priority,
+            int page,
+            int size) {
         authorization.require(workspaceId, WorkspacePermission.TASK_READ);
         PageQuery query = PageQuery.of(page, size);
-        var items = taskMapper.listPage(
-                        workspaceId, keyword, projectId, status, priority, query.offset(), query.size()).stream()
-                .map(TaskResponseAssembler::toResponse)
-                .toList();
+        var items =
+                taskMapper
+                        .listPage(
+                                workspaceId,
+                                keyword,
+                                projectId,
+                                status,
+                                priority,
+                                query.offset(),
+                                query.size())
+                        .stream()
+                        .map(TaskResponseAssembler::toResponse)
+                        .toList();
         return PageResponse.of(
-                items, page, size, taskMapper.count(workspaceId, keyword, projectId, status, priority));
+                items,
+                page,
+                size,
+                taskMapper.count(workspaceId, keyword, projectId, status, priority));
     }
 
     /**
@@ -81,10 +99,10 @@ public class TaskService {
         return TaskResponseAssembler.toResponse(getEntity(workspaceId, id));
     }
 
-    public TaskResponse getLocked(Long workspaceId,Long id) {
-        authorization.require(workspaceId,WorkspacePermission.TASK_READ);
-        Task task=taskMapper.lockById(workspaceId,id);
-        RequestChecks.requiredExisting(task,"任务不存在");
+    public TaskResponse getLocked(Long workspaceId, Long id) {
+        authorization.require(workspaceId, WorkspacePermission.TASK_READ);
+        Task task = taskMapper.lockById(workspaceId, id);
+        RequestChecks.requiredExisting(task, "任务不存在");
         return TaskResponseAssembler.toResponse(task);
     }
 
@@ -128,9 +146,10 @@ public class TaskService {
         issueSources.lockWorkspace(workspaceId);
         validate(workspaceId, request);
         getEntity(workspaceId, id);
-        var sourceProject=issueSources.linkedProject(workspaceId,id);
-        if(sourceProject!=null && !sourceProject.equals(request.projectId()))
+        var sourceProject = issueSources.linkedProject(workspaceId, id);
+        if (sourceProject != null && !sourceProject.equals(request.projectId())) {
             throw new BusinessException("请先解除 Issue 来源关联，再移动任务项目");
+        }
         Task task = new Task();
         task.setId(id);
         task.setWorkspaceId(workspaceId);
@@ -175,7 +194,7 @@ public class TaskService {
     /**
      * 校验任务请求。
      *
-     * <p>所属项目必须存在；状态和优先级由前端显式选择，不在后端填默认值。</p>
+     * <p>所属项目必须存在；状态和优先级由前端显式选择，不在后端填默认值。
      */
     private void validate(Long workspaceId, TaskRequest request) {
         RequestChecks.requiredObject(request, "任务请求");
@@ -184,7 +203,8 @@ public class TaskService {
         RequestChecks.requiredObject(request.status(), "任务状态");
         RequestChecks.requiredObject(request.priority(), "任务优先级");
         RequestChecks.maxLength(request.title().trim(), 200, "任务标题");
-        RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "所属项目不存在");
+        RequestChecks.requiredExisting(
+                projectMapper.findById(workspaceId, request.projectId()), "所属项目不存在");
         if (request.evidenceNoteId() != null) {
             var note = noteMapper.lockById(workspaceId, request.evidenceNoteId());
             RequestChecks.requiredExisting(note, "依据笔记不存在");
@@ -194,9 +214,7 @@ public class TaskService {
         }
     }
 
-    /**
-     * 把请求对象复制到任务实体。
-     */
+    /** 把请求对象复制到任务实体。 */
     private void applyRequest(Task task, TaskRequest request) {
         task.setTitle(request.title().trim());
         task.setDescription(request.description());

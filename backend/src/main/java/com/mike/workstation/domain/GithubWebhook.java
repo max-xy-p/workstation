@@ -1,4 +1,5 @@
 package com.mike.workstation.domain;
+
 import lombok.Data;
 
 /** 连接级 Webhook 配置，Secret 使用现有加密密钥保护且不回显。 */

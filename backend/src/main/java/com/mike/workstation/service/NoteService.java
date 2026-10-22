@@ -5,12 +5,12 @@ import com.mike.workstation.domain.Note;
 import com.mike.workstation.domain.NoteRevision;
 import com.mike.workstation.domain.NoteRevisionSource;
 import com.mike.workstation.domain.WorkspacePermission;
-import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.DeletedNoteResponse;
+import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
 import com.mike.workstation.dto.NoteRevisionRestoreRequest;
-import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.NoteSummaryResponse;
+import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.exception.NoteVersionConflictException;
@@ -20,19 +20,21 @@ import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import com.mike.workstation.security.CurrentPrincipalResolver;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-@Service
 /**
  * 笔记业务服务。
  *
- * <p>负责 Markdown 笔记的 CRUD、文件夹/项目存在性校验，以及笔记标签多对多关系维护。</p>
+ * <p>负责 Markdown 笔记的 CRUD、文件夹/项目存在性校验，以及笔记标签多对多关系维护。
  */
+@Service
 public class NoteService {
     private static final String NOTE_NOT_FOUND = "笔记不存在";
     private final NoteMapper noteMapper;
@@ -56,8 +58,7 @@ public class NoteService {
             CurrentPrincipalResolver principalResolver,
             WorkspaceAuthorizationService authorization,
             AuditService auditService,
-            NoteRevisionService revisions
-    ) {
+            NoteRevisionService revisions) {
         this.noteMapper = noteMapper;
         this.folderMapper = folderMapper;
         this.projectMapper = projectMapper;
@@ -80,28 +81,41 @@ public class NoteService {
      * @return 笔记列表
      */
     public PageResponse<NoteSummaryResponse> list(
-            Long workspaceId, String keyword, Long folderId, Long tagId, Long projectId, int page, int size
-    ) {
+            Long workspaceId,
+            String keyword,
+            Long folderId,
+            Long tagId,
+            Long projectId,
+            int page,
+            int size) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
         PageQuery query = PageQuery.of(page, size);
-        List<Note> notes = noteMapper.listSummariesPage(
-                workspaceId, keyword, folderId, tagId, projectId, query.offset(), query.size()
-        );
+        List<Note> notes =
+                noteMapper.listSummariesPage(
+                        workspaceId,
+                        keyword,
+                        folderId,
+                        tagId,
+                        projectId,
+                        query.offset(),
+                        query.size());
         noteTagLoader.attachTags(workspaceId, notes);
         long total = noteMapper.count(workspaceId, keyword, folderId, tagId, projectId);
-        return PageResponse.of(notes.stream().map(NoteResponseAssembler::toSummary).toList(), page, size, total);
+        return PageResponse.of(
+                notes.stream().map(NoteResponseAssembler::toSummary).toList(), page, size, total);
     }
 
     /** 查询当前工作空间的回收站。 */
     public PageResponse<DeletedNoteResponse> listDeleted(
-            Long workspaceId, String keyword, int page, int size
-    ) {
+            Long workspaceId, String keyword, int page, int size) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
         PageQuery query = PageQuery.of(page, size);
-        List<Note> notes = noteMapper.listDeletedPage(workspaceId, keyword, query.offset(), query.size());
+        List<Note> notes =
+                noteMapper.listDeletedPage(workspaceId, keyword, query.offset(), query.size());
         noteTagLoader.attachTags(workspaceId, notes);
         long total = noteMapper.countDeleted(workspaceId, keyword);
-        return PageResponse.of(notes.stream().map(NoteResponseAssembler::toDeleted).toList(), page, size, total);
+        return PageResponse.of(
+                notes.stream().map(NoteResponseAssembler::toDeleted).toList(), page, size, total);
     }
 
     /**
@@ -175,7 +189,8 @@ public class NoteService {
         }
         note.setVersion(request.expectedVersion() + 1);
         revisions.record(note, NoteRevisionSource.UPDATE, null);
-        taskMapper.clearEvidenceOutsideProject(workspaceId, id, note.getProjectId(), note.getUpdatedAt());
+        taskMapper.clearEvidenceOutsideProject(
+                workspaceId, id, note.getProjectId(), note.getUpdatedAt());
         replaceTags(workspaceId, id, noteRequest.tagIds());
         auditService.success(workspaceId, "NOTE_UPDATE", "NOTE", id);
         return get(workspaceId, id);
@@ -183,19 +198,25 @@ public class NoteService {
 
     /** 将历史标题与正文保存为新版本；并发修改仍需通过版本校验。 */
     @Transactional
-    public NoteDetailResponse restoreRevision(Long workspaceId, Long id, Long revisionId, NoteRevisionRestoreRequest request) {
+    public NoteDetailResponse restoreRevision(
+            Long workspaceId, Long id, Long revisionId, NoteRevisionRestoreRequest request) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_WRITE);
         RequestChecks.requiredObject(request, "历史恢复请求");
-        if (request.expectedVersion() == null || request.expectedVersion() < 1)
+        if (request.expectedVersion() == null || request.expectedVersion() < 1) {
             throw new BusinessException("笔记版本不合法");
+        }
         Note note = noteMapper.lockContentById(workspaceId, id);
         RequestChecks.requiredExisting(note, NOTE_NOT_FOUND);
         NoteRevision revision = revisions.require(workspaceId, id, revisionId);
-        if (!request.expectedVersion().equals(note.getVersion())) throw new NoteVersionConflictException();
+        if (!request.expectedVersion().equals(note.getVersion())) {
+            throw new NoteVersionConflictException();
+        }
         note.setTitle(revision.getTitle());
         note.setContent(revision.getContent());
         note.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
-        if (noteMapper.restoreContent(note) != 1) throw new NoteVersionConflictException();
+        if (noteMapper.restoreContent(note) != 1) {
+            throw new NoteVersionConflictException();
+        }
         note.setVersion(request.expectedVersion() + 1);
         revisions.record(note, NoteRevisionSource.RESTORE, revisionId);
         auditService.success(workspaceId, "NOTE_REVISION_RESTORE", "NOTE", id);
@@ -245,7 +266,7 @@ public class NoteService {
     /**
      * 校验笔记请求。
      *
-     * <p>文件夹、项目和标签都是可选关系；只要传入 ID，就必须能在数据库中找到对应记录。</p>
+     * <p>文件夹、项目和标签都是可选关系；只要传入 ID，就必须能在数据库中找到对应记录。
      */
     private void validate(Long workspaceId, NoteRequest request) {
         RequestChecks.requiredObject(request, "笔记请求");
@@ -253,20 +274,21 @@ public class NoteService {
         RequestChecks.requiredText(request.content(), "笔记内容");
         RequestChecks.maxLength(request.title().trim(), 200, "笔记标题");
         if (request.folderId() != null) {
-            RequestChecks.requiredExisting(folderMapper.findById(workspaceId, request.folderId()), "文件夹不存在");
+            RequestChecks.requiredExisting(
+                    folderMapper.findById(workspaceId, request.folderId()), "文件夹不存在");
         }
         if (request.projectId() != null) {
-            RequestChecks.requiredExisting(projectMapper.findById(workspaceId, request.projectId()), "关联项目不存在");
+            RequestChecks.requiredExisting(
+                    projectMapper.findById(workspaceId, request.projectId()), "关联项目不存在");
         }
         List<Long> tagIds = normalizedTagIds(request.tagIds());
-        if (RequestChecks.hasItems(tagIds) && tagMapper.findByIds(workspaceId, tagIds).size() != tagIds.size()) {
+        if (RequestChecks.hasItems(tagIds)
+                && tagMapper.findByIds(workspaceId, tagIds).size() != tagIds.size()) {
             throw new BusinessException("存在无效标签");
         }
     }
 
-    /**
-     * 把请求中的基础字段复制到笔记实体。
-     */
+    /** 把请求中的基础字段复制到笔记实体。 */
     private void applyRequest(Note note, NoteRequest request) {
         note.setTitle(request.title().trim());
         note.setContent(request.content());
@@ -274,9 +296,7 @@ public class NoteService {
         note.setProjectId(request.projectId());
     }
 
-    /**
-     * 给笔记补充标签列表。
-     */
+    /** 给笔记补充标签列表。 */
     private void attachTags(Long workspaceId, Note note) {
         note.setTags(tagMapper.findByNoteId(workspaceId, note.getId()));
     }
@@ -284,7 +304,7 @@ public class NoteService {
     /**
      * 替换笔记的全部标签。
      *
-     * <p>第一版不做局部增删标签，统一先删再插，逻辑简单且便于保证最终状态与请求一致。</p>
+     * <p>第一版不做局部增删标签，统一先删再插，逻辑简单且便于保证最终状态与请求一致。
      */
     private void replaceTags(Long workspaceId, Long noteId, List<Long> tagIds) {
         tagMapper.deleteNoteTags(workspaceId, noteId);
@@ -296,7 +316,7 @@ public class NoteService {
     /**
      * 清洗标签 ID 列表。
      *
-     * <p>过滤空值并去重，避免重复插入 note_tag 主键。</p>
+     * <p>过滤空值并去重，避免重复插入 note_tag 主键。
      */
     private List<Long> normalizedTagIds(List<Long> tagIds) {
         if (tagIds == null) {

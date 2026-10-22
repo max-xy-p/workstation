@@ -11,14 +11,15 @@ import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
+
 import org.springframework.stereotype.Service;
 
-@Service
 /**
  * 首页概览业务服务。
  *
- * <p>负责聚合项目、任务和笔记数据，给首页一次性返回可展示的工作台概览。</p>
+ * <p>负责聚合项目、任务和笔记数据，给首页一次性返回可展示的工作台概览。
  */
+@Service
 public class DashboardService {
     private final ProjectMapper projectMapper;
     private final TaskMapper taskMapper;
@@ -33,8 +34,7 @@ public class DashboardService {
             NoteMapper noteMapper,
             NoteTagLoader noteTagLoader,
             DashboardProperties dashboardProperties,
-            WorkspaceAuthorizationService authorization
-    ) {
+            WorkspaceAuthorizationService authorization) {
         this.projectMapper = projectMapper;
         this.taskMapper = taskMapper;
         this.noteMapper = noteMapper;
@@ -54,7 +54,8 @@ public class DashboardService {
             throw new BusinessException("首页最近记录数量未正确配置");
         }
 
-        var recentNotes = noteMapper.recentSummaries(workspaceId, dashboardProperties.recentLimit());
+        var recentNotes =
+                noteMapper.recentSummaries(workspaceId, dashboardProperties.recentLimit());
         noteTagLoader.attachTags(workspaceId, recentNotes);
         return new DashboardResponse(
                 projectMapper.countByStatus(workspaceId, ProjectStatus.ACTIVE),
@@ -63,7 +64,6 @@ public class DashboardService {
                 projectMapper.recent(workspaceId, dashboardProperties.recentLimit()).stream()
                         .map(ProjectResponseAssembler::toSummary)
                         .toList(),
-                recentNotes.stream().map(NoteResponseAssembler::toSummary).toList()
-        );
+                recentNotes.stream().map(NoteResponseAssembler::toSummary).toList());
     }
 }

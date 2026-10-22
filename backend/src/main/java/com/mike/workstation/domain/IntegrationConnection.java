@@ -1,6 +1,9 @@
 package com.mike.workstation.domain;
 
 import lombok.Data;
+import lombok.ToString;
+
+import java.time.LocalDateTime;
 
 /** 外部数据接入的持久化记录。 */
 @Data
@@ -11,8 +14,7 @@ public class IntegrationConnection {
     private String provider;
     private String baseUrl;
     private String account;
-    @lombok.ToString.Exclude
-    private String credential;
+    @ToString.Exclude private String credential;
     private String keyVersion;
     private String scope;
     private String ownerSubject;
@@ -24,6 +26,6 @@ public class IntegrationConnection {
     private boolean deleted;
     private int scheduleMinutes;
     private int version;
-    private java.time.LocalDateTime lastSyncedAt;
-    private java.time.LocalDateTime nextSyncAt;
+    private LocalDateTime lastSyncedAt;
+    private LocalDateTime nextSyncAt;
 }

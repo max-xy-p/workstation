@@ -4,15 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mike.workstation.domain.PrincipalType;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 class CurrentPrincipalResolverTests {
     private final CurrentPrincipalResolver resolver = new CurrentPrincipalResolver();
@@ -24,8 +26,10 @@ class CurrentPrincipalResolverTests {
 
     @Test
     void serviceRoleAndClaimsBecomeCurrentPrincipal() {
-        authenticate(Map.of("sub", "service-1", "preferred_username", "worker", "name", "任务服务"),
-                "ROLE_WORKSTATION_SERVICE", "SCOPE_read");
+        authenticate(
+                Map.of("sub", "service-1", "preferred_username", "worker", "name", "任务服务"),
+                "ROLE_WORKSTATION_SERVICE",
+                "SCOPE_read");
 
         var principal = resolver.require();
 
@@ -59,8 +63,13 @@ class CurrentPrincipalResolverTests {
     }
 
     private void authenticate(Map<String, Object> claims, String... authorities) {
-        Jwt jwt = new Jwt("token", Instant.now(), Instant.now().plusSeconds(60),
-                Map.of("alg", "none"), claims);
+        Jwt jwt =
+                new Jwt(
+                        "token",
+                        Instant.now(),
+                        Instant.now().plusSeconds(60),
+                        Map.of("alg", "none"),
+                        claims);
         var roles = List.of(authorities).stream().map(SimpleGrantedAuthority::new).toList();
         var authentication = new JwtAuthenticationToken(jwt, roles);
         SecurityContextHolder.getContext().setAuthentication(authentication);

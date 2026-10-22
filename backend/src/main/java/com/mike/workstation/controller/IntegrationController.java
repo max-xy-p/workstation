@@ -1,91 +1,197 @@
 package com.mike.workstation.controller;
 
 import com.mike.workstation.domain.DevelopmentKind;
-import com.mike.workstation.dto.*;
+import com.mike.workstation.dto.DevelopmentItemResponse;
+import com.mike.workstation.dto.IntegrationConnectionRequest;
+import com.mike.workstation.dto.IntegrationConnectionResponse;
+import com.mike.workstation.dto.IntegrationEnableRequest;
+import com.mike.workstation.dto.IntegrationImportRequest;
+import com.mike.workstation.dto.IntegrationRunItemResponse;
+import com.mike.workstation.dto.IntegrationRunResponse;
+import com.mike.workstation.dto.IntegrationTriggerRequest;
+import com.mike.workstation.dto.PageResponse;
+import com.mike.workstation.dto.ProjectDevelopmentResponse;
+import com.mike.workstation.dto.RepositoryBindRequest;
+import com.mike.workstation.dto.RepositoryResponse;
 import com.mike.workstation.service.IntegrationService;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 /** 数据源业务入口，权限与事务由服务层集中处理。 */
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}")
 public class IntegrationController {
     private final IntegrationService service;
-    public IntegrationController(IntegrationService service) { this.service=service; }
+
+    public IntegrationController(IntegrationService service) {
+        this.service = service;
+    }
+
     @GetMapping("/integrations")
-    public PageResponse<IntegrationConnectionResponse> list(@PathVariable Long workspaceId,
-            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.list(workspaceId,page,size);
+    public PageResponse<IntegrationConnectionResponse> list(
+            @PathVariable Long workspaceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.list(workspaceId, page, size);
     }
-    @PostMapping("/integrations") @ResponseStatus(HttpStatus.CREATED)
-    public IntegrationConnectionResponse create(@PathVariable Long workspaceId,@RequestBody IntegrationConnectionRequest request) {
-        return service.save(workspaceId,null,request);
+
+    @PostMapping("/integrations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public IntegrationConnectionResponse create(
+            @PathVariable Long workspaceId, @RequestBody IntegrationConnectionRequest request) {
+        return service.save(workspaceId, null, request);
     }
+
     @PatchMapping("/integrations/{connectionId}")
-    public IntegrationConnectionResponse update(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestBody IntegrationConnectionRequest request) { return service.save(workspaceId,connectionId,request); }
+    public IntegrationConnectionResponse update(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestBody IntegrationConnectionRequest request) {
+        return service.save(workspaceId, connectionId, request);
+    }
+
     @PostMapping("/integrations/{connectionId}/validate")
-    public IntegrationConnectionResponse validate(@PathVariable Long workspaceId,@PathVariable Long connectionId) {
-        return service.validate(workspaceId,connectionId);
+    public IntegrationConnectionResponse validate(
+            @PathVariable Long workspaceId, @PathVariable Long connectionId) {
+        return service.validate(workspaceId, connectionId);
     }
+
     @PutMapping("/integrations/{connectionId}/enabled")
-    public IntegrationConnectionResponse enabled(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestBody IntegrationEnableRequest request) { return service.enabled(workspaceId,connectionId,request); }
-    @DeleteMapping("/integrations/{connectionId}") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long workspaceId,@PathVariable Long connectionId) { service.delete(workspaceId,connectionId); }
-    @PostMapping("/integrations/{connectionId}/discoveries") @ResponseStatus(HttpStatus.ACCEPTED)
-    public IntegrationRunResponse discover(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestBody IntegrationTriggerRequest r) { return service.trigger(workspaceId,connectionId,"DISCOVER",r.requestKey(),null); }
-    @PostMapping("/integrations/{connectionId}/sync-runs") @ResponseStatus(HttpStatus.ACCEPTED)
-    public IntegrationRunResponse sync(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestBody IntegrationTriggerRequest r) { return service.trigger(workspaceId,connectionId,"SYNC",r.requestKey(),null); }
-    @PostMapping("/integrations/{connectionId}/imports") @ResponseStatus(HttpStatus.ACCEPTED)
-    public IntegrationRunResponse imports(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestBody IntegrationImportRequest r) { return service.trigger(workspaceId,connectionId,"IMPORT",r.requestKey(),r); }
+    public IntegrationConnectionResponse enabled(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestBody IntegrationEnableRequest request) {
+        return service.enabled(workspaceId, connectionId, request);
+    }
+
+    @DeleteMapping("/integrations/{connectionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long workspaceId, @PathVariable Long connectionId) {
+        service.delete(workspaceId, connectionId);
+    }
+
+    @PostMapping("/integrations/{connectionId}/discoveries")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public IntegrationRunResponse discover(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestBody IntegrationTriggerRequest r) {
+        return service.trigger(workspaceId, connectionId, "DISCOVER", r.requestKey(), null);
+    }
+
+    @PostMapping("/integrations/{connectionId}/sync-runs")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public IntegrationRunResponse sync(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestBody IntegrationTriggerRequest r) {
+        return service.trigger(workspaceId, connectionId, "SYNC", r.requestKey(), null);
+    }
+
+    @PostMapping("/integrations/{connectionId}/imports")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public IntegrationRunResponse imports(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestBody IntegrationImportRequest r) {
+        return service.trigger(workspaceId, connectionId, "IMPORT", r.requestKey(), r);
+    }
+
     @GetMapping("/integrations/{connectionId}/repositories")
-    public PageResponse<RepositoryResponse> repositories(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.repositories(workspaceId,connectionId,null,page,size);
+    public PageResponse<RepositoryResponse> repositories(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.repositories(workspaceId, connectionId, null, page, size);
     }
+
     @GetMapping("/integrations/{connectionId}/sync-runs")
-    public PageResponse<IntegrationRunResponse> runs(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.runs(workspaceId,connectionId,page,size);
+    public PageResponse<IntegrationRunResponse> runs(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.runs(workspaceId, connectionId, page, size);
     }
+
     @GetMapping("/integrations/{connectionId}/sync-runs/{runId}")
-    public IntegrationRunResponse run(@PathVariable Long workspaceId,@PathVariable Long connectionId,@PathVariable Long runId) {
-        return service.run(workspaceId,connectionId,runId);
+    public IntegrationRunResponse run(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @PathVariable Long runId) {
+        return service.run(workspaceId, connectionId, runId);
     }
+
     @GetMapping("/integrations/{connectionId}/sync-runs/{runId}/items")
-    public PageResponse<IntegrationRunItemResponse> items(@PathVariable Long workspaceId,@PathVariable Long connectionId,
-            @PathVariable Long runId,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.items(workspaceId,connectionId,runId,page,size);
+    public PageResponse<IntegrationRunItemResponse> items(
+            @PathVariable Long workspaceId,
+            @PathVariable Long connectionId,
+            @PathVariable Long runId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.items(workspaceId, connectionId, runId, page, size);
     }
+
     @GetMapping("/projects/{projectId}/repositories")
-    public PageResponse<RepositoryResponse> projectRepositories(@PathVariable Long workspaceId,@PathVariable Long projectId,
-            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.repositories(workspaceId,null,projectId,page,size);
+    public PageResponse<RepositoryResponse> projectRepositories(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.repositories(workspaceId, null, projectId, page, size);
     }
-    @PostMapping("/projects/{projectId}/repositories") @ResponseStatus(HttpStatus.CREATED)
-    public RepositoryResponse bind(@PathVariable Long workspaceId,@PathVariable Long projectId,@RequestBody RepositoryBindRequest r) {
-        return service.bind(workspaceId,projectId,r);
+
+    @PostMapping("/projects/{projectId}/repositories")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RepositoryResponse bind(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @RequestBody RepositoryBindRequest r) {
+        return service.bind(workspaceId, projectId, r);
     }
-    @DeleteMapping("/projects/{projectId}/repositories/{repositoryId}") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unbind(@PathVariable Long workspaceId,@PathVariable Long projectId,@PathVariable Long repositoryId) {
-        service.unbind(workspaceId,projectId,repositoryId);
+
+    @DeleteMapping("/projects/{projectId}/repositories/{repositoryId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unbind(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @PathVariable Long repositoryId) {
+        service.unbind(workspaceId, projectId, repositoryId);
     }
+
     @GetMapping("/projects/{projectId}/development")
-    public ProjectDevelopmentResponse development(@PathVariable Long workspaceId,@PathVariable Long projectId) {
-        return service.development(workspaceId,projectId);
+    public ProjectDevelopmentResponse development(
+            @PathVariable Long workspaceId, @PathVariable Long projectId) {
+        return service.development(workspaceId, projectId);
     }
+
     @GetMapping("/projects/{projectId}/development/items")
-    public PageResponse<DevelopmentItemResponse> developmentItems(@PathVariable Long workspaceId,@PathVariable Long projectId,
-            @RequestParam DevelopmentKind kind,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.developmentItems(workspaceId,projectId,kind,page,size);
+    public PageResponse<DevelopmentItemResponse> developmentItems(
+            @PathVariable Long workspaceId,
+            @PathVariable Long projectId,
+            @RequestParam DevelopmentKind kind,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.developmentItems(workspaceId, projectId, kind, page, size);
     }
+
     @GetMapping("/development/repositories")
-    public PageResponse<RepositoryResponse> workspaceDevelopment(@PathVariable Long workspaceId,
-            @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) {
-        return service.repositories(workspaceId,null,-1L,page,size);
+    public PageResponse<RepositoryResponse> workspaceDevelopment(
+            @PathVariable Long workspaceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.repositories(workspaceId, null, -1L, page, size);
     }
 }

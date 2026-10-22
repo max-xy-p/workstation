@@ -2,6 +2,8 @@ package com.mike.workstation.domain;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /** 外部数据接入的持久化记录。 */
 @Data
 public class DevelopmentItem {
@@ -19,5 +21,5 @@ public class DevelopmentItem {
     private String rawStatus;
     private String author;
     private String branch;
-    private java.time.LocalDateTime sourceUpdatedAt;
+    private LocalDateTime sourceUpdatedAt;
 }

@@ -15,25 +15,22 @@ import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TaskMapper;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTests {
     private static final long WORKSPACE_ID = 9L;
-    @Mock
-    ProjectMapper projectMapper;
-    @Mock
-    TaskMapper taskMapper;
-    @Mock
-    NoteMapper noteMapper;
-    @Mock
-    NoteTagLoader noteTagLoader;
-    @Mock
-    WorkspaceAuthorizationService authorization;
+    @Mock ProjectMapper projectMapper;
+    @Mock TaskMapper taskMapper;
+    @Mock NoteMapper noteMapper;
+    @Mock NoteTagLoader noteTagLoader;
+    @Mock WorkspaceAuthorizationService authorization;
 
     @Test
     void summaryAggregatesCountsAndLoadsRecentNoteTags() {
@@ -68,7 +65,7 @@ class DashboardServiceTests {
     }
 
     private DashboardService service(DashboardProperties properties) {
-        return new DashboardService(projectMapper, taskMapper, noteMapper, noteTagLoader,
-                properties, authorization);
+        return new DashboardService(
+                projectMapper, taskMapper, noteMapper, noteTagLoader, properties, authorization);
     }
 }

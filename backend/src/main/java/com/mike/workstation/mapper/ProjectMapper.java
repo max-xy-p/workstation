@@ -2,7 +2,7 @@ package com.mike.workstation.mapper;
 
 import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.ProjectStatus;
-import java.util.List;
+
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -11,17 +11,19 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
-@Mapper
+import java.time.LocalDateTime;
+import java.util.List;
+
 /**
  * 项目表数据访问接口。
  *
- * <p>只负责 projects 表的 SQL 操作，不承载业务删除规则。</p>
+ * <p>只负责 projects 表的 SQL 操作，不承载业务删除规则。
  */
+@Mapper
 public interface ProjectMapper {
-    /**
-     * 按名称关键字和状态查询项目列表。
-     */
-    @Select("""
+    /** 按名称关键字和状态查询项目列表。 */
+    @Select(
+            """
             <script>
             SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, created_at, updated_at
             FROM projects
@@ -43,10 +45,10 @@ public interface ProjectMapper {
             @Param("keyword") String keyword,
             @Param("status") ProjectStatus status,
             @Param("offset") long offset,
-            @Param("size") int size
-    );
+            @Param("size") int size);
 
-    @Select("""
+    @Select(
+            """
             <script>
             SELECT COUNT(*) FROM projects
             <where>
@@ -59,23 +61,20 @@ public interface ProjectMapper {
     long count(
             @Param("workspaceId") Long workspaceId,
             @Param("keyword") String keyword,
-            @Param("status") ProjectStatus status
-    );
+            @Param("status") ProjectStatus status);
 
-    /**
-     * 根据主键查询项目。
-     */
-    @Select("""
+    /** 根据主键查询项目。 */
+    @Select(
+            """
             SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, run_guide, created_at, updated_at
             FROM projects
             WHERE workspace_id = #{workspaceId} AND id = #{id}
             """)
     Project findById(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
-    /**
-     * 插入项目，并回填自增主键到 project.id。
-     */
-    @Insert("""
+    /** 插入项目，并回填自增主键到 project.id。 */
+    @Insert(
+            """
             INSERT INTO projects
                 (workspace_id, name, description, status, repository_url, homepage_url, tech_stack, run_guide, created_at, updated_at)
             VALUES
@@ -84,10 +83,9 @@ public interface ProjectMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Project project);
 
-    /**
-     * 更新项目完整信息。
-     */
-    @Update("""
+    /** 更新项目完整信息。 */
+    @Update(
+            """
             UPDATE projects
             SET name = #{name},
                 description = #{description},
@@ -101,10 +99,9 @@ public interface ProjectMapper {
             """)
     int update(Project project);
 
-    /**
-     * 更新项目状态和更新时间。
-     */
-    @Update("""
+    /** 更新项目状态和更新时间。 */
+    @Update(
+            """
             UPDATE projects
             SET status = #{status}, updated_at = #{updatedAt}
             WHERE workspace_id = #{workspaceId} AND id = #{id}
@@ -113,25 +110,21 @@ public interface ProjectMapper {
             @Param("workspaceId") Long workspaceId,
             @Param("id") Long id,
             @Param("status") ProjectStatus status,
-            @Param("updatedAt") java.time.LocalDateTime updatedAt
-    );
+            @Param("updatedAt") LocalDateTime updatedAt);
 
-    /**
-     * 根据主键删除项目。
-     */
+    /** 根据主键删除项目。 */
     @Delete("DELETE FROM projects WHERE workspace_id = #{workspaceId} AND id = #{id}")
     int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
 
-    /**
-     * 按项目状态统计数量。
-     */
-    @Select("SELECT COUNT(*) FROM projects WHERE workspace_id = #{workspaceId} AND status = #{status}")
-    long countByStatus(@Param("workspaceId") Long workspaceId, @Param("status") ProjectStatus status);
+    /** 按项目状态统计数量。 */
+    @Select(
+            "SELECT COUNT(*) FROM projects WHERE workspace_id = #{workspaceId} AND status = #{status}")
+    long countByStatus(
+            @Param("workspaceId") Long workspaceId, @Param("status") ProjectStatus status);
 
-    /**
-     * 查询最近更新的项目，用于首页概览。
-     */
-    @Select("""
+    /** 查询最近更新的项目，用于首页概览。 */
+    @Select(
+            """
             SELECT id, workspace_id, name, description, status, repository_url, homepage_url, tech_stack, created_at, updated_at
             FROM projects
             WHERE workspace_id = #{workspaceId}

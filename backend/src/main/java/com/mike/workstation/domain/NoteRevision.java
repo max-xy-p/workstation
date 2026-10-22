@@ -1,7 +1,8 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 /** 已提交的笔记标题与正文快照。 */
 @Data

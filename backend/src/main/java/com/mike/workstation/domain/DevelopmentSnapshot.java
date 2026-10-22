@@ -2,6 +2,8 @@ package com.mike.workstation.domain;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /** 外部数据接入的持久化记录。 */
 @Data
 public class DevelopmentSnapshot {
@@ -13,6 +15,6 @@ public class DevelopmentSnapshot {
     private boolean truncated;
     private int collected;
     private int openCount;
-    private java.time.LocalDateTime since;
-    private java.time.LocalDateTime syncedAt;
+    private LocalDateTime since;
+    private LocalDateTime syncedAt;
 }

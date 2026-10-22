@@ -2,17 +2,20 @@ package com.mike.workstation.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.Note;
-import com.mike.workstation.domain.Project;
 import com.mike.workstation.domain.PrincipalType;
+import com.mike.workstation.domain.Project;
+import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.dto.NoteDetailResponse;
 import com.mike.workstation.dto.NoteRequest;
+import com.mike.workstation.dto.NoteRevisionRestoreRequest;
 import com.mike.workstation.dto.NoteUpdateRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.exception.NoteVersionConflictException;
+import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
@@ -20,41 +23,35 @@ import com.mike.workstation.mapper.TagMapper;
 import com.mike.workstation.mapper.TaskMapper;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NoteServiceTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @Mock
-    private NoteMapper noteMapper;
-    @Mock
-    private NoteFolderMapper folderMapper;
-    @Mock
-    private ProjectMapper projectMapper;
-    @Mock
-    private TagMapper tagMapper;
-    @Mock
-    private TaskMapper taskMapper;
-    @Mock
-    private NoteTagLoader noteTagLoader;
-    @Mock
-    private CurrentPrincipalResolver principalResolver;
-    @Mock
-    private WorkspaceAuthorizationService authorization;
-    @Mock
-    private AuditService auditService;
-    @Mock
-    private NoteRevisionService revisions;
-    @InjectMocks
-    private NoteService noteService;
+    @Mock private NoteMapper noteMapper;
+    @Mock private NoteFolderMapper folderMapper;
+    @Mock private ProjectMapper projectMapper;
+    @Mock private TagMapper tagMapper;
+    @Mock private TaskMapper taskMapper;
+    @Mock private NoteTagLoader noteTagLoader;
+    @Mock private CurrentPrincipalResolver principalResolver;
+    @Mock private WorkspaceAuthorizationService authorization;
+    @Mock private AuditService auditService;
+    @Mock private NoteRevisionService revisions;
+    @InjectMocks private NoteService noteService;
 
     @Test
     void updateReturnsThePersistedVersionReceipt() {
@@ -62,13 +59,13 @@ class NoteServiceTests {
         Note persisted = note(1L, 4L);
         when(noteMapper.findDetailById(WORKSPACE_ID, 1L)).thenReturn(existing, persisted);
         when(tagMapper.findByNoteId(WORKSPACE_ID, 1L)).thenReturn(List.of());
-        when(noteMapper.update(org.mockito.ArgumentMatchers.any(Note.class))).thenReturn(1);
+        when(noteMapper.update(ArgumentMatchers.any(Note.class))).thenReturn(1);
 
-        NoteDetailResponse result = noteService.update(
-                WORKSPACE_ID,
-                1L,
-                new NoteUpdateRequest("Title", "Content", null, null, List.of(), 3L)
-        );
+        NoteDetailResponse result =
+                noteService.update(
+                        WORKSPACE_ID,
+                        1L,
+                        new NoteUpdateRequest("Title", "Content", null, null, List.of(), 3L));
 
         assertThat(result.version()).isEqualTo(4L);
     }
@@ -79,12 +76,16 @@ class NoteServiceTests {
         when(noteMapper.lockById(WORKSPACE_ID, 1L)).thenReturn(note(1L, 4L));
         when(tagMapper.findByNoteId(WORKSPACE_ID, 1L)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> noteService.update(WORKSPACE_ID, 1L,
-                new NoteUpdateRequest("Title", "Content", null, null, List.of(), 3L)))
+        assertThatThrownBy(
+                        () ->
+                                noteService.update(
+                                        WORKSPACE_ID,
+                                        1L,
+                                        new NoteUpdateRequest(
+                                                "Title", "Content", null, null, List.of(), 3L)))
                 .isInstanceOf(NoteVersionConflictException.class);
-        org.mockito.Mockito.verify(tagMapper, org.mockito.Mockito.never())
-                .deleteNoteTags(WORKSPACE_ID, 1L);
-        org.mockito.Mockito.verifyNoInteractions(taskMapper);
+        Mockito.verify(tagMapper, Mockito.never()).deleteNoteTags(WORKSPACE_ID, 1L);
+        Mockito.verifyNoInteractions(taskMapper);
     }
 
     @Test
@@ -94,23 +95,30 @@ class NoteServiceTests {
         when(noteMapper.findDetailById(WORKSPACE_ID, 1L)).thenReturn(existing, persisted);
         when(projectMapper.findById(WORKSPACE_ID, 5L)).thenReturn(new Project());
         when(tagMapper.findByNoteId(WORKSPACE_ID, 1L)).thenReturn(List.of());
-        when(noteMapper.update(org.mockito.ArgumentMatchers.any(Note.class))).thenReturn(1);
+        when(noteMapper.update(ArgumentMatchers.any(Note.class))).thenReturn(1);
 
-        noteService.update(WORKSPACE_ID, 1L,
+        noteService.update(
+                WORKSPACE_ID,
+                1L,
                 new NoteUpdateRequest("Title", "Content", null, 5L, List.of(), 3L));
 
-        verify(taskMapper).clearEvidenceOutsideProject(
-                org.mockito.ArgumentMatchers.eq(WORKSPACE_ID),
-                org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.eq(5L),
-                org.mockito.ArgumentMatchers.any());
+        verify(taskMapper)
+                .clearEvidenceOutsideProject(
+                        ArgumentMatchers.eq(WORKSPACE_ID),
+                        ArgumentMatchers.eq(1L),
+                        ArgumentMatchers.eq(5L),
+                        ArgumentMatchers.any());
     }
 
     @Test
     void createRejectsTitleLongerThanDatabaseColumn() {
-        assertThatThrownBy(() -> noteService.create(WORKSPACE_ID,
-                new NoteRequest("x".repeat(201), "Content", null, null, List.of())
-        )).isInstanceOf(BusinessException.class)
+        assertThatThrownBy(
+                        () ->
+                                noteService.create(
+                                        WORKSPACE_ID,
+                                        new NoteRequest(
+                                                "x".repeat(201), "Content", null, null, List.of())))
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("200");
     }
 
@@ -133,20 +141,27 @@ class NoteServiceTests {
     @Test
     void deleteMovesNoteToTrashWithoutDeletingTags() {
         when(noteMapper.lockById(WORKSPACE_ID, 1L)).thenReturn(note(1L, 3L));
-        when(principalResolver.require()).thenReturn(new CurrentPrincipal(
-                "subject-1", PrincipalType.USER, "mike", "Mike", Set.of("WORKSTATION_USER")));
+        when(principalResolver.require())
+                .thenReturn(
+                        new CurrentPrincipal(
+                                "subject-1",
+                                PrincipalType.USER,
+                                "mike",
+                                "Mike",
+                                Set.of("WORKSTATION_USER")));
 
         noteService.delete(WORKSPACE_ID, 1L);
 
-        var captor = org.mockito.ArgumentCaptor.forClass(Note.class);
+        var captor = ArgumentCaptor.forClass(Note.class);
         verify(noteMapper).softDelete(captor.capture());
         assertThat(captor.getValue().getDeletedBySubject()).isEqualTo("subject-1");
         assertThat(captor.getValue().getDeletedAt()).isNotNull();
-        verify(taskMapper).clearEvidenceNote(
-                org.mockito.ArgumentMatchers.eq(WORKSPACE_ID),
-                org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
-        org.mockito.Mockito.verify(tagMapper, org.mockito.Mockito.never()).deleteNoteTags(WORKSPACE_ID, 1L);
+        verify(taskMapper)
+                .clearEvidenceNote(
+                        ArgumentMatchers.eq(WORKSPACE_ID),
+                        ArgumentMatchers.eq(1L),
+                        ArgumentMatchers.any(LocalDateTime.class));
+        Mockito.verify(tagMapper, Mockito.never()).deleteNoteTags(WORKSPACE_ID, 1L);
         verify(auditService).success(WORKSPACE_ID, "NOTE_TRASH", "NOTE", 1L);
     }
 
@@ -162,10 +177,11 @@ class NoteServiceTests {
         var result = noteService.restore(WORKSPACE_ID, 1L);
 
         assertThat(result.version()).isEqualTo(4L);
-        verify(noteMapper).restore(
-                org.mockito.ArgumentMatchers.eq(WORKSPACE_ID),
-                org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class));
+        verify(noteMapper)
+                .restore(
+                        ArgumentMatchers.eq(WORKSPACE_ID),
+                        ArgumentMatchers.eq(1L),
+                        ArgumentMatchers.any(LocalDateTime.class));
         verify(auditService).success(WORKSPACE_ID, "NOTE_RESTORE", "NOTE", 1L);
     }
 
@@ -177,7 +193,7 @@ class NoteServiceTests {
 
         noteService.permanentlyDelete(WORKSPACE_ID, 1L);
 
-        var order = org.mockito.Mockito.inOrder(tagMapper, noteMapper);
+        var order = Mockito.inOrder(tagMapper, noteMapper);
         order.verify(tagMapper).deleteNoteTags(WORKSPACE_ID, 1L);
         order.verify(noteMapper).permanentlyDelete(WORKSPACE_ID, 1L);
         verify(auditService).success(WORKSPACE_ID, "NOTE_PERMANENT_DELETE", "NOTE", 1L);
@@ -194,32 +210,47 @@ class NoteServiceTests {
 
         var result = noteService.listDeleted(WORKSPACE_ID, "旧", 0, 20);
 
-        assertThat(result.items()).singleElement().satisfies(item -> {
-            assertThat(item.deletedBySubject()).isEqualTo("subject-1");
-            assertThat(item.deletedByDisplayName()).isEqualTo("Mike");
-        });
+        assertThat(result.items())
+                .singleElement()
+                .satisfies(
+                        item -> {
+                            assertThat(item.deletedBySubject()).isEqualTo("subject-1");
+                            assertThat(item.deletedByDisplayName()).isEqualTo("Mike");
+                        });
         verify(noteTagLoader).attachTags(WORKSPACE_ID, List.of(deleted));
     }
 
     @Test
     void historicalRestoreRejectsInvalidVersionsBeforeTouchingContent() {
-        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,null))
+        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID, 1L, 11L, null))
                 .isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
-                new com.mike.workstation.dto.NoteRevisionRestoreRequest(null))).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
-                new com.mike.workstation.dto.NoteRevisionRestoreRequest(0L))).isInstanceOf(BusinessException.class);
-        org.mockito.Mockito.verifyNoInteractions(noteMapper,revisions);
+        assertThatThrownBy(
+                        () ->
+                                noteService.restoreRevision(
+                                        WORKSPACE_ID,
+                                        1L,
+                                        11L,
+                                        new NoteRevisionRestoreRequest(null)))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(
+                        () ->
+                                noteService.restoreRevision(
+                                        WORKSPACE_ID, 1L, 11L, new NoteRevisionRestoreRequest(0L)))
+                .isInstanceOf(BusinessException.class);
+        Mockito.verifyNoInteractions(noteMapper, revisions);
     }
 
     @Test
     void historicalRestoreRequiresWritePermissionBeforeReadingSnapshots() {
-        org.mockito.Mockito.doThrow(new com.mike.workstation.exception.WorkspaceAccessDeniedException("只读空间"))
-                .when(authorization).require(WORKSPACE_ID,com.mike.workstation.domain.WorkspacePermission.NOTE_WRITE);
-        assertThatThrownBy(() -> noteService.restoreRevision(WORKSPACE_ID,1L,11L,
-                new com.mike.workstation.dto.NoteRevisionRestoreRequest(1L)))
-                .isInstanceOf(com.mike.workstation.exception.WorkspaceAccessDeniedException.class);
-        org.mockito.Mockito.verifyNoInteractions(noteMapper,revisions);
+        Mockito.doThrow(new WorkspaceAccessDeniedException("只读空间"))
+                .when(authorization)
+                .require(WORKSPACE_ID, WorkspacePermission.NOTE_WRITE);
+        assertThatThrownBy(
+                        () ->
+                                noteService.restoreRevision(
+                                        WORKSPACE_ID, 1L, 11L, new NoteRevisionRestoreRequest(1L)))
+                .isInstanceOf(WorkspaceAccessDeniedException.class);
+        Mockito.verifyNoInteractions(noteMapper, revisions);
     }
 
     private Note note(Long id, Long version) {

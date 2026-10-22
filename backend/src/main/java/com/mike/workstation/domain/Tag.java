@@ -1,12 +1,11 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
+/** 笔记标签实体，对应 tags 表。 */
 @Data
-/**
- * 笔记标签实体，对应 tags 表。
- */
 public class Tag {
     private Long id;
     private Long workspaceId;

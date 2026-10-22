@@ -7,18 +7,20 @@ import com.mike.workstation.dto.TagRequest;
 import com.mike.workstation.dto.TagResponse;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.TagMapper;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
 /**
  * 标签业务服务。
  *
- * <p>标签和笔记是多对多关系；删除标签时只解除关联，不删除笔记。</p>
+ * <p>标签和笔记是多对多关系；删除标签时只解除关联，不删除笔记。
  */
+@Service
 public class TagService {
     private final TagMapper tagMapper;
     private final WorkspaceAuthorizationService authorization;
@@ -27,8 +29,7 @@ public class TagService {
     public TagService(
             TagMapper tagMapper,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService
-    ) {
+            AuditService auditService) {
         this.tagMapper = tagMapper;
         this.authorization = authorization;
         this.auditService = auditService;
@@ -118,9 +119,7 @@ public class TagService {
         auditService.success(workspaceId, "TAG_DELETE", "TAG", id);
     }
 
-    /**
-     * 校验标签请求。
-     */
+    /** 校验标签请求。 */
     private void validate(Long workspaceId, TagRequest request, Long excludeId) {
         RequestChecks.requiredObject(request, "标签请求");
         RequestChecks.requiredText(request.name(), "标签名称");

@@ -1,10 +1,10 @@
 package com.mike.workstation.service;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.Tag;
@@ -12,24 +12,23 @@ import com.mike.workstation.dto.TagRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.exception.NotFoundException;
 import com.mike.workstation.mapper.TagMapper;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class TagServiceTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @Mock
-    private TagMapper tagMapper;
-    @Mock
-    private WorkspaceAuthorizationService authorization;
-    @Mock
-    private AuditService auditService;
-    @InjectMocks
-    private TagService tagService;
+    @Mock private TagMapper tagMapper;
+    @Mock private WorkspaceAuthorizationService authorization;
+    @Mock private AuditService auditService;
+    @InjectMocks private TagService tagService;
 
     @Test
     void deleteClearsNoteLinksBeforeDeletingTag() {
@@ -52,11 +51,14 @@ class TagServiceTests {
 
     @Test
     void createNormalizesNameAndAuditsPersistedTag() {
-        org.mockito.Mockito.doAnswer(invocation -> {
-            Tag inserted = invocation.getArgument(0);
-            inserted.setId(2L);
-            return 1;
-        }).when(tagMapper).insert(any(Tag.class));
+        Mockito.doAnswer(
+                        invocation -> {
+                            Tag inserted = invocation.getArgument(0);
+                            inserted.setId(2L);
+                            return 1;
+                        })
+                .when(tagMapper)
+                .insert(any(Tag.class));
         Tag persisted = tag();
         persisted.setId(2L);
         when(tagMapper.findById(WORKSPACE_ID, 2L)).thenReturn(persisted);
@@ -64,7 +66,7 @@ class TagServiceTests {
         var created = tagService.create(WORKSPACE_ID, new TagRequest("  Spring  "));
 
         assertThat(created.id()).isEqualTo(2L);
-        var captor = org.mockito.ArgumentCaptor.forClass(Tag.class);
+        var captor = ArgumentCaptor.forClass(Tag.class);
         verify(tagMapper).insert(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo("Spring");
         verify(auditService).success(WORKSPACE_ID, "TAG_CREATE", "TAG", 2L);
@@ -76,7 +78,7 @@ class TagServiceTests {
 
         tagService.update(WORKSPACE_ID, 1L, new TagRequest("  Architecture  "));
 
-        var captor = org.mockito.ArgumentCaptor.forClass(Tag.class);
+        var captor = ArgumentCaptor.forClass(Tag.class);
         verify(tagMapper).update(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo("Architecture");
         assertThat(captor.getValue().getWorkspaceId()).isEqualTo(WORKSPACE_ID);

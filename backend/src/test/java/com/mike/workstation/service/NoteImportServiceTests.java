@@ -23,11 +23,7 @@ import com.mike.workstation.mapper.NoteFolderMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
 import com.mike.workstation.mapper.TagMapper;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,27 +31,25 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class NoteImportServiceTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @TempDir
-    Path allowedRoot;
-    @Mock
-    NoteMapper noteMapper;
-    @Mock
-    NoteFolderMapper folderMapper;
-    @Mock
-    ProjectMapper projectMapper;
-    @Mock
-    TagMapper tagMapper;
-    @Mock
-    WorkspaceAuthorizationService authorization;
-    @Mock
-    AuditService auditService;
+    @TempDir Path allowedRoot;
+    @Mock NoteMapper noteMapper;
+    @Mock NoteFolderMapper folderMapper;
+    @Mock ProjectMapper projectMapper;
+    @Mock TagMapper tagMapper;
+    @Mock WorkspaceAuthorizationService authorization;
+    @Mock AuditService auditService;
 
-    @Mock
-    NoteRevisionService revisions;
+    @Mock NoteRevisionService revisions;
 
     private NoteImportService service;
 
@@ -73,15 +67,24 @@ class NoteImportServiceTests {
         when(projectMapper.findById(WORKSPACE_ID, 4L)).thenReturn(new Project());
         when(tagMapper.findByIds(WORKSPACE_ID, List.of(5L, 6L)))
                 .thenReturn(List.of(new Tag(), new Tag()));
-        doAnswer(invocation -> {
-            Note note = invocation.getArgument(0);
-            note.setId(11L);
-            return 1;
-        }).when(noteMapper).insert(any(Note.class));
+        doAnswer(
+                        invocation -> {
+                            Note note = invocation.getArgument(0);
+                            note.setId(11L);
+                            return 1;
+                        })
+                .when(noteMapper)
+                .insert(any(Note.class));
 
-        var result = service.importMarkdown(WORKSPACE_ID, new NoteImportRequest(
-                allowedRoot.toString(), 3L, 4L, Arrays.asList(5L, null, 5L, 6L),
-                NoteImportDuplicateStrategy.CREATE_NEW));
+        var result =
+                service.importMarkdown(
+                        WORKSPACE_ID,
+                        new NoteImportRequest(
+                                allowedRoot.toString(),
+                                3L,
+                                4L,
+                                Arrays.asList(5L, null, 5L, 6L),
+                                NoteImportDuplicateStrategy.CREATE_NEW));
 
         assertThat(result.importedCount()).isEqualTo(1);
         assertThat(result.skippedCount()).isZero();
@@ -99,12 +102,14 @@ class NoteImportServiceTests {
         Files.writeString(allowedRoot.resolve("b.md"), "# 新笔记\n内容");
         when(noteMapper.countByTitle(WORKSPACE_ID, "已存在")).thenReturn(1L);
 
-        var result = service.importMarkdown(WORKSPACE_ID, request(allowedRoot,
-                NoteImportDuplicateStrategy.SKIP_TITLE));
+        var result =
+                service.importMarkdown(
+                        WORKSPACE_ID, request(allowedRoot, NoteImportDuplicateStrategy.SKIP_TITLE));
 
         assertThat(result.skippedCount()).isEqualTo(1);
         assertThat(result.importedCount()).isEqualTo(1);
-        assertThat(result.items()).extracting(item -> item.status())
+        assertThat(result.items())
+                .extracting(item -> item.status())
                 .containsExactly("SKIPPED", "IMPORTED");
         verify(noteMapper).countByTitle(WORKSPACE_ID, "新笔记");
     }
@@ -115,8 +120,9 @@ class NoteImportServiceTests {
         Files.writeString(allowedRoot.resolve("a.md"), "# 太大的文件\n正文很长");
         Files.writeString(allowedRoot.resolve("b.md"), "# 小\n文");
 
-        var result = service.importMarkdown(WORKSPACE_ID, request(allowedRoot,
-                NoteImportDuplicateStrategy.CREATE_NEW));
+        var result =
+                service.importMarkdown(
+                        WORKSPACE_ID, request(allowedRoot, NoteImportDuplicateStrategy.CREATE_NEW));
 
         assertThat(result.failedCount()).isEqualTo(1);
         assertThat(result.importedCount()).isEqualTo(1);
@@ -128,17 +134,27 @@ class NoteImportServiceTests {
         Files.writeString(allowedRoot.resolve("a.md"), "# 失败\n正文");
         Files.writeString(allowedRoot.resolve("b.md"), "# 成功\n正文");
         when(tagMapper.findByIds(WORKSPACE_ID, List.of(5L))).thenReturn(List.of(new Tag()));
-        doAnswer(invocation -> {
-            Note note = invocation.getArgument(0);
-            note.setId("失败".equals(note.getTitle()) ? 11L : 12L);
-            return 1;
-        }).when(noteMapper).insert(any(Note.class));
+        doAnswer(
+                        invocation -> {
+                            Note note = invocation.getArgument(0);
+                            note.setId("失败".equals(note.getTitle()) ? 11L : 12L);
+                            return 1;
+                        })
+                .when(noteMapper)
+                .insert(any(Note.class));
         doThrow(new IllegalStateException("关联写入失败"))
-                .when(tagMapper).insertNoteTag(WORKSPACE_ID, 11L, 5L);
+                .when(tagMapper)
+                .insertNoteTag(WORKSPACE_ID, 11L, 5L);
 
-        var result = service.importMarkdown(WORKSPACE_ID, new NoteImportRequest(
-                allowedRoot.toString(), null, null, List.of(5L),
-                NoteImportDuplicateStrategy.CREATE_NEW));
+        var result =
+                service.importMarkdown(
+                        WORKSPACE_ID,
+                        new NoteImportRequest(
+                                allowedRoot.toString(),
+                                null,
+                                null,
+                                List.of(5L),
+                                NoteImportDuplicateStrategy.CREATE_NEW));
 
         assertThat(result.failedCount()).isEqualTo(1);
         assertThat(result.importedCount()).isEqualTo(1);
@@ -151,12 +167,20 @@ class NoteImportServiceTests {
     @Test
     void rejectsPathsOutsideAllowlistAndMissingPaths() {
         Path outside = allowedRoot.getParent().resolve("outside.md");
-        assertThatThrownBy(() -> service.importMarkdown(WORKSPACE_ID, request(outside,
-                NoteImportDuplicateStrategy.CREATE_NEW)))
+        assertThatThrownBy(
+                        () ->
+                                service.importMarkdown(
+                                        WORKSPACE_ID,
+                                        request(outside, NoteImportDuplicateStrategy.CREATE_NEW)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("允许目录");
-        assertThatThrownBy(() -> service.importMarkdown(WORKSPACE_ID,
-                request(allowedRoot.resolve("missing.md"), NoteImportDuplicateStrategy.CREATE_NEW)))
+        assertThatThrownBy(
+                        () ->
+                                service.importMarkdown(
+                                        WORKSPACE_ID,
+                                        request(
+                                                allowedRoot.resolve("missing.md"),
+                                                NoteImportDuplicateStrategy.CREATE_NEW)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("不存在");
         verifyNoInteractions(noteMapper, auditService);
@@ -167,9 +191,16 @@ class NoteImportServiceTests {
         Path source = Files.writeString(allowedRoot.resolve("entry.md"), "# 标题");
         when(tagMapper.findByIds(WORKSPACE_ID, List.of(5L))).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.importMarkdown(WORKSPACE_ID, new NoteImportRequest(
-                source.toString(), null, null, List.of(5L),
-                NoteImportDuplicateStrategy.CREATE_NEW)))
+        assertThatThrownBy(
+                        () ->
+                                service.importMarkdown(
+                                        WORKSPACE_ID,
+                                        new NoteImportRequest(
+                                                source.toString(),
+                                                null,
+                                                null,
+                                                List.of(5L),
+                                                NoteImportDuplicateStrategy.CREATE_NEW)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("无效标签");
         verifyNoInteractions(noteMapper, auditService);
@@ -178,18 +209,31 @@ class NoteImportServiceTests {
     @Test
     void deniesImportBeforeAccessingPath() {
         doThrow(new BusinessException("无权限"))
-                .when(authorization).require(WORKSPACE_ID, WorkspacePermission.NOTE_IMPORT);
+                .when(authorization)
+                .require(WORKSPACE_ID, WorkspacePermission.NOTE_IMPORT);
 
-        assertThatThrownBy(() -> service.importMarkdown(WORKSPACE_ID,
-                request(allowedRoot.resolve("missing.md"), NoteImportDuplicateStrategy.CREATE_NEW)))
+        assertThatThrownBy(
+                        () ->
+                                service.importMarkdown(
+                                        WORKSPACE_ID,
+                                        request(
+                                                allowedRoot.resolve("missing.md"),
+                                                NoteImportDuplicateStrategy.CREATE_NEW)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("无权限");
         verifyNoInteractions(noteMapper, auditService);
     }
 
     private NoteImportService serviceWith(NoteImportProperties properties) {
-        return new NoteImportService(properties, noteMapper, folderMapper, projectMapper,
-                tagMapper, authorization, auditService, revisions);
+        return new NoteImportService(
+                properties,
+                noteMapper,
+                folderMapper,
+                projectMapper,
+                tagMapper,
+                authorization,
+                auditService,
+                revisions);
     }
 
     private NoteImportRequest request(Path path, NoteImportDuplicateStrategy strategy) {

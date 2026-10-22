@@ -2,16 +2,18 @@ package com.mike.workstation.assembler;
 
 import com.mike.workstation.domain.Tag;
 import com.mike.workstation.dto.TagResponse;
+
 import java.util.List;
 
 public final class TagResponseAssembler {
-    private TagResponseAssembler() {
-    }
+    private TagResponseAssembler() {}
 
     public static TagResponse toResponse(Tag tag) {
         return new TagResponse(
-                tag.getId(), tag.getName(), ApiTime.toOffset(tag.getCreatedAt()), ApiTime.toOffset(tag.getUpdatedAt())
-        );
+                tag.getId(),
+                tag.getName(),
+                ApiTime.toOffset(tag.getCreatedAt()),
+                ApiTime.toOffset(tag.getUpdatedAt()));
     }
 
     public static List<TagResponse> toResponses(List<Tag> tags) {

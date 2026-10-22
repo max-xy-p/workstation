@@ -4,12 +4,14 @@ import com.mike.workstation.config.AuditOutboxProperties;
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.mapper.AuditOutboxMapper;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /** 在独立短事务中确认发布或安排下一次 Outbox 重试。 */
 @Service
@@ -20,7 +22,8 @@ public class AuditOutboxStateService {
     private final AuditOutboxMapper outboxMapper;
     private final AuditOutboxProperties properties;
 
-    public AuditOutboxStateService(AuditOutboxMapper outboxMapper, AuditOutboxProperties properties) {
+    public AuditOutboxStateService(
+            AuditOutboxMapper outboxMapper, AuditOutboxProperties properties) {
         this.outboxMapper = outboxMapper;
         this.properties = properties;
     }
@@ -28,27 +31,31 @@ public class AuditOutboxStateService {
     /** RabbitMQ 已确认接收消息后，将当前租约下的记录标记为发布完成。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markPublished(AuditOutbox event) {
-        int updated = outboxMapper.markPublished(event.getId(), event.getLockedBy(), LocalDateTime.now(ZoneId.systemDefault()));
+        int updated =
+                outboxMapper.markPublished(
+                        event.getId(),
+                        event.getLockedBy(),
+                        LocalDateTime.now(ZoneId.systemDefault()));
         requireUpdated(updated, event);
     }
 
-    /**
-     * 发布失败后释放租约。未耗尽次数时回到 PENDING，耗尽后转为 FAILED 等待人工处理。
-     */
+    /** 发布失败后释放租约。未耗尽次数时回到 PENDING，耗尽后转为 FAILED 等待人工处理。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailure(AuditOutbox event, Throwable failure) {
         boolean exhausted = event.getAttempts() >= properties.maxAttempts();
         AuditOutboxStatus status = exhausted ? AuditOutboxStatus.FAILED : AuditOutboxStatus.PENDING;
-        LocalDateTime nextAttemptAt = exhausted
-                ? LocalDateTime.now(ZoneId.systemDefault())
-                : LocalDateTime.now(ZoneId.systemDefault()).plus(retryDelay(event.getAttempts()));
-        int updated = outboxMapper.markFailure(
-                event.getId(),
-                event.getLockedBy(),
-                status,
-                nextAttemptAt,
-                errorMessage(failure)
-        );
+        LocalDateTime nextAttemptAt =
+                exhausted
+                        ? LocalDateTime.now(ZoneId.systemDefault())
+                        : LocalDateTime.now(ZoneId.systemDefault())
+                                .plus(retryDelay(event.getAttempts()));
+        int updated =
+                outboxMapper.markFailure(
+                        event.getId(),
+                        event.getLockedBy(),
+                        status,
+                        nextAttemptAt,
+                        errorMessage(failure));
         requireUpdated(updated, event);
     }
 
@@ -63,7 +70,9 @@ public class AuditOutboxStateService {
         if (message == null || message.isBlank()) {
             message = failure.getClass().getSimpleName();
         }
-        return message.length() <= LAST_ERROR_LIMIT ? message : message.substring(0, LAST_ERROR_LIMIT);
+        return message.length() <= LAST_ERROR_LIMIT
+                ? message
+                : message.substring(0, LAST_ERROR_LIMIT);
     }
 
     private void requireUpdated(int updated, AuditOutbox event) {

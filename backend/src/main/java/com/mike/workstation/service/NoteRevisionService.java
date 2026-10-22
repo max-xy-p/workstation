@@ -12,11 +12,13 @@ import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.NoteRevisionMapper;
 import com.mike.workstation.security.CurrentPrincipalResolver;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /** 历史快照的查询与写入；写入加入调用方的笔记事务。 */
 @Service
@@ -26,24 +28,34 @@ public class NoteRevisionService {
     private final WorkspaceAuthorizationService authorization;
     private final CurrentPrincipalResolver principals;
 
-    public NoteRevisionService(NoteRevisionMapper revisions, NoteMapper notes,
-            WorkspaceAuthorizationService authorization, CurrentPrincipalResolver principals) {
+    public NoteRevisionService(
+            NoteRevisionMapper revisions,
+            NoteMapper notes,
+            WorkspaceAuthorizationService authorization,
+            CurrentPrincipalResolver principals) {
         this.revisions = revisions;
         this.notes = notes;
         this.authorization = authorization;
         this.principals = principals;
     }
 
-    @Transactional(readOnly=true)
-    public PageResponse<NoteRevisionSummaryResponse> list(Long workspaceId, Long noteId, Long upToVersion, int page, int size) {
+    @Transactional(readOnly = true)
+    public PageResponse<NoteRevisionSummaryResponse> list(
+            Long workspaceId, Long noteId, Long upToVersion, int page, int size) {
         authorization.require(workspaceId, WorkspacePermission.NOTE_READ);
         PageQuery query = PageQuery.of(page, size);
-        if (upToVersion != null && upToVersion < 1) throw new BusinessException("历史版本上界必须为正整数");
+        if (upToVersion != null && upToVersion < 1) {
+            throw new BusinessException("历史版本上界必须为正整数");
+        }
         Long current = notes.findVersionById(workspaceId, noteId);
         RequestChecks.requiredExisting(current, "笔记不存在");
         long upper = upToVersion == null ? current : Math.min(current, upToVersion);
-        return PageResponse.of(revisions.list(workspaceId, noteId, upper, query.offset(), query.size()).stream()
-                .map(NoteRevisionResponseAssembler::summary).toList(), page, size,
+        return PageResponse.of(
+                revisions.list(workspaceId, noteId, upper, query.offset(), query.size()).stream()
+                        .map(NoteRevisionResponseAssembler::summary)
+                        .toList(),
+                page,
+                size,
                 revisions.count(workspaceId, noteId, upper));
     }
 
@@ -61,8 +73,11 @@ public class NoteRevisionService {
     public void record(Note note, NoteRevisionSource source, Long restoredFromRevisionId) {
         if (source == NoteRevisionSource.UPDATE) {
             NoteRevision latest = revisions.latestForUpdate(note.getWorkspaceId(), note.getId());
-            if (latest != null && Objects.equals(latest.getTitle(), note.getTitle())
-                    && Objects.equals(latest.getContent(), note.getContent())) return;
+            if (latest != null
+                    && Objects.equals(latest.getTitle(), note.getTitle())
+                    && Objects.equals(latest.getContent(), note.getContent())) {
+                return;
+            }
         }
         NoteRevision revision = new NoteRevision();
         revision.setWorkspaceId(note.getWorkspaceId());

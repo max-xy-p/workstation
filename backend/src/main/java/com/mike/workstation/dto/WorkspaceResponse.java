@@ -3,6 +3,7 @@ package com.mike.workstation.dto;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.domain.WorkspaceRole;
 import com.mike.workstation.domain.WorkspaceType;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -14,6 +15,4 @@ public record WorkspaceResponse(
         WorkspaceRole role,
         List<WorkspacePermission> permissions,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
-) {
-}
+        OffsetDateTime updatedAt) {}

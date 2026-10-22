@@ -3,19 +3,21 @@ package com.mike.workstation.service;
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.domain.AuditResult;
+import com.mike.workstation.domain.PrincipalType;
 import com.mike.workstation.security.CurrentPrincipalResolver;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.UUID;
+
 /**
  * 业务代码写审计事件的统一入口。
  *
- * <p>这里只组装事件，不直接连接 RabbitMQ。成功事件先进入本地 Outbox，以保证业务提交与事件产生
- * 原子一致；拒绝事件采用尽力记录策略，防止辅助审计故障改变授权结果。</p>
+ * <p>这里只组装事件，不直接连接 RabbitMQ。成功事件先进入本地 Outbox，以保证业务提交与事件产生 原子一致；拒绝事件采用尽力记录策略，防止辅助审计故障改变授权结果。
  */
 @Service
 public class AuditService {
@@ -24,47 +26,65 @@ public class AuditService {
     private final AuditOutboxWriter outboxWriter;
     private final CurrentPrincipalResolver principalResolver;
 
-    public AuditService(AuditOutboxWriter outboxWriter, CurrentPrincipalResolver principalResolver) {
+    public AuditService(
+            AuditOutboxWriter outboxWriter, CurrentPrincipalResolver principalResolver) {
         this.outboxWriter = outboxWriter;
         this.principalResolver = principalResolver;
     }
 
-    /**
-     * 记录成功动作。调用方必须是带事务的写 Service，Outbox 写失败会让业务一起回滚。
-     */
+    /** 记录成功动作。调用方必须是带事务的写 Service，Outbox 写失败会让业务一起回滚。 */
     public void success(Long workspaceId, String action, String resourceType, Long resourceId) {
-        outboxWriter.writeRequired(create(workspaceId, action, resourceType, resourceId, AuditResult.SUCCESS));
+        outboxWriter.writeRequired(
+                create(workspaceId, action, resourceType, resourceId, AuditResult.SUCCESS));
     }
 
-    /**
-     * 尽力记录权限拒绝。任何审计异常都只写内部日志，原调用仍继续返回应有的 403 或 404。
-     */
+    /** 尽力记录权限拒绝。任何审计异常都只写内部日志，原调用仍继续返回应有的 403 或 404。 */
     public void denied(Long workspaceId, String action, String resourceType, Long resourceId) {
         try {
-            outboxWriter.writeNewTransaction(create(
-                    workspaceId, action, resourceType, resourceId, AuditResult.DENIED));
+            outboxWriter.writeNewTransaction(
+                    create(workspaceId, action, resourceType, resourceId, AuditResult.DENIED));
         } catch (RuntimeException exception) {
             // 审计是辅助能力；失败不能把预期的 403/404 改写成 500。
-            log.error("权限拒绝审计事件写入 Outbox 失败，workspaceId={}，action={}",
-                    workspaceId, action, exception);
+            log.error(
+                    "权限拒绝审计事件写入 Outbox 失败，workspaceId={}，action={}",
+                    workspaceId,
+                    action,
+                    exception);
         }
     }
 
     /** 后台任务使用已持久化并再次授权的主体，不伪造请求认证。 */
-    public void background(Long workspaceId, String actor, com.mike.workstation.domain.PrincipalType actorType, String action, String type, Long id) {
+    public void background(
+            Long workspaceId,
+            String actor,
+            PrincipalType actorType,
+            String action,
+            String type,
+            Long id) {
         AuditOutbox event = new AuditOutbox();
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        event.setEventId(UUID.randomUUID().toString()); event.setWorkspaceId(workspaceId);
-        event.setActorSubject(actor); event.setActorType(actorType);
-        event.setAction(action); event.setResourceType(type); event.setResourceId(id);
-        event.setResult(AuditResult.SUCCESS); event.setOccurredAt(now); event.setStatus(AuditOutboxStatus.PENDING);
-        event.setAttempts(0); event.setNextAttemptAt(now); event.setCreatedAt(now);
+        event.setEventId(UUID.randomUUID().toString());
+        event.setWorkspaceId(workspaceId);
+        event.setActorSubject(actor);
+        event.setActorType(actorType);
+        event.setAction(action);
+        event.setResourceType(type);
+        event.setResourceId(id);
+        event.setResult(AuditResult.SUCCESS);
+        event.setOccurredAt(now);
+        event.setStatus(AuditOutboxStatus.PENDING);
+        event.setAttempts(0);
+        event.setNextAttemptAt(now);
+        event.setCreatedAt(now);
         outboxWriter.writeRequired(event);
     }
 
     private AuditOutbox create(
-            Long workspaceId, String action, String resourceType, Long resourceId, AuditResult result
-    ) {
+            Long workspaceId,
+            String action,
+            String resourceType,
+            Long resourceId,
+            AuditResult result) {
         // 在业务线程中固化操作者快照；异步消费线程没有原请求的 SecurityContext。
         var principal = principalResolver.require();
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());

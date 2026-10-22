@@ -1,5 +1,7 @@
 package com.mike.workstation.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -10,42 +12,50 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class BearerSecurityTests {
     @Test
     void bearerMatcherSeparatesMachineRequestsFromBrowserRequests() {
-        var bearerExchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/workspaces/9/projects")
-                .header("Authorization", "Bearer token-value")
-                .build());
-        var browserExchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/workspaces/9/projects").build());
+        var bearerExchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.get("/api/workspaces/9/projects")
+                                .header("Authorization", "Bearer token-value")
+                                .build());
+        var browserExchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.get("/api/workspaces/9/projects").build());
 
-        assertThat(SecurityConfig.bearerRequestMatcher().matches(bearerExchange).block().isMatch()).isTrue();
-        assertThat(SecurityConfig.bearerRequestMatcher().matches(browserExchange).block().isMatch()).isFalse();
+        assertThat(SecurityConfig.bearerRequestMatcher().matches(bearerExchange).block().isMatch())
+                .isTrue();
+        assertThat(SecurityConfig.bearerRequestMatcher().matches(browserExchange).block().isMatch())
+                .isFalse();
     }
 
     @Test
     void malformedAuthorizationHeadersDoNotMatchBearerChain() {
         for (String header : List.of("Bearer", "Basic value", "Bearer  ")) {
-            var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/workspaces/9/projects")
-                    .header("Authorization", header).build());
+            var exchange =
+                    MockServerWebExchange.from(
+                            MockServerHttpRequest.get("/api/workspaces/9/projects")
+                                    .header("Authorization", header)
+                                    .build());
 
-            assertThat(SecurityConfig.bearerRequestMatcher().matches(exchange).block().isMatch()).isFalse();
+            assertThat(SecurityConfig.bearerRequestMatcher().matches(exchange).block().isMatch())
+                    .isFalse();
         }
     }
 
     @Test
     void jwtConverterMapsServiceRealmRole() {
-        Jwt jwt = new Jwt(
-                "token-value",
-                Instant.now(),
-                Instant.now().plusSeconds(60),
-                Map.of("alg", "none"),
-                Map.of(
-                        "sub", "service-account-workstation-python",
-                        "preferred_username", "service-account-workstation-python",
-                        "realm_access", Map.of("roles", List.of("WORKSTATION_SERVICE"))));
+        Jwt jwt =
+                new Jwt(
+                        "token-value",
+                        Instant.now(),
+                        Instant.now().plusSeconds(60),
+                        Map.of("alg", "none"),
+                        Map.of(
+                                "sub", "service-account-workstation-python",
+                                "preferred_username", "service-account-workstation-python",
+                                "realm_access", Map.of("roles", List.of("WORKSTATION_SERVICE"))));
 
         var authentication = SecurityConfig.jwtAuthenticationConverter().convert(jwt).block();
 
@@ -58,8 +68,13 @@ class BearerSecurityTests {
 
     @Test
     void jwtWithoutRealmRolesUsesSubjectAndDoesNotGrantServiceAccess() {
-        Jwt jwt = new Jwt("token-value", Instant.now(), Instant.now().plusSeconds(60),
-                Map.of("alg", "none"), Map.of("sub", "unknown-client"));
+        Jwt jwt =
+                new Jwt(
+                        "token-value",
+                        Instant.now(),
+                        Instant.now().plusSeconds(60),
+                        Map.of("alg", "none"),
+                        Map.of("sub", "unknown-client"));
 
         var authentication = SecurityConfig.jwtAuthenticationConverter().convert(jwt).block();
 
@@ -72,15 +87,13 @@ class BearerSecurityTests {
 
     @Test
     void securityErrorsUseUnifiedApiErrorShape() {
-        var exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/workspaces/9/projects").build());
+        var exchange =
+                MockServerWebExchange.from(
+                        MockServerHttpRequest.get("/api/workspaces/9/projects").build());
 
-        new SecurityConfig().writeError(
-                exchange,
-                HttpStatus.UNAUTHORIZED,
-                "UNAUTHENTICATED",
-                "访问令牌无效或已过期"
-        ).block();
+        new SecurityConfig()
+                .writeError(exchange, HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "访问令牌无效或已过期")
+                .block();
 
         String body = exchange.getResponse().getBodyAsString().block();
         assertThat(body).contains("\"code\":\"UNAUTHENTICATED\"");

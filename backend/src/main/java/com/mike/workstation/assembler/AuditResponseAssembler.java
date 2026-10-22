@@ -5,8 +5,7 @@ import com.mike.workstation.dto.AuditEventResponse;
 
 /** 审计事件到脱敏 API Response 的转换。 */
 public final class AuditResponseAssembler {
-    private AuditResponseAssembler() {
-    }
+    private AuditResponseAssembler() {}
 
     public static AuditEventResponse toResponse(AuditEvent event) {
         return new AuditEventResponse(
@@ -18,7 +17,6 @@ public final class AuditResponseAssembler {
                 event.getResourceId(),
                 event.getResult(),
                 ApiTime.toOffset(event.getOccurredAt()),
-                event.getTraceId()
-        );
+                event.getTraceId());
     }
 }

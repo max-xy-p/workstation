@@ -1,4 +1,7 @@
 package com.mike.workstation.domain;
 
 /** 外部平台数据的统一分类。 */
-public enum IntegrationProvider { GITHUB, GITLAB }
+public enum IntegrationProvider {
+    GITHUB,
+    GITLAB
+}

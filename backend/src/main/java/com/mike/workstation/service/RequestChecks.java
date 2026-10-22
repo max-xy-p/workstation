@@ -1,11 +1,12 @@
 package com.mike.workstation.service;
 
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.NotFoundException;
+
 import java.util.Collection;
 
 final class RequestChecks {
-    private RequestChecks() {
-    }
+    private RequestChecks() {}
 
     /**
      * 校验必填文本。
@@ -45,13 +46,11 @@ final class RequestChecks {
      */
     static <T> void requiredExisting(T value, String message) {
         if (value == null) {
-            throw new com.mike.workstation.exception.NotFoundException(message);
+            throw new NotFoundException(message);
         }
     }
 
-    /**
-     * 判断集合是否包含有效元素。
-     */
+    /** 判断集合是否包含有效元素。 */
     static <T> boolean hasItems(Collection<T> values) {
         return values != null && !values.isEmpty();
     }

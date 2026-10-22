@@ -2,10 +2,12 @@ package com.mike.workstation.service;
 
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.messaging.AuditMessagePublisher;
-import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /** 领取一批 Outbox，逐条发布并独立记录结果，避免单条失败重发整批。 */
 @Service
@@ -19,8 +21,7 @@ public class AuditOutboxRelay {
     public AuditOutboxRelay(
             AuditOutboxClaimService claimService,
             AuditMessagePublisher publisher,
-            AuditOutboxStateService stateService
-    ) {
+            AuditOutboxStateService stateService) {
         this.claimService = claimService;
         this.publisher = publisher;
         this.stateService = stateService;
@@ -29,8 +30,7 @@ public class AuditOutboxRelay {
     /**
      * 执行一次搬运。
      *
-     * <p>每条事件独立发布和落状态。一条失败不会中断循环，否则前面已经由 Broker 确认的消息
-     * 可能因为整批重试而被重复发送。即便出现重复发送，消费者仍会使用 eventId 幂等落库。</p>
+     * <p>每条事件独立发布和落状态。一条失败不会中断循环，否则前面已经由 Broker 确认的消息 可能因为整批重试而被重复发送。即便出现重复发送，消费者仍会使用 eventId 幂等落库。
      */
     public AuditRelayResult relayBatch() {
         List<AuditOutbox> events = claimService.claimBatch();
@@ -44,8 +44,11 @@ public class AuditOutboxRelay {
                 published++;
             } catch (Exception exception) {
                 failed++;
-                log.warn("审计 Outbox 发布失败，eventId={}，attempts={}",
-                        event.getEventId(), event.getAttempts(), exception);
+                log.warn(
+                        "审计 Outbox 发布失败，eventId={}，attempts={}",
+                        event.getEventId(),
+                        event.getAttempts(),
+                        exception);
                 try {
                     stateService.markFailure(event, exception);
                 } catch (RuntimeException stateException) {

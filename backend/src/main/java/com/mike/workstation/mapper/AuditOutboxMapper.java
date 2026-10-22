@@ -2,18 +2,21 @@ package com.mike.workstation.mapper;
 
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditOutboxStatus;
-import java.time.LocalDateTime;
-import java.util.List;
+
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 /** 审计 Outbox 的写入、带租约领取和投递状态更新。 */
 @Mapper
 public interface AuditOutboxMapper {
-    @Insert("""
+    @Insert(
+            """
             INSERT INTO audit_outbox
                 (event_id, workspace_id, actor_subject, actor_type, action, resource_type,
                  resource_id, result, occurred_at, trace_id, status, attempts,
@@ -25,7 +28,8 @@ public interface AuditOutboxMapper {
             """)
     int insert(AuditOutbox event);
 
-    @Select("""
+    @Select(
+            """
             SELECT id, event_id, workspace_id, actor_subject, actor_type, action, resource_type,
                    resource_id, result, occurred_at, trace_id, status, attempts,
                    next_attempt_at, locked_by, locked_until, last_error, created_at, published_at
@@ -42,7 +46,8 @@ public interface AuditOutboxMapper {
      */
     List<AuditOutbox> findClaimable(@Param("now") LocalDateTime now, @Param("limit") int limit);
 
-    @Update("""
+    @Update(
+            """
             <script>
             UPDATE audit_outbox
             SET status = 'SENDING',
@@ -59,10 +64,10 @@ public interface AuditOutboxMapper {
     int markSending(
             @Param("ids") List<Long> ids,
             @Param("lockedBy") String lockedBy,
-            @Param("lockedUntil") LocalDateTime lockedUntil
-    );
+            @Param("lockedUntil") LocalDateTime lockedUntil);
 
-    @Update("""
+    @Update(
+            """
             UPDATE audit_outbox
             SET status = 'PUBLISHED',
                 published_at = #{publishedAt},
@@ -75,10 +80,10 @@ public interface AuditOutboxMapper {
     int markPublished(
             @Param("id") Long id,
             @Param("lockedBy") String lockedBy,
-            @Param("publishedAt") LocalDateTime publishedAt
-    );
+            @Param("publishedAt") LocalDateTime publishedAt);
 
-    @Update("""
+    @Update(
+            """
             UPDATE audit_outbox
             SET status = #{status},
                 next_attempt_at = #{nextAttemptAt},
@@ -92,6 +97,5 @@ public interface AuditOutboxMapper {
             @Param("lockedBy") String lockedBy,
             @Param("status") AuditOutboxStatus status,
             @Param("nextAttemptAt") LocalDateTime nextAttemptAt,
-            @Param("lastError") String lastError
-    );
+            @Param("lastError") String lastError);
 }

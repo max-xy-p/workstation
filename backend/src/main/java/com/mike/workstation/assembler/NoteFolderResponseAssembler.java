@@ -4,13 +4,14 @@ import com.mike.workstation.domain.NoteFolder;
 import com.mike.workstation.dto.NoteFolderResponse;
 
 public final class NoteFolderResponseAssembler {
-    private NoteFolderResponseAssembler() {
-    }
+    private NoteFolderResponseAssembler() {}
 
     public static NoteFolderResponse toResponse(NoteFolder folder) {
         return new NoteFolderResponse(
-                folder.getId(), folder.getName(), folder.getParentId(),
-                ApiTime.toOffset(folder.getCreatedAt()), ApiTime.toOffset(folder.getUpdatedAt())
-        );
+                folder.getId(),
+                folder.getName(),
+                folder.getParentId(),
+                ApiTime.toOffset(folder.getCreatedAt()),
+                ApiTime.toOffset(folder.getUpdatedAt()));
     }
 }

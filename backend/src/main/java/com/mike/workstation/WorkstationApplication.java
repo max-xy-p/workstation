@@ -11,5 +11,4 @@ public class WorkstationApplication {
     public static void main(String[] args) {
         SpringApplication.run(WorkstationApplication.class, args);
     }
-
 }

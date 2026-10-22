@@ -1,19 +1,19 @@
 package com.mike.workstation.service;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.PrincipalType;
+import com.mike.workstation.domain.SecurityPrincipal;
 import com.mike.workstation.domain.Workspace;
 import com.mike.workstation.domain.WorkspaceMember;
 import com.mike.workstation.domain.WorkspacePermission;
 import com.mike.workstation.domain.WorkspaceRole;
-import com.mike.workstation.domain.SecurityPrincipal;
 import com.mike.workstation.domain.WorkspaceType;
 import com.mike.workstation.dto.WorkspaceMemberRequest;
 import com.mike.workstation.dto.WorkspaceRequest;
@@ -22,39 +22,45 @@ import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 import com.mike.workstation.mapper.WorkspaceMapper;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
-import java.util.List;
-import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Set;
 
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceTests {
     private static final long WORKSPACE_ID = 9L;
 
-    @Mock
-    private WorkspaceMapper workspaceMapper;
-    @Mock
-    private CurrentPrincipalResolver principalResolver;
-    @Mock
-    private WorkspaceAuthorizationService authorization;
-    @Mock
-    private AuditService auditService;
-    @InjectMocks
-    private WorkspaceService workspaceService;
+    @Mock private WorkspaceMapper workspaceMapper;
+    @Mock private CurrentPrincipalResolver principalResolver;
+    @Mock private WorkspaceAuthorizationService authorization;
+    @Mock private AuditService auditService;
+    @InjectMocks private WorkspaceService workspaceService;
 
     @Test
     void firstWorkspaceListCreatesAndAuditsPersonalWorkspace() {
-        var principal = new CurrentPrincipal(
-                "subject-1", PrincipalType.USER, "mike", "Mike", Set.of("WORKSTATION_USER"));
+        var principal =
+                new CurrentPrincipal(
+                        "subject-1",
+                        PrincipalType.USER,
+                        "mike",
+                        "Mike",
+                        Set.of("WORKSTATION_USER"));
         when(principalResolver.require()).thenReturn(principal);
-        doAnswer(invocation -> {
-            Workspace workspace = invocation.getArgument(0);
-            workspace.setId(WORKSPACE_ID);
-            return 1;
-        }).when(workspaceMapper).insertPersonalWorkspace(any(Workspace.class));
+        doAnswer(
+                        invocation -> {
+                            Workspace workspace = invocation.getArgument(0);
+                            workspace.setId(WORKSPACE_ID);
+                            return 1;
+                        })
+                .when(workspaceMapper)
+                .insertPersonalWorkspace(any(Workspace.class));
         when(workspaceMapper.listForPrincipal("subject-1")).thenReturn(List.of());
 
         workspaceService.list();
@@ -77,15 +83,23 @@ class WorkspaceServiceTests {
 
     @Test
     void createSharedWorkspaceAddsCreatorAsOwner() {
-        var principal = new CurrentPrincipal(
-                "subject-1", PrincipalType.USER, "mike", "Mike", Set.of("WORKSTATION_USER"));
+        var principal =
+                new CurrentPrincipal(
+                        "subject-1",
+                        PrincipalType.USER,
+                        "mike",
+                        "Mike",
+                        Set.of("WORKSTATION_USER"));
         when(principalResolver.require()).thenReturn(principal);
-        doAnswer(invocation -> {
-            Workspace workspace = invocation.getArgument(0);
-            assertThat(workspace.getType()).isEqualTo(WorkspaceType.SHARED);
-            workspace.setId(WORKSPACE_ID);
-            return 1;
-        }).when(workspaceMapper).insertSharedWorkspace(any(Workspace.class));
+        doAnswer(
+                        invocation -> {
+                            Workspace workspace = invocation.getArgument(0);
+                            assertThat(workspace.getType()).isEqualTo(WorkspaceType.SHARED);
+                            workspace.setId(WORKSPACE_ID);
+                            return 1;
+                        })
+                .when(workspaceMapper)
+                .insertSharedWorkspace(any(Workspace.class));
         when(authorization.require(WORKSPACE_ID, WorkspacePermission.WORKSPACE_READ))
                 .thenReturn(workspace(WorkspaceRole.OWNER));
 
@@ -100,8 +114,12 @@ class WorkspaceServiceTests {
         when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
                 .thenReturn(workspace(WorkspaceRole.OWNER));
 
-        assertThatThrownBy(() -> workspaceService.addMember(
-                WORKSPACE_ID, new WorkspaceMemberRequest("unknown", WorkspaceRole.EDITOR)))
+        assertThatThrownBy(
+                        () ->
+                                workspaceService.addMember(
+                                        WORKSPACE_ID,
+                                        new WorkspaceMemberRequest(
+                                                "unknown", WorkspaceRole.EDITOR)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("主体不存在");
     }
@@ -117,7 +135,8 @@ class WorkspaceServiceTests {
         when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
                 .thenReturn(null, member("subject-2", WorkspaceRole.EDITOR));
 
-        workspaceService.addMember(WORKSPACE_ID, new WorkspaceMemberRequest("subject-2", WorkspaceRole.EDITOR));
+        workspaceService.addMember(
+                WORKSPACE_ID, new WorkspaceMemberRequest("subject-2", WorkspaceRole.EDITOR));
 
         verify(workspaceMapper).insertMember(any(WorkspaceMember.class));
     }
@@ -143,11 +162,14 @@ class WorkspaceServiceTests {
                 .thenReturn(member("subject-1", WorkspaceRole.OWNER));
         when(workspaceMapper.countOwners(WORKSPACE_ID)).thenReturn(1L);
 
-        assertThatThrownBy(() -> workspaceService.updateMemberRole(
-                WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR))
+        assertThatThrownBy(
+                        () ->
+                                workspaceService.updateMemberRole(
+                                        WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("最后一个 Owner");
-        verify(workspaceMapper, never()).updateMemberRole(WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR);
+        verify(workspaceMapper, never())
+                .updateMemberRole(WORKSPACE_ID, "subject-1", WorkspaceRole.EDITOR);
     }
 
     @Test
@@ -170,11 +192,12 @@ class WorkspaceServiceTests {
         when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
                 .thenReturn(workspace(WorkspaceRole.OWNER));
         when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
-                .thenReturn(member("subject-2", WorkspaceRole.EDITOR),
+                .thenReturn(
+                        member("subject-2", WorkspaceRole.EDITOR),
                         member("subject-2", WorkspaceRole.ADMIN));
 
-        var updated = workspaceService.updateMemberRole(
-                WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
+        var updated =
+                workspaceService.updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
 
         assertThat(updated.role()).isEqualTo(WorkspaceRole.ADMIN);
         verify(workspaceMapper).updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
@@ -213,9 +236,10 @@ class WorkspaceServiceTests {
     void memberSearchRejectsBlankAndOverlongKeywordsBeforeQuerying() {
         assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "  "))
                 .isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "a".repeat(256)))
+        assertThatThrownBy(
+                        () -> workspaceService.findMemberCandidates(WORKSPACE_ID, "a".repeat(256)))
                 .isInstanceOf(BusinessException.class);
-        verify(workspaceMapper, never()).findUsersByUsername(org.mockito.ArgumentMatchers.anyString());
+        verify(workspaceMapper, never()).findUsersByUsername(ArgumentMatchers.anyString());
     }
 
     @Test
@@ -224,7 +248,7 @@ class WorkspaceServiceTests {
                 .thenThrow(new WorkspaceAccessDeniedException("没有成员管理权限"));
         assertThatThrownBy(() -> workspaceService.findMemberCandidates(WORKSPACE_ID, "张"))
                 .isInstanceOf(WorkspaceAccessDeniedException.class);
-        verify(workspaceMapper, never()).findUsersByUsername(org.mockito.ArgumentMatchers.anyString());
+        verify(workspaceMapper, never()).findUsersByUsername(ArgumentMatchers.anyString());
     }
 
     private Workspace workspace(WorkspaceRole role) {

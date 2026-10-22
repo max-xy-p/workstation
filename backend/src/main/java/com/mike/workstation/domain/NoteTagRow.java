@@ -1,7 +1,8 @@
 package com.mike.workstation.domain;
 
-import java.time.LocalDateTime;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
 public class NoteTagRow {
@@ -10,5 +11,4 @@ public class NoteTagRow {
     private String name;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
 }

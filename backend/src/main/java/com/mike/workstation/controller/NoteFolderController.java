@@ -3,7 +3,7 @@ package com.mike.workstation.controller;
 import com.mike.workstation.dto.NoteFolderRequest;
 import com.mike.workstation.dto.NoteFolderResponse;
 import com.mike.workstation.service.NoteFolderService;
-import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/workspaces/{workspaceId}/note-folders")
@@ -36,14 +38,16 @@ public class NoteFolderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NoteFolderResponse create(@PathVariable Long workspaceId, @RequestBody NoteFolderRequest request) {
+    public NoteFolderResponse create(
+            @PathVariable Long workspaceId, @RequestBody NoteFolderRequest request) {
         return folderService.create(workspaceId, request);
     }
 
     @PutMapping("/{id}")
     public NoteFolderResponse update(
-            @PathVariable Long workspaceId, @PathVariable Long id, @RequestBody NoteFolderRequest request
-    ) {
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestBody NoteFolderRequest request) {
         return folderService.update(workspaceId, id, request);
     }
 

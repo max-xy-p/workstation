@@ -1,13 +1,14 @@
 package com.mike.workstation.config;
 
 import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** 仅在显式启用时启动 XXL-JOB 执行器，避免本地测试依赖调度中心。 */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "workstation.xxl-job.enabled", havingValue = "true")
-/** 仅在显式启用时启动 XXL-JOB 执行器，避免本地测试依赖调度中心。 */
 public class XxlJobConfig {
     @Bean
     public XxlJobSpringExecutor xxlJobExecutor(XxlJobProperties properties) {

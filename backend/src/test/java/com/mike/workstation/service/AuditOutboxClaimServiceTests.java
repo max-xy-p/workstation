@@ -12,20 +12,22 @@ import com.mike.workstation.config.AuditOutboxProperties;
 import com.mike.workstation.domain.AuditOutbox;
 import com.mike.workstation.domain.AuditOutboxStatus;
 import com.mike.workstation.mapper.AuditOutboxMapper;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+
 @ExtendWith(MockitoExtension.class)
 class AuditOutboxClaimServiceTests {
-    @Mock
-    AuditOutboxMapper outboxMapper;
-    private final AuditOutboxProperties properties = new AuditOutboxProperties(
-            10, Duration.ofMinutes(2), Duration.ofSeconds(5), 3, Duration.ofSeconds(10));
+    @Mock AuditOutboxMapper outboxMapper;
+    private final AuditOutboxProperties properties =
+            new AuditOutboxProperties(
+                    10, Duration.ofMinutes(2), Duration.ofSeconds(5), 3, Duration.ofSeconds(10));
 
     @Test
     void emptyBatchDoesNotCreateLease() {

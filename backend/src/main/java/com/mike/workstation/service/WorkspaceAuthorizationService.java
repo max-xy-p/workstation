@@ -6,10 +6,11 @@ import com.mike.workstation.exception.NotFoundException;
 import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 import com.mike.workstation.mapper.WorkspaceMapper;
 import com.mike.workstation.security.CurrentPrincipalResolver;
+
 import org.springframework.stereotype.Service;
 
-@Service
 /** 集中执行 Workspace 成员和 Permission 校验。 */
+@Service
 public class WorkspaceAuthorizationService {
     private final WorkspaceMapper workspaceMapper;
     private final CurrentPrincipalResolver principalResolver;
@@ -18,8 +19,7 @@ public class WorkspaceAuthorizationService {
     public WorkspaceAuthorizationService(
             WorkspaceMapper workspaceMapper,
             CurrentPrincipalResolver principalResolver,
-            AuditService auditService
-    ) {
+            AuditService auditService) {
         this.workspaceMapper = workspaceMapper;
         this.principalResolver = principalResolver;
         this.auditService = auditService;
