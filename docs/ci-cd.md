@@ -73,7 +73,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 ## 数据和身份配置
 
-容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql 和 migrate-source-confirmation.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
+容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql、migrate-source-confirmation.sql 和 migrate-external-api-limits.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 
 Realm 模板用于首次创建身份配置。已有 Realm 的 Client、Audience、角色和用户变化需要受控更新，不能假设重启会覆盖数据库中的现有配置。
 
@@ -88,6 +88,8 @@ GitHub Issue 任务关联版本需要在维护窗口备份并执行 `backend/src
 来源变化确认升级需在维护窗口暂停写入及同步、备份后执行 `backend/src/main/resources/db/migrate-source-confirmation.sql`。新应用依赖新增版本和确认基准，不能与旧应用混合写入；迁移不改变已有任务状态，也不伪造历史确认。完整规则见 [来源变化待处理](integrations.md#来源变化待处理)。
 
 Webhook 升级需在备份、暂停写入和同步后执行 `backend/src/main/resources/db/migrate-github-webhooks.sql`，再部署配套版本。回调为独立签名认证入口，不能用扩大普通业务 API 匿名范围替代。端点和 Secret 由管理员在应用和 GitHub 配套配置；回退前先停用回调与相关作业，不能直接让旧应用处理 ISSUE_REFRESH。完整边界见 [Webhook 流程](integrations.md#github-webhook-与指定来源刷新)。
+
+外部 API 共享限流版本需要先暂停所有旧执行器并备份，再执行 `backend/src/main/resources/db/migrate-external-api-limits.sql`，随后部署配套 Backend 与 Redis 连接配置。迁移新增到期执行时间、采集检查点和领取索引；新旧执行器不得混跑。回滚前暂停同步并处理已有延期作业，旧版本不能理解到期时间和恢复检查点。行为边界见 [共享限流与冷却](integrations.md#外部-api-共享限流与冷却)。
 
 ## 回滚含义
 

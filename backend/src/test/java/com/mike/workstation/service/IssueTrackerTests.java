@@ -9,6 +9,7 @@ import com.mike.workstation.domain.ExternalRepository;
 import com.mike.workstation.domain.IntegrationConnection;
 import com.mike.workstation.domain.IntegrationRun;
 import com.mike.workstation.domain.IssueSource;
+import com.mike.workstation.exception.ExternalApiDeferredException;
 import com.mike.workstation.exception.IntegrationConflictException;
 import com.mike.workstation.integration.RepositoryProvider;
 import com.mike.workstation.mapper.GithubWebhookMapper;
@@ -18,6 +19,7 @@ import com.mike.workstation.mapper.IssueSourceMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 
 class IssueTrackerTests {
@@ -80,5 +82,17 @@ class IssueTrackerTests {
         connection.setProvider("GITLAB");
         tracker.track(run, connection, provider, "token");
         verifyNoInteractions(state, sources);
+    }
+
+    @Test
+    void quotaDeferralDoesNotAdvanceCursorOrRecordSourceFailure() {
+        ExternalRepository repo = new ExternalRepository();
+        when(integrations.repository(9L, 7L)).thenReturn(repo);
+        when(provider.issue(connection, "token", repo, 8))
+                .thenThrow(new ExternalApiDeferredException(Duration.ofSeconds(60), "冷却"));
+        assertThatThrownBy(() -> tracker.track(run, connection, provider, "token"))
+                .isInstanceOf(ExternalApiDeferredException.class);
+        assertThat(run.getIssueCursor()).isEqualTo(5);
+        verify(state, never()).complete(any(), any(), any(), any());
     }
 }

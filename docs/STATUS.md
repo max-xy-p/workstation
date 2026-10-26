@@ -1,12 +1,14 @@
 # 项目状态
 
-> 核对日期：2026-10-22。
+> 核对日期：2026-10-23。
 
 ## 当前状态
 
 项目以 Workspace 为边界支持多人协作。概览页是统一入口，所有业务页面共用导航、空间切换与页面操作区；用户可创建共享 Workspace 并管理成员。笔记使用文件树与编辑区，可主动进入专注模式，切换笔记保留树状态、切换空间重建上下文；服务端版本条件更新与本地草稿恢复继续生效。正文持久化在 MySQL，待确认草稿按用户、Workspace 和编辑会话隔离保存在浏览器 IndexedDB。项目任务可关联同项目的依据笔记；GitHub Issue 可创建或关联任务，来源状态独立展示并持续跟踪，GitHub Webhook 可触发指定来源刷新；来源业务变化支持共享确认、任务状态联动及看板筛选。统一搜索页查询当前 Workspace 的项目、任务与笔记。项目、任务、标签、文件夹和数据源通过按需抽屉编辑；数据源列表与连接详情分开，仓库选择和导入确认分步完成。
 
 ## 已完成
+
+- [x] Redis/Lua 外部 API 共享令牌桶与平台冷却、Redis 故障时延期、MySQL 到期领取和采集分页检查点；相同平台实例与 Token 跨连接共享额度，限流不覆盖已有快照或推进 Issue 游标
 
 - [x] 来源变化待处理：关联确认基准、字段差异、共享确认、完成与重新开启的原子处理、来源及任务版本冲突保护、只读查看与任务筛选
 
@@ -60,6 +62,8 @@
 
 ## 进行中
 
+- [ ] 外部 API 限流版本需暂停旧执行器、备份并执行新增队列迁移后配套部署；真实平台限流与多实例部署验收尚未操作。Sonar MCP 返回未授权，当前源码静态分析与 Quality Gate 未验证。
+
 - [ ] 来源变化确认需在维护窗口备份、暂停写入及同步后执行新增迁移，再部署配套应用；本轮仅验证隔离库，真实 GitHub 和多人部署环境验收尚未操作。
 
 - [ ] Webhook 需要在目标环境维护窗口备份并执行迁移，再配置真实 GitHub 仓库 HTTPS 回调、Secret 并验收；本轮仅操作隔离数据库与模拟 API。当前源码 Sonar 完整分析仍待此前源码外传授权，MCP 查询的历史结果不能替代本轮结论。
@@ -90,7 +94,7 @@
 - 三方合并以 Markdown 行为单位，同一行内不同词语的修改仍可能冲突；插入与另一处修改边界重合时保守地要求选择，不进行语义合并。大文本、缺少可信基准和 Worker 不可用时降级手动核对。
 - 编辑器和后端没有图片/附件上传能力。
 - Markdown 导入读取后端机器路径，不是浏览器文件上传。
-- 全新数据库依次执行 `schema.sql`、`migrate-project-integrations.sql`、`migrate-note-revisions.sql`、`migrate-task-issues.sql`、`migrate-github-webhooks.sql` 与 `migrate-source-confirmation.sql`，Compose 已配置顺序；已有数据卷仍需明确执行迁移，没有 Flyway/Liquibase 等自动迁移机制。
+- 全新数据库依次执行 `schema.sql`、`migrate-project-integrations.sql`、`migrate-note-revisions.sql`、`migrate-task-issues.sql`、`migrate-github-webhooks.sql`、`migrate-source-confirmation.sql` 与 `migrate-external-api-limits.sql`，Compose 已配置顺序；已有数据卷仍需明确执行迁移，没有 Flyway/Liquibase 等自动迁移机制。
 - 已有数据卷不会自动创建 `audit_outbox`、`audit_events.event_id` 或 XXL-JOB 数据库；需备份后按审计文档执行独立迁移，本次没有执行数据库迁移。
 - 现有数据库和已有 Keycloak Realm 不会自动升级，启用 Workspace 版本前必须按升级说明手动处理并备份。
 - 旧 `.env.docker` 需将初始账号变量改为 `WORKSTATION_INITIAL_USERNAME` 和 `WORKSTATION_INITIAL_PASSWORD`。
@@ -103,6 +107,8 @@
 - `WorkspaceDatabaseTests` 会在隔离库中遗留成员搜索样例，复用同一个库重跑可能发生主键重复；当前验证需为每轮测试准备全新隔离库，测试数据清理仍待完善。
 
 ## 验证与说明
+
+- 2026-10-23 实现外部 API 共享限流与持久化延期：Redis/Lua 令牌桶按平台实例与凭证摘要共享额度，使用 Redis 时间，平台冷却只延长；识别 429、带限流标记的 403、GitHub 次级限流、Retry-After 秒数/日期和额度重置时间。Redis 故障延期而不放行，已知平台冷却在协调写入失败时仍保留。后台受限不记为采集失败、不覆盖快照或推进 Issue 游标；运行到期后重新领取，保留租约 fencing、连接版本与成员权限检查。发现页码、当前仓库/类别、固定窗口及有界分页中间结果持久化在 MySQL，类别快照与进度同事务提交，分页按外部身份去重；完成时清除暂存检查点。新增幂等队列迁移、示例配置、两个 Compose 及 CI 隔离 Redis 验证，公共 API 和 SDK 未变化。最后一次 Java 修改后 Backend、Gateway 的 `mvn.cmd clean verify` 均通过：274 项、17 项，无失败、错误或跳过；Backend 包含真实 Redis 8 双客户端 32 次并发申请、共享冷却与过期验证，以及隔离 MySQL 8.4 的 31 项数据库测试。亲自执行 `python scripts/check_java_coverage.py` 通过：Backend 88.93%、Gateway 83.62%、综合 88.62%，高于 80%。新建库与旧结构升级的列、索引和约束一致，迁移重复执行、两个 Compose 配置、YAML 解析、文档本地链接与 Git 差异空白检查通过。重跑时遇到既有成员搜索夹具残留，重建本次隔离库后完整回归通过，未修改无关测试。Sonar MCP 问题查询和 Quality Gate 查询均返回未授权，当前静态分析与云端门禁未验证。临时 Redis/MySQL 容器与其匿名数据卷已移除；目标部署数据库、真实平台账号和多实例部署环境未操作。
 
 - 2026-10-22 统一 Backend 与 Gateway 手写 Java 的导入、格式和必要注释：清理 45 个文件中的代码全限定类型引用，展开非静态通配符导入，整理 219 个 Java 文件；数据库驱动等字符串中的完整名称保留。统一四空格缩进、语句换行和控制流花括号，类文档移至注解之前；补充来源确认、关联代次、租约恢复、Webhook 密文绑定、重复投递及失败保留的原因说明，并将可读性约定写入 Backend 指南。使用 google-java-format 1.24.0 的四空格样式完成格式整理和无差异检查；全部 234 个 Java 文件的语法树指纹对比一致，对比忽略导入、注释及新增控制流语句块，表达式、声明和字面量含 SQL 原文保持一致。最后一次 Java 修改后 Backend、Gateway 的 `mvn.cmd -o clean verify` 均通过：258 项、17 项，无失败、错误或跳过；Backend 含 31 项真实 MySQL 测试。亲自执行 `python scripts/check_java_coverage.py` 通过：Backend 88.31%、Gateway 83.62%、综合 88.02%，高于 80%。本轮未新增测试，格式调整改变行号映射后的覆盖率数值不代表测试能力提升。编码、换行和 Git 差异空白检查通过。Sonar MCP 返回未授权，当前云端分析与门禁未验证；未进行源码上传或修改规则。临时隔离 MySQL 容器已移除，目标部署数据未操作；Frontend、OpenAPI 和 SDK 未修改。
 

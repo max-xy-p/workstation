@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HexFormat;
@@ -329,6 +330,8 @@ public class IntegrationStateService {
             return null;
         }
         r.setStatus("RUNNING");
+        r.setNextAttemptAt(null);
+        r.setLastError(null);
         r.setLeaseToken(UUID.randomUUID().toString());
         r.setLeaseUntil(
                 LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(properties.leaseSeconds()));
@@ -358,6 +361,26 @@ public class IntegrationStateService {
         run.setLeaseUntil(
                 LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(properties.leaseSeconds()));
         return c;
+    }
+
+    /** 校验仍持有执行权后延期，保留已提交的游标和快照检查点。 */
+    @Transactional
+    public void defer(IntegrationRun run, Duration delay, String message) {
+        check(run);
+        run.setNextAttemptAt(LocalDateTime.now(ZoneId.systemDefault()).plus(delay).plusSeconds(1));
+        run.setLastError(message);
+        if (mapper.deferRun(run) != 1) {
+            throw new IntegrationConflictException("同步任务已取消或租约已失效");
+        }
+        run.setStatus("QUEUED");
+        run.setLeaseToken(null);
+        run.setLeaseUntil(null);
+    }
+
+    @Transactional
+    public void checkpoint(IntegrationRun run) {
+        check(run);
+        mapper.updateRun(run);
     }
 
     @Transactional
@@ -553,6 +576,7 @@ public class IntegrationStateService {
             status = "CANCELLED";
         }
         run.setStatus(status);
+        run.setProgressJson(null);
         run.setLastError(error);
         run.setFinishedAt(LocalDateTime.now(ZoneId.systemDefault()));
         mapper.updateRun(run);

@@ -8,7 +8,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 - 手动保存、自动保存、按版本检测并发冲突、三方合并与冲突处理、IndexedDB 草稿恢复、笔记回收站及[内容历史、差异与恢复](docs/note-history.md)
 - 多级文件夹、跨项目/任务/笔记搜索、标签、项目关联和 Markdown 导入
 - 项目资料、项目详情、任务看板、依据笔记关联，以及 GitHub Issue 创建任务、来源关联、持续跟踪、Webhook 指定刷新及来源变化确认
-- GitHub/GitLab 数据源连接、多仓库关联、批量导入、手动与定时同步，以及近期开发情况快照；启用与升级见 [数据源流程](docs/integrations.md)
+- GitHub/GitLab 数据源连接、多仓库关联、批量导入、手动与定时同步，近期开发情况快照，以及 Redis 共享 API 限流、冷却和持久化延期恢复；启用与升级见 [数据源流程](docs/integrations.md)
 - Keycloak 单点登录、Gateway/BFF 服务端会话和 CSRF 防护
 - 个人与共享 Workspace、成员管理、数据隔离和可靠异步权限审计
 - 统一工作台导航、笔记专注模式，以及项目、任务、标签和数据源的按需编辑抽屉
@@ -113,7 +113,7 @@ npm.cmd run preview
 
 OpenAPI 和 Python Client 的生成、检查命令只在 [OpenAPI 使用说明](docs/openapi.md) 中维护。前端 `test` 使用 Node Test Runner 验证导航、页面实例边界和表单提交状态；`typecheck` 执行 TypeScript/Vue 静态类型检查。前端目前没有 `lint` 或 `format` 命令。
 
-手动初始化 MySQL 时，依次执行 `backend/src/main/resources/db/schema.sql`、`backend/src/main/resources/db/migrate-project-integrations.sql` 和 `backend/src/main/resources/db/migrate-note-revisions.sql`；Compose 首次启动会自动按此顺序执行。已有数据卷的升级流程见 [CI/CD 与部署](docs/ci-cd.md)。
+手动初始化 MySQL 时，按 [部署流程](docs/ci-cd.md) 列出的完整顺序执行基础建表与迁移脚本（包含限流队列迁移）；Compose 首次启动会自动按此顺序执行。已有数据卷的升级流程见 [CI/CD 与部署](docs/ci-cd.md)。
 
 ## 文档
 

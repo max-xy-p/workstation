@@ -5,6 +5,7 @@ import com.mike.workstation.domain.ExternalRepository;
 import com.mike.workstation.domain.IntegrationConnection;
 import com.mike.workstation.domain.IntegrationRun;
 import com.mike.workstation.domain.IssueSource;
+import com.mike.workstation.exception.ExternalApiDeferredException;
 import com.mike.workstation.exception.IntegrationConflictException;
 import com.mike.workstation.integration.RepositoryProvider;
 import com.mike.workstation.mapper.GithubWebhookMapper;
@@ -90,7 +91,7 @@ public class IssueTracker {
             } else {
                 fresh = provider.issue(connection, token, repository, source.getIssueNumber());
             }
-        } catch (IntegrationConflictException ex) {
+        } catch (IntegrationConflictException | ExternalApiDeferredException ex) {
             throw ex;
         } catch (RuntimeException ex) {
             error = IntegrationWorker.safeError(ex);

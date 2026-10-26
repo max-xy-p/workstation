@@ -16,6 +16,8 @@ public class IntegrationRun {
     private Long connectionId;
     private String kind;
     private String status;
+    private LocalDateTime nextAttemptAt;
+    private String progressJson;
     private String requestKey;
     private String requestHash;
     private String actorSubject;

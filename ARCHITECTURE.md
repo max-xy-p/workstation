@@ -11,7 +11,7 @@ Browser
       -> /auth/**                         -> Keycloak -> MySQL(keycloak)
       -> /oauth2/**、/login/oauth2/**     -> Gateway
       -> /api/**                          -> Gateway -> Backend -> MySQL
-                                                   -> Redis（Gateway Session）
+                                                   -> Redis（Gateway Session / Backend 出站限流）
                                                    -> audit_outbox
                                                         -> XXL-JOB -> RabbitMQ
                                                         -> Audit Consumer -> audit_events
@@ -120,10 +120,16 @@ GitHub 经 Web/Nginx、Gateway 专用路由进入 Backend，使用原始字节�
 
 批量跟踪保留上界与游标，指定刷新记录目标完成状态；两者分别维护进度，共用来源身份、权限、租约和关联校验。通知只是刷新提示，不直接应用事件内容。定时整批校准继续处理遗漏，并优先于持续到来的通知；指定刷新不延后整批校准时间。安全、重试及升级见 [数据源流程](docs/integrations.md#github-webhook-与指定来源刷新)。
 
+## 外部 API 调用协调
+
+RemoteApi 在每次真实网络尝试前，通过 ExternalApiLimiter 的 Lua 脚本申请 Redis 共享额度；Key 按平台、实例和凭证摘要隔离。平台限流响应发布只延长的共享冷却；协调不可用时暂停出站请求。后台抛出延期信号，由 IntegrationWorker 调用短事务将运行重新排队，清空租约并保存下次执行时间；不会占用线程等待冷却或把临时受限记录成来源读取失败。
+
+integration_sync_runs 的内部进度保存发现页码和有界采集中间结果；仓库、类别与分页检查点随相关结果事务提交，避免小额度下不断重读开头。Issue 跟踪与指定刷新继续使用已有游标和逐项目标。Redis 丢失不丢任务，旧租约和变更配置不能继续提交。部署、交互式验证与额度作用域见 [数据源流程](docs/integrations.md#外部-api-共享限流与冷却)。
+
 ## 外部依赖
 
 - MySQL 8：使用独立的 `workstation`、`keycloak` 与 `xxl_job` 数据库分别保存业务、身份和调度数据。
-- Redis 8：Gateway 服务端 Session。
+- Redis 8：Gateway 服务端 Session，以及 Backend 外部 API 共享令牌桶与限流冷却；任务和恢复进度仍在 MySQL。
 - RabbitMQ 4：审计消息持久化传输、消费重试和死信隔离。
 - XXL-JOB 3：调度审计 Outbox Relay，提供任务日志、告警和手工补偿入口。
 - 本机文件系统：受 `NOTE_IMPORT_ALLOWED_ROOTS` 限制的 Markdown 导入源。

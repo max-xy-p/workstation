@@ -10,6 +10,12 @@ mvn.cmd verify
 mvn.cmd package
 ```
 
+### 外部 API 限流的真实 Redis 验证
+
+先准备仅用于测试的 Redis，在 Backend 验证命令中附加 `-Dworkstation.test.redis=localhost:6379`；测试使用随机前缀并只清理自己创建的 Key，覆盖独立客户端并发申请、共享冷却和过期。CI 的 Backend 作业提供隔离 Redis 并执行该测试。未指定地址时，该集成测试明确跳过。
+
+真实 MySQL Mapper 测试仍通过 `workstation.test.db` 指定隔离库，执行前按部署顺序初始化并完成限流队列迁移，禁止连接部署数据库。Windows 调用 Maven 批处理时，含 `&` 的 JDBC 参数应通过子进程参数或安全的环境变量传递，避免 shell 将其拆成额外命令。
+
 ## Gateway
 
 ```powershell

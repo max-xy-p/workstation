@@ -182,11 +182,17 @@ public interface IntegrationMapper {
             @Param("repositoryId") Long repositoryId);
 
     @Update(
-            "UPDATE external_repositories r JOIN project_repositories p ON p.workspace_id=r.workspace_id AND p.repository_id=r.id SET r.auto_import_suppressed=TRUE WHERE p.workspace_id=#{w} AND p.project_id=#{project}")
+            "UPDATE external_repositories r JOIN project_repositories p ON"
+                + " p.workspace_id=r.workspace_id AND p.repository_id=r.id SET"
+                + " r.auto_import_suppressed=TRUE WHERE p.workspace_id=#{w} AND"
+                + " p.project_id=#{project}")
     int suppressProject(@Param("w") Long w, @Param("project") Long project);
 
     @Update(
-            "UPDATE external_repositories r JOIN project_repositories p ON p.workspace_id=r.workspace_id AND p.repository_id=r.id SET r.auto_import_suppressed=TRUE WHERE p.workspace_id=#{w} AND p.project_id=#{project} AND r.id=#{repository}")
+            "UPDATE external_repositories r JOIN project_repositories p ON"
+                + " p.workspace_id=r.workspace_id AND p.repository_id=r.id SET"
+                + " r.auto_import_suppressed=TRUE WHERE p.workspace_id=#{w} AND"
+                + " p.project_id=#{project} AND r.id=#{repository}")
     int suppressRepository(
             @Param("w") Long w,
             @Param("project") Long project,
@@ -268,7 +274,7 @@ public interface IntegrationMapper {
 
     @Select(
             """
-            SELECT * FROM integration_sync_runs r WHERE (r.status='QUEUED' OR (r.status='RUNNING' AND r.lease_until < NOW()))
+            SELECT * FROM integration_sync_runs r WHERE ((r.status='QUEUED' AND (r.next_attempt_at IS NULL OR r.next_attempt_at<=NOW())) OR (r.status='RUNNING' AND r.lease_until < NOW()))
             AND NOT EXISTS (SELECT 1 FROM integration_sync_runs a WHERE a.connection_id=r.connection_id AND a.status='RUNNING' AND a.lease_until >= NOW())
             ORDER BY r.id LIMIT 1 FOR UPDATE SKIP LOCKED
             """)
@@ -276,16 +282,25 @@ public interface IntegrationMapper {
 
     @Update(
             """
-            UPDATE integration_sync_runs SET status='RUNNING',lease_token=#{leaseToken},lease_until=#{leaseUntil} WHERE workspace_id=#{workspaceId} AND id=#{id}
+            UPDATE integration_sync_runs SET status='RUNNING',lease_token=#{leaseToken},lease_until=#{leaseUntil},next_attempt_at=NULL,last_error=NULL WHERE workspace_id=#{workspaceId} AND id=#{id}
             """)
     int claim(IntegrationRun r);
 
     @Update(
             """
-            UPDATE integration_sync_runs SET issue_cursor=#{issueCursor},issue_upper_bound=#{issueUpperBound},lease_until=#{leaseUntil},processed=#{processed},failed=#{failed},last_error=#{lastError},status=#{status},finished_at=#{finishedAt}
+            UPDATE integration_sync_runs SET next_attempt_at=#{nextAttemptAt},progress_json=#{progressJson},issue_cursor=#{issueCursor},issue_upper_bound=#{issueUpperBound},lease_until=#{leaseUntil},processed=#{processed},failed=#{failed},last_error=#{lastError},status=#{status},finished_at=#{finishedAt}
             WHERE workspace_id=#{workspaceId} AND id=#{id} AND lease_token=#{leaseToken} AND status='RUNNING' AND lease_until >= NOW()
             """)
     int updateRun(IntegrationRun r);
+
+    @Update(
+            """
+            UPDATE integration_sync_runs SET status='QUEUED',next_attempt_at=#{nextAttemptAt},last_error=#{lastError},
+                lease_token=NULL,lease_until=NULL
+            WHERE workspace_id=#{workspaceId} AND id=#{id} AND status='RUNNING'
+                AND lease_token=#{leaseToken} AND lease_until>=NOW()
+            """)
+    int deferRun(IntegrationRun r);
 
     @Select(
             """

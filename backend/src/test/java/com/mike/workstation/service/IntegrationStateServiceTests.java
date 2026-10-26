@@ -42,6 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -477,12 +478,15 @@ class IntegrationStateServiceTests {
 
     @Test
     void finishUpdatesSuccessAndCancelsChangedConfigurations() {
+        run.setProgressJson("temporary");
         state.finish(run, "SUCCEEDED", null);
+        assertThat(run.getProgressJson()).isNull();
         assertThat(run.getStatus()).isEqualTo("SUCCEEDED");
         verify(mapper).completed(eq(9L), eq(2L), any(), isNull());
         run.setStatus("RUNNING");
         c.setVersion(2);
         state.finish(run, "SUCCEEDED", null);
+        assertThat(run.getProgressJson()).isNull();
         assertThat(run.getStatus()).isEqualTo("CANCELLED");
     }
 
@@ -504,5 +508,35 @@ class IntegrationStateServiceTests {
                 .isInstanceOf(IntegrationConflictException.class);
         state.unbind(9L, 20L, 4L);
         verify(mapper).unbind(9L, 20L, 4L);
+    }
+
+    @Test
+    void deferralPersistsReadyTimeReleasesLeaseAndPreservesProgress() {
+        run.setProgressJson("{\"page\":2}");
+        run.setIssueCursor(17);
+        when(mapper.deferRun(run)).thenReturn(1);
+        LocalDateTime before = LocalDateTime.now();
+        state.defer(run, Duration.ofSeconds(60), "平台正在冷却");
+        assertThat(run.getStatus()).isEqualTo("QUEUED");
+        assertThat(run.getNextAttemptAt()).isAfterOrEqualTo(before.plusSeconds(60));
+        assertThat(run.getLeaseToken()).isNull();
+        assertThat(run.getLeaseUntil()).isNull();
+        assertThat(run.getIssueCursor()).isEqualTo(17);
+        assertThat(run.getProgressJson()).contains("page");
+        assertThat(run.getFailed()).isZero();
+        verify(mapper).deferRun(run);
+        verify(mapper, never()).completed(any(), any(), any(), any());
+    }
+
+    @Test
+    void deferralRejectsOldLeaseAndPermissionChanges() {
+        when(mapper.lockRun(run)).thenReturn(null);
+        assertThatThrownBy(() -> state.defer(run, Duration.ofSeconds(1), "冷却"))
+                .isInstanceOf(IntegrationConflictException.class);
+        verify(mapper, never()).deferRun(any());
+        when(mapper.lockRun(run)).thenReturn(run);
+        when(mapper.deferRun(run)).thenReturn(0);
+        assertThatThrownBy(() -> state.defer(run, Duration.ofSeconds(1), "冷却"))
+                .isInstanceOf(IntegrationConflictException.class);
     }
 }

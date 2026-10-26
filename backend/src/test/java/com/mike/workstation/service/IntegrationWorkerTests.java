@@ -13,8 +13,10 @@ import com.mike.workstation.domain.IntegrationConnection;
 import com.mike.workstation.domain.IntegrationRun;
 import com.mike.workstation.domain.IntegrationRunItem;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.ExternalApiDeferredException;
 import com.mike.workstation.exception.IntegrationConflictException;
 import com.mike.workstation.integration.CredentialCipher;
+import com.mike.workstation.integration.IntegrationProgress;
 import com.mike.workstation.integration.RepositoryProvider;
 import com.mike.workstation.mapper.IntegrationMapper;
 
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -197,5 +200,111 @@ class IntegrationWorkerTests {
                 .filteredOn(s -> s.getKind().equals("ISSUE"))
                 .singleElement()
                 .satisfies(s -> assertThat(s.getCollected()).isZero());
+    }
+
+    @Test
+    void discoveryResumesCommittedPageAfterDeferralAndWorkerRecreation() {
+        when(provider.repositories(c, "token", 1)).thenReturn(Collections.nCopies(100, repo()));
+        when(provider.repositories(c, "token", 2))
+                .thenThrow(new ExternalApiDeferredException(Duration.ofSeconds(60), "冷却"));
+        worker.execute();
+        verify(state).defer(run, Duration.ofSeconds(60), "冷却");
+        verify(state, never()).finish(any(), any(), any());
+        var progress = IntegrationProgress.read(run);
+        assertThat(progress.getDiscoveryPage()).isEqualTo(2);
+        doReturn(List.of()).when(provider).repositories(c, "token", 2);
+        new IntegrationWorker(
+                        mapper,
+                        state,
+                        service,
+                        cipher,
+                        properties,
+                        mock(IssueTracker.class),
+                        mock(GithubWebhookDispatcher.class))
+                .execute();
+        verify(provider, times(1)).repositories(c, "token", 1);
+        verify(state).finish(run, "SUCCEEDED", null);
+    }
+
+    @Test
+    void developmentDeferralKeepsSnapshotAndResumesWithoutRefetchingRepository() {
+        run.setKind("SYNC");
+        ExternalRepository r = repo();
+        when(mapper.repositories(9L, 2L, -1L, 0, 100)).thenReturn(List.of(r));
+        when(provider.repository(c, "token", r)).thenReturn(r);
+        when(provider.development(
+                        eq(c), eq("token"), any(), eq(DevelopmentKind.ISSUE), any(), eq(1)))
+                .thenThrow(new ExternalApiDeferredException(Duration.ofSeconds(2), "冷却"));
+        worker.execute();
+        verify(state, never()).snapshot(any(), any(), any(), any());
+        verify(state, never()).repositoryError(any(), any(), any());
+        verify(state).defer(run, Duration.ofSeconds(2), "冷却");
+        when(provider.development(eq(c), eq("token"), any(), any(), any(), anyInt()))
+                .thenReturn(List.of());
+        worker.execute();
+        verify(provider, times(1)).repository(c, "token", r);
+        verify(state, times(4)).snapshot(eq(run), any(), any(), any());
+        verify(state).finish(run, "SUCCEEDED", null);
+    }
+
+    @Test
+    void multiPageSnapshotRetainsStagedRowsAndWindowAcrossDeferral() {
+        IntegrationProperties paged =
+                new IntegrationProperties(true, "v1", Map.of(), List.of(), 15, 3, 300, 180, 30);
+        IntegrationWorker pagedWorker =
+                new IntegrationWorker(
+                        mapper,
+                        state,
+                        service,
+                        cipher,
+                        paged,
+                        mock(IssueTracker.class),
+                        mock(GithubWebhookDispatcher.class));
+        run.setKind("SYNC");
+        ExternalRepository r = repo();
+        when(mapper.repositories(9L, 2L, -1L, 0, 100)).thenReturn(List.of(r));
+        when(provider.repository(c, "token", r)).thenReturn(r);
+        DevelopmentItem item = new DevelopmentItem();
+        item.setKind("ISSUE");
+        item.setStatus("OPEN");
+        item.setTitle("阶段数据");
+        item.setExternalId("100");
+        item.setSourceUpdatedAt(LocalDateTime.now());
+        when(provider.development(
+                        eq(c), eq("token"), any(), eq(DevelopmentKind.ISSUE), any(), eq(1)))
+                .thenAnswer(
+                        inv -> {
+                            List<DevelopmentItem> page = new ArrayList<>();
+                            for (int id = 0; id < 100; id++) {
+                                DevelopmentItem row = new DevelopmentItem();
+                                row.setKind("ISSUE");
+                                row.setExternalId(Integer.toString(id));
+                                row.setStatus("OPEN");
+                                page.add(row);
+                            }
+                            return page;
+                        });
+        when(provider.development(
+                        eq(c), eq("token"), any(), eq(DevelopmentKind.ISSUE), any(), eq(2)))
+                .thenThrow(new ExternalApiDeferredException(Duration.ofSeconds(2), "冷却"));
+        pagedWorker.execute();
+        var saved = IntegrationProgress.read(run);
+        assertThat(saved.getItems()).hasSize(100);
+        assertThat(saved.getPage()).isEqualTo(2);
+        String since = saved.getSince();
+        DevelopmentItem duplicate = new DevelopmentItem();
+        duplicate.setKind("ISSUE");
+        duplicate.setExternalId("0");
+        duplicate.setStatus("OPEN");
+        doReturn(List.of(duplicate, item))
+                .when(provider)
+                .development(eq(c), eq("token"), any(), eq(DevelopmentKind.ISSUE), any(), eq(2));
+        pagedWorker.execute();
+        verify(provider, times(1))
+                .development(eq(c), eq("token"), any(), eq(DevelopmentKind.ISSUE), any(), eq(1));
+        var snapshots = ArgumentCaptor.forClass(DevelopmentSnapshot.class);
+        verify(state, times(4)).snapshot(eq(run), any(), snapshots.capture(), any());
+        assertThat(snapshots.getAllValues().get(0).getCollected()).isEqualTo(101);
+        assertThat(snapshots.getAllValues().get(0).getSince().toString()).isEqualTo(since);
     }
 }

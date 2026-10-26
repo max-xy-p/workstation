@@ -35,9 +35,12 @@ class IntegrationDatabaseTests {
         try (Connection db = DriverManager.getConnection(url, "root", "");
                 Statement s = db.createStatement()) {
             s.executeUpdate(
-                    "INSERT INTO security_principals VALUES ('integration-test','USER','test',NULL,NOW(),NOW())");
+                    "INSERT INTO security_principals VALUES"
+                        + " ('integration-test','USER','test',NULL,NOW(),NOW())");
             s.executeUpdate(
-                    "INSERT INTO workspaces (id,name,type,created_by_subject,created_at,updated_at) VALUES (91,'隔离测试','SHARED','integration-test',NOW(),NOW()),(92,'其他空间','SHARED','integration-test',NOW(),NOW())");
+                    "INSERT INTO workspaces (id,name,type,created_by_subject,created_at,updated_at)"
+                        + " VALUES"
+                        + " (91,'隔离测试','SHARED','integration-test',NOW(),NOW()),(92,'其他空间','SHARED','integration-test',NOW(),NOW())");
         }
         Configuration cfg =
                 new Configuration(
@@ -112,6 +115,35 @@ class IntegrationDatabaseTests {
             m.claim(run);
             assertThat(m.lockRun(run)).isNotNull();
             assertThat(m.nextRun()).isNull();
+            run.setProgressJson("{\"discoveryPage\":2}");
+            run.setIssueCursor(17);
+            assertThat(m.updateRun(run)).isEqualTo(1);
+            run.setNextAttemptAt(LocalDateTime.now().plusMinutes(5));
+            run.setLastError("平台正在冷却");
+            assertThat(m.deferRun(run)).isEqualTo(1);
+            IntegrationRun queued = m.run(91L, c.getId(), run.getId());
+            assertThat(queued.getStatus()).isEqualTo("QUEUED");
+            assertThat(queued.getLeaseToken()).isNull();
+            assertThat(queued.getProgressJson()).contains("discoveryPage");
+            assertThat(queued.getIssueCursor()).isEqualTo(17);
+            assertThat(m.nextRun()).isNull();
+            assertThat(m.lockRun(run)).isNull();
+            assertThat(m.deferRun(run)).isZero();
+            try (Statement ready = session.getConnection().createStatement()) {
+                ready.executeUpdate(
+                        "UPDATE integration_sync_runs SET next_attempt_at=DATE_SUB(NOW(),INTERVAL 1"
+                            + " SECOND) WHERE id="
+                                + run.getId());
+            }
+            IntegrationRun resumed = m.nextRun();
+            assertThat(resumed.getId()).isEqualTo(run.getId());
+            assertThat(resumed.getProgressJson()).isEqualTo(queued.getProgressJson());
+            resumed.setLeaseToken("new-lease");
+            resumed.setLeaseUntil(LocalDateTime.now().plusMinutes(3));
+            assertThat(m.claim(resumed)).isEqualTo(1);
+            assertThat(m.updateRun(run)).isZero();
+            run.setLeaseToken("new-lease");
+            run.setNextAttemptAt(null);
             IntegrationRunItem item = new IntegrationRunItem();
             item.setWorkspaceId(91L);
             item.setRunId(run.getId());
@@ -160,7 +192,8 @@ class IntegrationDatabaseTests {
         try (Connection db = DriverManager.getConnection(url, "root", "");
                 Statement s = db.createStatement()) {
             s.executeUpdate(
-                    "DELETE FROM workspaces WHERE id IN (91,92) AND created_by_subject='integration-test'");
+                    "DELETE FROM workspaces WHERE id IN (91,92) AND"
+                        + " created_by_subject='integration-test'");
             s.executeUpdate("DELETE FROM security_principals WHERE subject_id='integration-test'");
         }
     }

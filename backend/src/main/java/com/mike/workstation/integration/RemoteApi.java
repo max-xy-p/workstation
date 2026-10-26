@@ -1,9 +1,11 @@
 package com.mike.workstation.integration;
 
+import com.mike.workstation.config.ExternalApiLimitProperties;
 import com.mike.workstation.config.IntegrationProperties;
 import com.mike.workstation.domain.IntegrationConnection;
 import com.mike.workstation.domain.IntegrationProvider;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.ExternalApiDeferredException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Locale;
@@ -28,9 +31,15 @@ public class RemoteApi {
     private final IntegrationProperties properties;
     private final ObjectMapper json;
     private final HttpClient client;
+    private final ExternalApiLimiter limiter;
+    private final ExternalApiLimitProperties limitProperties;
 
     @Autowired
-    public RemoteApi(IntegrationProperties properties, ObjectMapper json) {
+    public RemoteApi(
+            IntegrationProperties properties,
+            ObjectMapper json,
+            ExternalApiLimiter limiter,
+            ExternalApiLimitProperties limitProperties) {
         this(
                 properties,
                 json,
@@ -38,13 +47,22 @@ public class RemoteApi {
                         .followRedirects(HttpClient.Redirect.NEVER)
                         .connectTimeout(
                                 Duration.ofSeconds(Math.max(1, properties.requestTimeoutSeconds())))
-                        .build());
+                        .build(),
+                limiter,
+                limitProperties);
     }
 
-    RemoteApi(IntegrationProperties properties, ObjectMapper json, HttpClient client) {
+    RemoteApi(
+            IntegrationProperties properties,
+            ObjectMapper json,
+            HttpClient client,
+            ExternalApiLimiter limiter,
+            ExternalApiLimitProperties limitProperties) {
         this.properties = properties;
         this.json = json;
         this.client = client;
+        this.limiter = limiter;
+        this.limitProperties = limitProperties;
     }
 
     public String normalize(IntegrationProvider provider, String value) {
@@ -122,16 +140,32 @@ public class RemoteApi {
         } else {
             builder.header("PRIVATE-TOKEN", token);
         }
-        return sendWithRetries(builder.build());
+        return sendWithRetries(
+                builder.build(),
+                ExternalApiLimiter.scope(connection.getProvider(), normalized, token),
+                connection.getProvider());
     }
 
-    private JsonNode sendWithRetries(HttpRequest request) {
+    private JsonNode sendWithRetries(HttpRequest request, String scope, String provider) {
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
+                limiter.acquire(scope);
                 HttpResponse<String> response =
                         client.send(
                                 request,
                                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+                if (PlatformCooldown.limited(response.statusCode(), response.headers())
+                        || PlatformCooldown.secondaryLimit(
+                                response.statusCode(), provider, response.body())) {
+                    Duration delay =
+                            limiter.cooldown(
+                                    scope,
+                                    PlatformCooldown.delay(
+                                            response.headers(),
+                                            Clock.systemUTC(),
+                                            limitProperties.fallbackCooldownSeconds()));
+                    throw new ExternalApiDeferredException(delay, "平台请求受限，请在冷却结束后重试");
+                }
                 if (response.statusCode() == 200) {
                     if (response.body().length() > 2_000_000) {
                         throw new BusinessException("平台响应超过允许大小");
@@ -157,19 +191,11 @@ public class RemoteApi {
         if (status == 401) {
             throw new BusinessException("平台凭证失效，请重新配置");
         }
-        boolean limited =
-                status == 429
-                        || (status == 403
-                                && (response.headers().firstValue("Retry-After").isPresent()
-                                        || response.headers()
-                                                .firstValue("X-RateLimit-Remaining")
-                                                .orElse("1")
-                                                .equals("0")));
-        if (!limited && status < 500) {
+        if (status < 500) {
             throw new BusinessException("平台资源不可读取，请检查权限和仓库状态");
         }
         if (attempt == 2) {
-            throw new BusinessException(limited ? "平台请求受限，请稍后重试" : "平台暂时不可用");
+            throw new BusinessException("平台暂时不可用");
         }
     }
 

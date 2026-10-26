@@ -10,6 +10,13 @@ spring:
       fail-on-unknown-properties: true
   config:
     import: optional:file:.env[.properties]
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 2s
+      timeout: 2s
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -55,6 +62,11 @@ workstation:
     max-items: ${INTEGRATIONS_MAX_ITEMS:300}
     lease-seconds: ${INTEGRATIONS_LEASE_SECONDS:180}
     recent-days: ${INTEGRATIONS_RECENT_DAYS:30}
+    rate-limit:
+      capacity: ${INTEGRATIONS_RATE_LIMIT_CAPACITY:5}
+      refill-per-second: ${INTEGRATIONS_RATE_LIMIT_REFILL_PER_SECOND:1}
+      fallback-cooldown-seconds: ${INTEGRATIONS_RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS:60}
+      redis-failure-delay-seconds: ${INTEGRATIONS_RATE_LIMIT_REDIS_FAILURE_DELAY_SECONDS:30}
   dashboard:
     recent-limit: ${DASHBOARD_RECENT_LIMIT}
   note-import:

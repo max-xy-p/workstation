@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.mike.workstation.config.ExternalApiLimitProperties;
 import com.mike.workstation.domain.IntegrationConnection;
 import com.mike.workstation.domain.IntegrationProvider;
+import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.ExternalApiDeferredException;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -17,13 +20,20 @@ import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 class RemoteApiTests {
     private final HttpClient client = mock(HttpClient.class);
+    private final ExternalApiLimiter limiter = mock(ExternalApiLimiter.class);
     private final RemoteApi api =
-            new RemoteApi(CredentialCipherTests.properties(), new ObjectMapper(), client);
+            new RemoteApi(
+                    CredentialCipherTests.properties(),
+                    new ObjectMapper(),
+                    client,
+                    limiter,
+                    new ExternalApiLimitProperties(5, 1, 60, 30));
 
     private IntegrationConnection connection(String provider, String base) {
         IntegrationConnection c = new IntegrationConnection();
@@ -161,7 +171,7 @@ class RemoteApiTests {
     }
 
     @Test
-    void rateLimitRetriesThenReturnsSuccessfulResponse() throws Exception {
+    void rateLimitPublishesSharedCooldownAndNeverSleepsOrRetries() throws Exception {
         HttpResponse<String> limited = response(403, "secret");
         HttpResponse<String> success = response(200, "{\"ok\":true}");
         when(limited.headers())
@@ -170,12 +180,17 @@ class RemoteApiTests {
                                 Map.of("X-RateLimit-Remaining", List.of("0")), (a, b) -> true));
         when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(limited, success);
-        assertThat(
-                        api.get(connection("GITHUB", "https://github.com"), "secret", "/user")
-                                .path("ok")
-                                .asBoolean())
-                .isTrue();
-        verify(client, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        when(limiter.cooldown(anyString(), any())).thenReturn(Duration.ofSeconds(60));
+        assertThatThrownBy(
+                        () ->
+                                api.get(
+                                        connection("GITHUB", "https://github.com"),
+                                        "secret",
+                                        "/user"))
+                .isInstanceOf(ExternalApiDeferredException.class)
+                .hasMessageNotContaining("secret");
+        verify(client, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+        verify(limiter).cooldown(anyString(), eq(Duration.ofSeconds(60)));
     }
 
     @Test
@@ -191,5 +206,31 @@ class RemoteApiTests {
                                         "/user"))
                 .hasMessage("平台暂时不可用");
         verify(client, times(3)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    void quotaDenialNeverCallsPlatformAndRetriesConsumeBudget() throws Exception {
+        doThrow(new ExternalApiDeferredException(Duration.ofSeconds(2), "冷却"))
+                .when(limiter)
+                .acquire(anyString());
+        assertThatThrownBy(
+                        () ->
+                                api.get(
+                                        connection("GITHUB", "https://github.com"),
+                                        "secret",
+                                        "/user"))
+                .isInstanceOf(ExternalApiDeferredException.class);
+        verifyNoInteractions(client);
+        doNothing().when(limiter).acquire(anyString());
+        when(client.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenThrow(new IOException("secret"));
+        assertThatThrownBy(
+                        () ->
+                                api.get(
+                                        connection("GITHUB", "https://github.com"),
+                                        "secret",
+                                        "/user"))
+                .isInstanceOf(BusinessException.class);
+        verify(limiter, times(4)).acquire(anyString());
     }
 }

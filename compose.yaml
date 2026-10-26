@@ -24,6 +24,7 @@ services:
       - ./backend/src/main/resources/db/migrate-task-issues.sql:/docker-entrypoint-initdb.d/01c-task-issues.sql:ro
       - ./backend/src/main/resources/db/migrate-github-webhooks.sql:/docker-entrypoint-initdb.d/01d-github-webhooks.sql:ro
       - ./backend/src/main/resources/db/migrate-source-confirmation.sql:/docker-entrypoint-initdb.d/01e-source-confirmation.sql:ro
+      - ./backend/src/main/resources/db/migrate-external-api-limits.sql:/docker-entrypoint-initdb.d/01f-external-api-limits.sql:ro
       - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
       - ./xxl-job/tables_xxl_job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
       - ./backend/src/main/resources/db/init-xxl-job-database.sh:/docker-entrypoint-initdb.d/04-xxl-job-user.sh:ro
@@ -146,6 +147,13 @@ services:
       INTEGRATIONS_MAX_ITEMS: ${INTEGRATIONS_MAX_ITEMS:-300}
       INTEGRATIONS_LEASE_SECONDS: ${INTEGRATIONS_LEASE_SECONDS:-180}
       INTEGRATIONS_RECENT_DAYS: ${INTEGRATIONS_RECENT_DAYS:-30}
+      INTEGRATIONS_RATE_LIMIT_CAPACITY: ${INTEGRATIONS_RATE_LIMIT_CAPACITY:-5}
+      INTEGRATIONS_RATE_LIMIT_REFILL_PER_SECOND: ${INTEGRATIONS_RATE_LIMIT_REFILL_PER_SECOND:-1}
+      INTEGRATIONS_RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS: ${INTEGRATIONS_RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS:-60}
+      INTEGRATIONS_RATE_LIMIT_REDIS_FAILURE_DELAY_SECONDS: ${INTEGRATIONS_RATE_LIMIT_REDIS_FAILURE_DELAY_SECONDS:-30}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.docker}
       NOTE_IMPORT_ALLOWED_ROOTS: /data/notes
       NOTE_IMPORT_MAX_FILE_BYTES: ${NOTE_IMPORT_MAX_FILE_BYTES:-1048576}
       RABBITMQ_HOST: rabbitmq
@@ -167,6 +175,8 @@ services:
       db:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   gateway:
