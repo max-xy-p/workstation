@@ -142,7 +142,7 @@ public interface TaskMapper {
                 due_date = #{dueDate},
                 evidence_note_id = #{evidenceNoteId},
                 updated_at = #{updatedAt}
-            WHERE workspace_id = #{workspaceId} AND id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND version = #{version}
             """)
     int update(Task task);
 
@@ -151,17 +151,22 @@ public interface TaskMapper {
             """
             UPDATE tasks
             SET version = version + 1, status = #{status}, updated_at = #{updatedAt}
-            WHERE workspace_id = #{workspaceId} AND id = #{id}
+            WHERE workspace_id = #{workspaceId} AND id = #{id} AND version = #{expectedVersion}
             """)
     int updateStatus(
             @Param("workspaceId") Long workspaceId,
             @Param("id") Long id,
             @Param("status") TaskStatus status,
-            @Param("updatedAt") LocalDateTime updatedAt);
+            @Param("updatedAt") LocalDateTime updatedAt,
+            @Param("expectedVersion") Long expectedVersion);
 
     /** 根据主键删除任务。 */
-    @Delete("DELETE FROM tasks WHERE workspace_id = #{workspaceId} AND id = #{id}")
-    int delete(@Param("workspaceId") Long workspaceId, @Param("id") Long id);
+    @Delete(
+            "DELETE FROM tasks WHERE workspace_id = #{workspaceId} AND id = #{id} AND version = #{expectedVersion}")
+    int delete(
+            @Param("workspaceId") Long workspaceId,
+            @Param("id") Long id,
+            @Param("expectedVersion") Long expectedVersion);
 
     @Update(
             """

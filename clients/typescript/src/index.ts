@@ -46,6 +46,7 @@ export type IssueTaskCreateRequest = Schemas['IssueTaskCreateRequest'];
 export type IssueTaskLinkRequest = Schemas['IssueTaskLinkRequest'];
 export type IssueTaskResult = Schemas['IssueTaskResult'];
 export type TaskRequest = Schemas['TaskRequest'];
+export type TaskUpdateRequest = Schemas['TaskUpdateRequest'];
 export type TaskResponse = Schemas['TaskResponse'];
 export type TaskPageResponse = Schemas['TaskPageResponse'];
 export type TaskStatus = Schemas['TaskStatus'];
@@ -214,14 +215,14 @@ export function createWorkstationApi(transport: WorkstationTransport) {
         transport.get<TaskResponse>(`${workspacePath(workspaceId)}/tasks/${id}`),
       create: (workspaceId: number, payload: TaskRequest) =>
         transport.post<TaskResponse, TaskRequest>(`${workspacePath(workspaceId)}/tasks`, payload),
-      update: (workspaceId: number, id: number, payload: TaskRequest) =>
-        transport.put<TaskResponse, TaskRequest>(`${workspacePath(workspaceId)}/tasks/${id}`, payload),
-      updateStatus: (workspaceId: number, id: number, status: TaskStatus) =>
+      update: (workspaceId: number, id: number, payload: TaskUpdateRequest) =>
+        transport.put<TaskResponse, TaskUpdateRequest>(`${workspacePath(workspaceId)}/tasks/${id}`, payload),
+      updateStatus: (workspaceId: number, id: number, status: TaskStatus, expectedVersion: number) =>
         transport.patch<TaskResponse, Schemas['TaskStatusRequest']>(`${workspacePath(workspaceId)}/tasks/${id}/status`, {
-          status
+          status, expectedVersion
         }),
-      delete: (workspaceId: number, id: number) =>
-        transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
+      delete: (workspaceId: number, id: number, expectedVersion: number) =>
+        transport.delete(`${workspacePath(workspaceId)}/tasks/${id}?expectedVersion=${expectedVersion}`)
     },
     noteApi: {
       revisions: (workspaceId: number, id: number, params?: NoteRevisionListParams) =>

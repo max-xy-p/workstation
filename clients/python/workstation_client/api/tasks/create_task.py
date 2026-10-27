@@ -84,7 +84,7 @@ def sync_detailed(
 
     Args:
         workspace_id (int):
-        body (TaskRequest):
+        body (TaskRequest): 创建无需版本，完整更新必须提供读取时的 expectedVersion。
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -116,7 +116,7 @@ def sync(
 
     Args:
         workspace_id (int):
-        body (TaskRequest):
+        body (TaskRequest): 创建无需版本，完整更新必须提供读取时的 expectedVersion。
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -143,7 +143,7 @@ async def asyncio_detailed(
 
     Args:
         workspace_id (int):
-        body (TaskRequest):
+        body (TaskRequest): 创建无需版本，完整更新必须提供读取时的 expectedVersion。
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -173,7 +173,7 @@ async def asyncio(
 
     Args:
         workspace_id (int):
-        body (TaskRequest):
+        body (TaskRequest): 创建无需版本，完整更新必须提供读取时的 expectedVersion。
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

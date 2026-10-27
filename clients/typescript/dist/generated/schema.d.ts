@@ -1483,6 +1483,7 @@ export interface components {
             tasks: components["schemas"]["TaskResponse"][];
             notes: components["schemas"]["NoteSummaryResponse"][];
         };
+        /** @description 创建无需版本，完整更新必须提供读取时的 expectedVersion。 */
         TaskRequest: {
             title: string;
             description?: string | null;
@@ -1494,6 +1495,8 @@ export interface components {
             dueDate?: string | null;
             /** Format: int64 */
             evidenceNoteId?: number | null;
+            /** Format: int64 */
+            expectedVersion?: number;
         };
         TaskResponse: {
             /** Format: int64 */
@@ -1515,10 +1518,12 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             /** Format: int64 */
-            version?: number;
+            version: number;
         };
         TaskStatusRequest: {
             status: components["schemas"]["TaskStatus"];
+            /** Format: int64 */
+            expectedVersion: number;
         };
         DashboardResponse: {
             /** Format: int64 */
@@ -1685,6 +1690,10 @@ export interface components {
             expectedTaskVersion: number;
             /** @enum {string} */
             action: "KEEP" | "COMPLETE" | "REOPEN";
+        };
+        TaskUpdateRequest: components["schemas"]["TaskRequest"] & {
+            /** Format: int64 */
+            expectedVersion: number;
         };
     };
     responses: {
@@ -2812,7 +2821,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TaskRequest"];
+                "application/json": components["schemas"]["TaskUpdateRequest"];
             };
         };
         responses: {
@@ -2829,11 +2838,14 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     deleteTask: {
         parameters: {
-            query?: never;
+            query: {
+                expectedVersion: number;
+            };
             header?: never;
             path: {
                 workspaceId: components["parameters"]["WorkspaceId"];
@@ -2850,9 +2862,11 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     updateTaskStatus: {
@@ -2884,6 +2898,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listTags: {

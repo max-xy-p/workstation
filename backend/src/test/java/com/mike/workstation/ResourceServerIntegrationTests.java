@@ -11,14 +11,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.WorkspaceMemberCandidate;
 import com.mike.workstation.exception.NoteVersionConflictException;
 import com.mike.workstation.exception.TaskIssueConflictException;
+import com.mike.workstation.exception.TaskVersionConflictException;
 import com.mike.workstation.service.GithubWebhookService;
 import com.mike.workstation.service.NoteRevisionService;
 import com.mike.workstation.service.NoteService;
 import com.mike.workstation.service.TaskIssueService;
+import com.mike.workstation.service.TaskService;
 import com.mike.workstation.service.WorkspaceAuthorizationService;
 import com.mike.workstation.service.WorkspaceService;
 
@@ -56,6 +59,30 @@ class ResourceServerIntegrationTests {
     @MockitoBean private GithubWebhookService githubWebhooks;
 
     @MockitoBean private TaskIssueService taskIssues;
+
+    @MockitoBean private TaskService taskService;
+
+    @Test
+    void taskWritesExposeVersionConflictAndRequireDeleteVersion() throws Exception {
+        var user = jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"));
+        when(taskService.updateStatus(eq(1L), eq(2L), eq(TaskStatus.DONE), eq(0L)))
+                .thenThrow(new TaskVersionConflictException("任务已变化"));
+        mockMvc.perform(
+                        MockMvcRequestBuilders.patch("/api/workspaces/1/tasks/2/status")
+                                .with(user)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"status\":\"DONE\",\"expectedVersion\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TASK_VERSION_CONFLICT"));
+        mockMvc.perform(delete("/api/workspaces/1/tasks/2").with(user))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(
+                        delete("/api/workspaces/1/tasks/2")
+                                .param("expectedVersion", "0")
+                                .with(user))
+                .andExpect(status().isNoContent());
+        verify(taskService).delete(1L, 2L, 0L);
+    }
 
     @Test
     void sourceConfirmationUsesProtectedContractAndConflictResponse() throws Exception {

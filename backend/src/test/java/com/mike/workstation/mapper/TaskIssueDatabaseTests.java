@@ -25,7 +25,9 @@ import com.mike.workstation.dto.TaskIssueSourceResponse;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.exception.IntegrationConflictException;
+import com.mike.workstation.exception.NotFoundException;
 import com.mike.workstation.exception.TaskIssueConflictException;
+import com.mike.workstation.exception.TaskVersionConflictException;
 import com.mike.workstation.integration.CredentialCipher;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
@@ -254,7 +256,7 @@ class TaskIssueDatabaseTests {
 
     private TaskRequest request() {
         return new TaskRequest(
-                "本地执行", null, project, TaskStatus.TODO, TaskPriority.HIGH, null, null);
+                "本地执行", null, project, TaskStatus.TODO, TaskPriority.HIGH, null, null, 0L);
     }
 
     private IssueTaskResult create() {
@@ -328,7 +330,8 @@ class TaskIssueDatabaseTests {
         assertThat(sources.list(w + 999, null, 0, 20)).isEmpty();
         assertThatThrownBy(() -> sources.link(w, result.task().id(), s.getId(), subject))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        tx.executeWithoutResult(status -> tasks.delete(w, result.task().id()));
+        tx.executeWithoutResult(
+                status -> tasks.delete(w, result.task().id(), result.task().version()));
         assertThat(sources.count(w, null)).isZero();
         assertThat(sources.upperBound(w)).isGreaterThan(0);
         assertThat(create().created()).isTrue();
@@ -780,7 +783,10 @@ class TaskIssueDatabaseTests {
                                                                         .KEEP))))
                 .isInstanceOf(TaskIssueConflictException.class);
         var second = currentSource();
-        tx.executeWithoutResult(t -> tasks.updateStatus(w, task, TaskStatus.IN_PROGRESS));
+        tx.executeWithoutResult(
+                t ->
+                        tasks.updateStatus(
+                                w, task, TaskStatus.IN_PROGRESS, tasks.get(w, task).version()));
         assertThatThrownBy(
                         () ->
                                 tx.execute(
@@ -987,6 +993,160 @@ class TaskIssueDatabaseTests {
                                                                         .KEEP))))
                 .isInstanceOf(TaskIssueConflictException.class);
         assertThat(sources.forTask(w + 1000000, task)).isNull();
+    }
+
+    private TaskRequest versionedRequest(long version) {
+        return new TaskRequest(
+                "并发编辑",
+                null,
+                project,
+                TaskStatus.IN_PROGRESS,
+                TaskPriority.HIGH,
+                null,
+                null,
+                version);
+    }
+
+    @Test
+    void editStatusAndDeleteRejectStaleTaskAndPreserveSourceLink() {
+        Long task = create().task().id();
+        var old = tasks.get(w, task);
+        tx.executeWithoutResult(t -> tasks.update(w, task, versionedRequest(old.version())));
+        assertThat(tasks.get(w, task).version()).isEqualTo(old.version() + 1);
+        assertThatThrownBy(
+                        () ->
+                                tx.execute(
+                                        t ->
+                                                tasks.update(
+                                                        w, task, versionedRequest(old.version()))))
+                .isInstanceOf(TaskVersionConflictException.class);
+        assertThatThrownBy(
+                        () ->
+                                tx.execute(
+                                        t ->
+                                                tasks.updateStatus(
+                                                        w, task, TaskStatus.DONE, old.version())))
+                .isInstanceOf(TaskVersionConflictException.class);
+        assertThatThrownBy(() -> tx.executeWithoutResult(t -> tasks.delete(w, task, old.version())))
+                .isInstanceOf(TaskVersionConflictException.class);
+        assertThat(sources.forTask(w, task)).isNotNull();
+        assertThat(tasks.get(w, task).status()).isEqualTo(TaskStatus.IN_PROGRESS);
+        tx.executeWithoutResult(t -> tasks.delete(w, task, old.version() + 1));
+        assertThat(sources.forTask(w, task)).isNull();
+    }
+
+    @Test
+    void parallelEditAndStatusHaveExactlyOneWinner() throws Exception {
+        Long task = create().task().id();
+        long version = tasks.get(w, task).version();
+        var pool = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        try {
+            Callable<Boolean> edit =
+                    () -> {
+                        start.await();
+                        try {
+                            tx.execute(t -> tasks.update(w, task, versionedRequest(version)));
+                            return true;
+                        } catch (TaskVersionConflictException ex) {
+                            return false;
+                        }
+                    };
+            Callable<Boolean> status =
+                    () -> {
+                        start.await();
+                        try {
+                            tx.execute(t -> tasks.updateStatus(w, task, TaskStatus.DONE, version));
+                            return true;
+                        } catch (TaskVersionConflictException ex) {
+                            return false;
+                        }
+                    };
+            var a = pool.submit(edit);
+            var b = pool.submit(status);
+            start.countDown();
+            assertThat(List.of(a.get(10, TimeUnit.SECONDS), b.get(10, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(true, false);
+            assertThat(tasks.get(w, task).version()).isEqualTo(version + 1);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void auditFailureRollsBackConditionalTaskWriteAndDeletion() {
+        Long task = create().task().id();
+        var before = tasks.get(w, task);
+        doThrow(new IllegalStateException("模拟审计失败"))
+                .when(audit)
+                .success(w, "TASK_UPDATE", "TASK", task);
+        assertThatThrownBy(
+                        () ->
+                                tx.execute(
+                                        t ->
+                                                tasks.update(
+                                                        w,
+                                                        task,
+                                                        versionedRequest(before.version()))))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(tasks.get(w, task).version()).isEqualTo(before.version());
+        assertThat(tasks.get(w, task).title()).isEqualTo(before.title());
+        doThrow(new IllegalStateException("模拟审计失败"))
+                .when(audit)
+                .success(w, "TASK_DELETE", "TASK", task);
+        assertThatThrownBy(
+                        () -> tx.executeWithoutResult(t -> tasks.delete(w, task, before.version())))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(sources.forTask(w, task)).isNotNull();
+        assertThat(tasks.get(w, task).version()).isEqualTo(before.version());
+    }
+
+    @Test
+    void taskDeletedDuringEditingIsNotReportedAsVersionConflict() {
+        Long task = create().task().id();
+        tx.executeWithoutResult(t -> tasks.delete(w, task, 0L));
+        assertThatThrownBy(() -> tx.execute(t -> tasks.updateStatus(w, task, TaskStatus.DONE, 0L)))
+                .isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> tx.executeWithoutResult(t -> tasks.delete(w, task, 0L)))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void evidenceRemovalInvalidatesAnOpenTaskEditor() {
+        Long task = create().task().id();
+        jdbc.update(
+                "INSERT INTO notes(workspace_id,title,content,project_id,created_at,updated_at) VALUES (?,'依据','正文',?,NOW(),NOW())",
+                w,
+                project);
+        Long note = jdbc.queryForObject("SELECT id FROM notes WHERE workspace_id=?", Long.class, w);
+        tx.execute(
+                t ->
+                        tasks.update(
+                                w,
+                                task,
+                                new TaskRequest(
+                                        "任务",
+                                        null,
+                                        project,
+                                        TaskStatus.TODO,
+                                        TaskPriority.HIGH,
+                                        null,
+                                        note,
+                                        0L)));
+        var viewed = tasks.get(w, task);
+        tx.executeWithoutResult(t -> taskMapper.clearEvidenceNote(w, note, LocalDateTime.now()));
+        assertThat(tasks.get(w, task).version()).isEqualTo(viewed.version() + 1);
+        assertThat(tasks.get(w, task).evidenceNoteId()).isNull();
+        assertThatThrownBy(
+                        () ->
+                                tx.execute(
+                                        t ->
+                                                tasks.update(
+                                                        w,
+                                                        task,
+                                                        versionedRequest(viewed.version()))))
+                .isInstanceOf(TaskVersionConflictException.class);
+        jdbc.update("DELETE FROM notes WHERE workspace_id=?", w);
     }
 
     /** 子进程领取真实队列后立即终止，不执行正常清理，模拟进程崩溃。 */

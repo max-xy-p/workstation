@@ -25,6 +25,12 @@ public class GlobalExceptionHandler {
                                 ex.getReason() == null ? "请求被拒绝" : ex.getReason()));
     }
 
+    @ExceptionHandler(TaskVersionConflictException.class)
+    public ResponseEntity<ApiError> handleTaskVersionConflict(TaskVersionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of("TASK_VERSION_CONFLICT", ex.getMessage()));
+    }
+
     @ExceptionHandler(TaskIssueConflictException.class)
     public ResponseEntity<ApiError> handleTaskIssueConflict(TaskIssueConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

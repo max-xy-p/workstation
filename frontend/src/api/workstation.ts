@@ -67,6 +67,7 @@ export type {
   TaskListParams,
   TaskPageResponse,
   TaskRequest,
+  TaskUpdateRequest,
   TaskResponse,
   TaskStatus,
   WorkspacePermission,

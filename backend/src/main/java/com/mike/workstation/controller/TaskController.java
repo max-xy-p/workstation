@@ -108,7 +108,8 @@ public class TaskController {
             @PathVariable Long workspaceId,
             @PathVariable Long id,
             @RequestBody TaskStatusRequest request) {
-        return taskService.updateStatus(workspaceId, id, request.status());
+        return taskService.updateStatus(
+                workspaceId, id, request.status(), request.expectedVersion());
     }
 
     /**
@@ -120,7 +121,10 @@ public class TaskController {
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long workspaceId, @PathVariable Long id) {
-        taskService.delete(workspaceId, id);
+    public void delete(
+            @PathVariable Long workspaceId,
+            @PathVariable Long id,
+            @RequestParam Long expectedVersion) {
+        taskService.delete(workspaceId, id, expectedVersion);
     }
 }

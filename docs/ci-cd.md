@@ -34,6 +34,8 @@ CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某�
 
 Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码构建；仓库内的 SDK 和认证层分别构建 wheel，再离线安装到同一虚拟环境并检查依赖关系，最后运行认证层测试。CI 在版本一致性校验通过后读取 Python SDK 的包版本，用它构造两份明确的本地 wheel 路径；升级 SDK 时无需手动修改工作流中的版本号。
 
+任务写接口自 5.0.0 起强制用户所见版本，配套 Frontend、Backend 和外部 SDK 调用方应一起升级；旧写请求返回参数错误，不使用默认版本兼容。数据库复用既有版本列，本轮没有新迁移。具体操作边界见 [任务编辑并发保护](task-concurrency.md)。
+
 ## SonarQube 分析
 
 仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中运行 Backend 和 Gateway 的 Maven 验证，向 Java 分析器提供字节码，并通过 JaCoCo XML 报告提供两个模块的测试覆盖率。扫描前还会检查两个模块合并的 JaCoCo 行与分支覆盖率是否至少为 80%；未达标时该作业失败。扫描作业同时安装 Frontend 与 TypeScript SDK 的依赖。覆盖率指标当前只评估 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析。自动生成的 Python SDK、TypeScript Schema 和构建产物不参与分析；测试目录单独标记为测试代码，包含 Backend、Gateway、TypeScript SDK、Python 认证层和 `frontend/tests`。测试包含模式自动将这些文件与业务代码分类分离，测试本身仍纳入对应分析；HTTP 等非法输入的拒绝用例不代表实际使用明文网络连接。分类行为见 [SonarQube Cloud 官方说明](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/excluding-files-based-on-patterns)。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。

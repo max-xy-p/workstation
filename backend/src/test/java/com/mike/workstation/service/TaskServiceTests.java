@@ -16,6 +16,7 @@ import com.mike.workstation.domain.TaskStatus;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.exception.NotFoundException;
+import com.mike.workstation.exception.TaskVersionConflictException;
 import com.mike.workstation.mapper.IssueSourceMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
@@ -54,7 +55,8 @@ class TaskServiceTests {
                         TaskStatus.TODO,
                         TaskPriority.MEDIUM,
                         null,
-                        null);
+                        null,
+                        0L);
 
         assertThatThrownBy(() -> taskService.create(WORKSPACE_ID, request))
                 .isInstanceOf(BusinessException.class)
@@ -72,7 +74,8 @@ class TaskServiceTests {
         when(noteMapper.lockById(WORKSPACE_ID, 7L)).thenReturn(note);
 
         var request =
-                new TaskRequest("Task", null, 1L, TaskStatus.TODO, TaskPriority.MEDIUM, null, 7L);
+                new TaskRequest(
+                        "Task", null, 1L, TaskStatus.TODO, TaskPriority.MEDIUM, null, 7L, 0L);
         assertThatThrownBy(() -> taskService.create(WORKSPACE_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("依据笔记");
@@ -130,7 +133,8 @@ class TaskServiceTests {
                                 TaskStatus.TODO,
                                 TaskPriority.MEDIUM,
                                 null,
-                                7L));
+                                7L,
+                                0L));
 
         assertThat(result.id()).isEqualTo(11L);
         var captor = ArgumentCaptor.forClass(Task.class);
@@ -142,25 +146,29 @@ class TaskServiceTests {
 
     @Test
     void missingTaskCannotChangeStatusOrBeDeleted() {
-        assertThatThrownBy(() -> taskService.updateStatus(WORKSPACE_ID, 99L, TaskStatus.DONE))
+        assertThatThrownBy(() -> taskService.updateStatus(WORKSPACE_ID, 99L, TaskStatus.DONE, 0L))
                 .isInstanceOf(NotFoundException.class);
-        assertThatThrownBy(() -> taskService.delete(WORKSPACE_ID, 99L))
+        assertThatThrownBy(() -> taskService.delete(WORKSPACE_ID, 99L, 0L))
                 .isInstanceOf(NotFoundException.class);
-        verify(taskMapper, never())
+        verify(taskMapper)
                 .updateStatus(
-                        eq(WORKSPACE_ID), eq(99L), eq(TaskStatus.DONE), any(LocalDateTime.class));
-        verify(taskMapper, never()).delete(WORKSPACE_ID, 99L);
+                        eq(WORKSPACE_ID),
+                        eq(99L),
+                        eq(TaskStatus.DONE),
+                        any(LocalDateTime.class),
+                        eq(0L));
+        verify(taskMapper).delete(WORKSPACE_ID, 99L, 0L);
     }
 
     @Test
     void deleteExistingTaskWritesAuditRecord() {
         Task persisted = new Task();
         persisted.setId(4L);
-        when(taskMapper.findById(WORKSPACE_ID, 4L)).thenReturn(persisted);
+        when(taskMapper.delete(WORKSPACE_ID, 4L, 0L)).thenReturn(1);
 
-        taskService.delete(WORKSPACE_ID, 4L);
+        taskService.delete(WORKSPACE_ID, 4L, 0L);
 
-        verify(taskMapper).delete(WORKSPACE_ID, 4L);
+        verify(taskMapper).delete(WORKSPACE_ID, 4L, 0L);
         verify(auditService).success(WORKSPACE_ID, "TASK_DELETE", "TASK", 4L);
     }
 
@@ -172,7 +180,8 @@ class TaskServiceTests {
         when(taskMapper.findById(WORKSPACE_ID, 4L)).thenReturn(task);
         when(issueSources.linkedProject(WORKSPACE_ID, 4L)).thenReturn(1L);
         var request =
-                new TaskRequest("任务", null, 2L, TaskStatus.TODO, TaskPriority.MEDIUM, null, null);
+                new TaskRequest(
+                        "任务", null, 2L, TaskStatus.TODO, TaskPriority.MEDIUM, null, null, 0L);
         assertThatThrownBy(() -> taskService.update(WORKSPACE_ID, 4L, request))
                 .hasMessageContaining("解除");
         verify(taskMapper, never()).update(any());
@@ -186,5 +195,78 @@ class TaskServiceTests {
         assertThat(taskService.getLocked(WORKSPACE_ID, 4L).id()).isEqualTo(4L);
         assertThatThrownBy(() -> taskService.getLocked(WORKSPACE_ID, 5L))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    private TaskRequest updateRequest(Long version) {
+        return new TaskRequest(
+                " 新标题 ", null, 1L, TaskStatus.IN_PROGRESS, TaskPriority.HIGH, null, null, version);
+    }
+
+    private Task storedTask() {
+        Task task = new Task();
+        task.setId(4L);
+        task.setVersion(8L);
+        return task;
+    }
+
+    @Test
+    void conditionalUpdateUsesClientVersionAndAuditsOnlySuccess() {
+        when(issueSources.linkedProject(WORKSPACE_ID, 4L)).thenReturn(null);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(new Project());
+        when(taskMapper.findById(WORKSPACE_ID, 4L)).thenReturn(storedTask());
+        when(taskMapper.update(any())).thenReturn(1);
+        taskService.update(WORKSPACE_ID, 4L, updateRequest(7L));
+        var captor = ArgumentCaptor.forClass(Task.class);
+        verify(taskMapper).update(captor.capture());
+        assertThat(captor.getValue().getVersion()).isEqualTo(7L);
+        assertThat(captor.getValue().getTitle()).isEqualTo("新标题");
+        verify(auditService).success(WORKSPACE_ID, "TASK_UPDATE", "TASK", 4L);
+    }
+
+    @Test
+    void staleUpdateCannotEmitSuccessAudit() {
+        when(issueSources.linkedProject(WORKSPACE_ID, 4L)).thenReturn(null);
+        when(projectMapper.findById(WORKSPACE_ID, 1L)).thenReturn(new Project());
+        when(taskMapper.findById(WORKSPACE_ID, 4L)).thenReturn(storedTask());
+        when(taskMapper.lockById(WORKSPACE_ID, 4L)).thenReturn(storedTask());
+        assertThatThrownBy(() -> taskService.update(WORKSPACE_ID, 4L, updateRequest(7L)))
+                .isInstanceOf(TaskVersionConflictException.class);
+        Mockito.verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void missingAndNegativeVersionsAreRejectedBeforeTaskMutation() {
+        for (Long version : new Long[] {null, -1L}) {
+            assertThatThrownBy(() -> taskService.update(WORKSPACE_ID, 4L, updateRequest(version)))
+                    .isInstanceOf(BusinessException.class);
+            assertThatThrownBy(
+                            () ->
+                                    taskService.updateStatus(
+                                            WORKSPACE_ID, 4L, TaskStatus.DONE, version))
+                    .isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> taskService.delete(WORKSPACE_ID, 4L, version))
+                    .isInstanceOf(BusinessException.class);
+        }
+        Mockito.verifyNoInteractions(taskMapper, auditService);
+    }
+
+    @Test
+    void staleStatusAndDeleteUseCurrentReadAndPreserveTask() {
+        when(taskMapper.lockById(WORKSPACE_ID, 4L)).thenReturn(storedTask());
+        assertThatThrownBy(() -> taskService.updateStatus(WORKSPACE_ID, 4L, TaskStatus.DONE, 7L))
+                .isInstanceOf(TaskVersionConflictException.class);
+        assertThatThrownBy(() -> taskService.delete(WORKSPACE_ID, 4L, 7L))
+                .isInstanceOf(TaskVersionConflictException.class);
+        Mockito.verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void statusSuccessRequiresExactlyOneAffectedRow() {
+        when(taskMapper.updateStatus(eq(WORKSPACE_ID), eq(4L), eq(TaskStatus.DONE), any(), eq(7L)))
+                .thenReturn(1);
+        when(taskMapper.findById(WORKSPACE_ID, 4L)).thenReturn(storedTask());
+        assertThat(taskService.updateStatus(WORKSPACE_ID, 4L, TaskStatus.DONE, 7L).version())
+                .isEqualTo(8L);
+        verify(auditService).success(WORKSPACE_ID, "TASK_STATUS_UPDATE", "TASK", 4L);
     }
 }

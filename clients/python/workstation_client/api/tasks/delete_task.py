@@ -7,13 +7,21 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.api_error import ApiError
-from ...types import Response
+from ...types import UNSET, Response
 
 
 def _get_kwargs(
     workspace_id: int,
     id: int,
+    *,
+    expected_version: int,
 ) -> dict[str, Any]:
+
+    params: dict[str, Any] = {}
+
+    params["expectedVersion"] = expected_version
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
         "method": "delete",
@@ -21,6 +29,7 @@ def _get_kwargs(
             workspace_id=quote(str(workspace_id), safe=""),
             id=quote(str(id), safe=""),
         ),
+        "params": params,
     }
 
     return _kwargs
@@ -30,6 +39,11 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
     if response.status_code == 204:
         response_204 = cast(Any, None)
         return response_204
+
+    if response.status_code == 400:
+        response_400 = ApiError.from_dict(response.json())
+
+        return response_400
 
     if response.status_code == 401:
         response_401 = ApiError.from_dict(response.json())
@@ -45,6 +59,11 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         response_404 = ApiError.from_dict(response.json())
 
         return response_404
+
+    if response.status_code == 409:
+        response_409 = ApiError.from_dict(response.json())
+
+        return response_409
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -66,12 +85,14 @@ def sync_detailed(
     id: int,
     *,
     client: AuthenticatedClient | Client,
+    expected_version: int,
 ) -> Response[Any | ApiError]:
     """删除任务
 
     Args:
         workspace_id (int):
         id (int):
+        expected_version (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -84,6 +105,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         workspace_id=workspace_id,
         id=id,
+        expected_version=expected_version,
     )
 
     response = client.get_httpx_client().request(
@@ -98,12 +120,14 @@ def sync(
     id: int,
     *,
     client: AuthenticatedClient | Client,
+    expected_version: int,
 ) -> Any | ApiError | None:
     """删除任务
 
     Args:
         workspace_id (int):
         id (int):
+        expected_version (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -117,6 +141,7 @@ def sync(
         workspace_id=workspace_id,
         id=id,
         client=client,
+        expected_version=expected_version,
     ).parsed
 
 
@@ -125,12 +150,14 @@ async def asyncio_detailed(
     id: int,
     *,
     client: AuthenticatedClient | Client,
+    expected_version: int,
 ) -> Response[Any | ApiError]:
     """删除任务
 
     Args:
         workspace_id (int):
         id (int):
+        expected_version (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -143,6 +170,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         workspace_id=workspace_id,
         id=id,
+        expected_version=expected_version,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -155,12 +183,14 @@ async def asyncio(
     id: int,
     *,
     client: AuthenticatedClient | Client,
+    expected_version: int,
 ) -> Any | ApiError | None:
     """删除任务
 
     Args:
         workspace_id (int):
         id (int):
+        expected_version (int):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -175,5 +205,6 @@ async def asyncio(
             workspace_id=workspace_id,
             id=id,
             client=client,
+            expected_version=expected_version,
         )
     ).parsed

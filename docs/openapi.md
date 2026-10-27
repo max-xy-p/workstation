@@ -33,6 +33,8 @@ OpenAPI 的作用是把调用方可见的 HTTP 约定集中到一处，让不同
 
 `4.5.0` 兼容新增来源变化确认接口；请求必须携带关联代次、来源业务版本、确认版本、任务版本及 KEEP / COMPLETE / REOPEN 动作。来源响应可选增加确认基准、版本、待处理和确认人时间，任务响应可选增加 version；原任务请求保持不变。冲突使用 409 / TASK_ISSUE_CONFLICT。全部 SDK 与认证层为 `4.5.0`。共享确认、迁移及版本边界见 [来源变化待处理](integrations.md#来源变化待处理)。
 
+`5.0.0` 为任务并发保护引入破坏性写接口变更：完整更新使用从 TaskRequest 派生的 TaskUpdateRequest，expectedVersion 必填；单独状态修改也必须提供 expectedVersion，删除必须提交同名查询参数。版本不符返回 409 / TASK_VERSION_CONFLICT，任务响应 version 必填，创建请求无需版本。旧客户端不会被自动补版本，Frontend 与全套 SDK、认证层需同步升级。现有数据库复用任务版本字段，交互和部署边界见 [任务编辑并发保护](task-concurrency.md)。
+
 ## 契约与 SDK 的关系
 
 ```text

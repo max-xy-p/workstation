@@ -9,6 +9,7 @@ import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.TaskRequest;
 import com.mike.workstation.dto.TaskResponse;
 import com.mike.workstation.exception.BusinessException;
+import com.mike.workstation.exception.TaskVersionConflictException;
 import com.mike.workstation.mapper.IssueSourceMapper;
 import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.mapper.ProjectMapper;
@@ -144,6 +145,8 @@ public class TaskService {
     public TaskResponse update(Long workspaceId, Long id, TaskRequest request) {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
         issueSources.lockWorkspace(workspaceId);
+        RequestChecks.requiredObject(request, "任务请求");
+        requireVersion(request.expectedVersion());
         validate(workspaceId, request);
         getEntity(workspaceId, id);
         var sourceProject = issueSources.linkedProject(workspaceId, id);
@@ -155,7 +158,8 @@ public class TaskService {
         task.setWorkspaceId(workspaceId);
         applyRequest(task, request);
         task.setUpdatedAt(LocalDateTime.now(ZoneId.systemDefault()));
-        taskMapper.update(task);
+        task.setVersion(request.expectedVersion());
+        requireChanged(workspaceId, id, taskMapper.update(task));
         auditService.success(workspaceId, "TASK_UPDATE", "TASK", id);
         return get(workspaceId, id);
     }
@@ -168,11 +172,20 @@ public class TaskService {
      * @return 更新后的任务
      */
     @Transactional
-    public TaskResponse updateStatus(Long workspaceId, Long id, TaskStatus status) {
+    public TaskResponse updateStatus(
+            Long workspaceId, Long id, TaskStatus status, Long expectedVersion) {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
         RequestChecks.requiredObject(status, "任务状态");
-        getEntity(workspaceId, id);
-        taskMapper.updateStatus(workspaceId, id, status, LocalDateTime.now(ZoneId.systemDefault()));
+        requireVersion(expectedVersion);
+        requireChanged(
+                workspaceId,
+                id,
+                taskMapper.updateStatus(
+                        workspaceId,
+                        id,
+                        status,
+                        LocalDateTime.now(ZoneId.systemDefault()),
+                        expectedVersion));
         auditService.success(workspaceId, "TASK_STATUS_UPDATE", "TASK", id);
         return get(workspaceId, id);
     }
@@ -183,12 +196,27 @@ public class TaskService {
      * @param id 任务 ID
      */
     @Transactional
-    public void delete(Long workspaceId, Long id) {
+    public void delete(Long workspaceId, Long id, Long expectedVersion) {
         authorization.require(workspaceId, WorkspacePermission.TASK_WRITE);
         issueSources.lockWorkspace(workspaceId);
-        getEntity(workspaceId, id);
-        taskMapper.delete(workspaceId, id);
+        requireVersion(expectedVersion);
+        requireChanged(workspaceId, id, taskMapper.delete(workspaceId, id, expectedVersion));
         auditService.success(workspaceId, "TASK_DELETE", "TASK", id);
+    }
+
+    private void requireVersion(Long expectedVersion) {
+        if (expectedVersion == null || expectedVersion < 0) {
+            throw new BusinessException("必须提供非负任务版本 expectedVersion");
+        }
+    }
+
+    /** 条件写入是并发裁决点；失败后使用当前读区分删除与版本冲突，避免旧事务快照误判。 */
+    private void requireChanged(Long workspaceId, Long id, int changed) {
+        if (changed == 1) {
+            return;
+        }
+        RequestChecks.requiredExisting(taskMapper.lockById(workspaceId, id), "任务不存在或已被删除");
+        throw new TaskVersionConflictException("任务已被其他成员修改，请查看最新内容后重新提交");
     }
 
     /**

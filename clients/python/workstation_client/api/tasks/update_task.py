@@ -7,8 +7,8 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.api_error import ApiError
-from ...models.task_request import TaskRequest
 from ...models.task_response import TaskResponse
+from ...models.task_update_request import TaskUpdateRequest
 from ...types import Response
 
 
@@ -16,7 +16,7 @@ def _get_kwargs(
     workspace_id: int,
     id: int,
     *,
-    body: TaskRequest,
+    body: TaskUpdateRequest,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
@@ -64,6 +64,11 @@ def _parse_response(
 
         return response_404
 
+    if response.status_code == 409:
+        response_409 = ApiError.from_dict(response.json())
+
+        return response_409
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -86,14 +91,14 @@ def sync_detailed(
     id: int,
     *,
     client: AuthenticatedClient | Client,
-    body: TaskRequest,
+    body: TaskUpdateRequest,
 ) -> Response[ApiError | TaskResponse]:
     """完整更新任务
 
     Args:
         workspace_id (int):
         id (int):
-        body (TaskRequest):
+        body (TaskUpdateRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -121,14 +126,14 @@ def sync(
     id: int,
     *,
     client: AuthenticatedClient | Client,
-    body: TaskRequest,
+    body: TaskUpdateRequest,
 ) -> ApiError | TaskResponse | None:
     """完整更新任务
 
     Args:
         workspace_id (int):
         id (int):
-        body (TaskRequest):
+        body (TaskUpdateRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -151,14 +156,14 @@ async def asyncio_detailed(
     id: int,
     *,
     client: AuthenticatedClient | Client,
-    body: TaskRequest,
+    body: TaskUpdateRequest,
 ) -> Response[ApiError | TaskResponse]:
     """完整更新任务
 
     Args:
         workspace_id (int):
         id (int):
-        body (TaskRequest):
+        body (TaskUpdateRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -184,14 +189,14 @@ async def asyncio(
     id: int,
     *,
     client: AuthenticatedClient | Client,
-    body: TaskRequest,
+    body: TaskUpdateRequest,
 ) -> ApiError | TaskResponse | None:
     """完整更新任务
 
     Args:
         workspace_id (int):
         id (int):
-        body (TaskRequest):
+        body (TaskUpdateRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

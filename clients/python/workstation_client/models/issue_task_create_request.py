@@ -18,7 +18,7 @@ class IssueTaskCreateRequest:
     Attributes:
         development_item_id (int):
         sharing_confirmed (bool):
-        task (TaskRequest):
+        task (TaskRequest): 创建无需版本，完整更新必须提供读取时的 expectedVersion。
     """
 
     development_item_id: int

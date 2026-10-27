@@ -228,12 +228,12 @@ public class TaskIssueService {
             if (!"CLOSED".equals(source.getStatus()) || local.status() == TaskStatus.DONE) {
                 throw new TaskIssueConflictException("当前来源或任务状态不适合完成操作");
             }
-            tasks.updateStatus(w, task, TaskStatus.DONE);
+            tasks.updateStatus(w, task, TaskStatus.DONE, local.version());
         } else {
             if (!"OPEN".equals(source.getStatus()) || local.status() != TaskStatus.DONE) {
                 throw new TaskIssueConflictException("当前来源或任务状态不适合重新开启");
             }
-            tasks.updateStatus(w, task, TaskStatus.IN_PROGRESS);
+            tasks.updateStatus(w, task, TaskStatus.IN_PROGRESS, local.version());
         }
     }
 

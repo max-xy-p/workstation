@@ -80,10 +80,10 @@ export function createWorkstationApi(transport) {
             get: (workspaceId, id) => transport.get(`${workspacePath(workspaceId)}/tasks/${id}`),
             create: (workspaceId, payload) => transport.post(`${workspacePath(workspaceId)}/tasks`, payload),
             update: (workspaceId, id, payload) => transport.put(`${workspacePath(workspaceId)}/tasks/${id}`, payload),
-            updateStatus: (workspaceId, id, status) => transport.patch(`${workspacePath(workspaceId)}/tasks/${id}/status`, {
-                status
+            updateStatus: (workspaceId, id, status, expectedVersion) => transport.patch(`${workspacePath(workspaceId)}/tasks/${id}/status`, {
+                status, expectedVersion
             }),
-            delete: (workspaceId, id) => transport.delete(`${workspacePath(workspaceId)}/tasks/${id}`)
+            delete: (workspaceId, id, expectedVersion) => transport.delete(`${workspacePath(workspaceId)}/tasks/${id}?expectedVersion=${expectedVersion}`)
         },
         noteApi: {
             revisions: (workspaceId, id, params) => transport.get(`${workspacePath(workspaceId)}/notes/${id}/revisions`, params),

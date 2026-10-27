@@ -91,7 +91,8 @@ class TaskIssueServiceTests {
     }
 
     private TaskRequest task(Long project) {
-        return new TaskRequest("本地", null, project, TaskStatus.TODO, TaskPriority.HIGH, null, null);
+        return new TaskRequest(
+                "本地", null, project, TaskStatus.TODO, TaskPriority.HIGH, null, null, 0L);
     }
 
     private IssueTaskCreateRequest request() {
@@ -261,6 +262,7 @@ class TaskIssueServiceTests {
         Task entity = new Task();
         entity.setId(5L);
         entity.setStatus(status);
+        entity.setVersion(3L);
         when(tasks.getLocked(9L, 5L)).thenReturn(TaskResponseAssembler.toResponse(entity));
     }
 
@@ -270,7 +272,7 @@ class TaskIssueServiceTests {
         source.setTrackingStatus("ERROR");
         service.confirm(9L, 5L, confirmation(IssueSourceConfirmRequest.Action.KEEP));
         verify(sources).confirm(9L, 5L, "generation", "新标题", "CLOSED", null, "author");
-        verify(tasks, never()).updateStatus(anyLong(), anyLong(), any());
+        verify(tasks, never()).updateStatus(anyLong(), anyLong(), any(), any());
         verify(audit).success(9L, "TASK_ISSUE_CONFIRM", "TASK", 5L);
     }
 
@@ -278,11 +280,11 @@ class TaskIssueServiceTests {
     void completeAndReopenUseExistingTaskStatusService() {
         prepareConfirmation(TaskStatus.TODO);
         service.confirm(9L, 5L, confirmation(IssueSourceConfirmRequest.Action.COMPLETE));
-        verify(tasks).updateStatus(9L, 5L, TaskStatus.DONE);
+        verify(tasks).updateStatus(9L, 5L, TaskStatus.DONE, 3L);
         prepareConfirmation(TaskStatus.DONE);
         source.setStatus("OPEN");
         service.confirm(9L, 5L, confirmation(IssueSourceConfirmRequest.Action.REOPEN));
-        verify(tasks).updateStatus(9L, 5L, TaskStatus.IN_PROGRESS);
+        verify(tasks).updateStatus(9L, 5L, TaskStatus.IN_PROGRESS, 3L);
     }
 
     @Test

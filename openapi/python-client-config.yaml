@@ -1,6 +1,6 @@
 project_name_override: workstation-api-client
 package_name_override: workstation_client
-package_version_override: 4.5.0
+package_version_override: 5.0.0
 use_path_prefixes_for_title_model_names: false
 post_hooks:
   - ruff check . --fix-only

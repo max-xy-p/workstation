@@ -87,3 +87,17 @@ class SourceConfirmationContractTests(unittest.TestCase):
         self.assertEqual(result["url"], "/api/workspaces/9/tasks/5/issue-source/confirm")
         self.assertEqual(result["json"]["expectedTaskVersion"], 3)
         self.assertEqual(result["json"]["action"], "KEEP")
+
+
+class TaskVersionContractTests(unittest.TestCase):
+    def test_task_mutations_preserve_zero_and_required_versions(self) -> None:
+        from workstation_client.models.task_status_request import TaskStatusRequest
+        from workstation_client.models.task_status import TaskStatus
+        from workstation_client.models.task_update_request import TaskUpdateRequest
+        from workstation_client.api.tasks.delete_task import _get_kwargs
+        request = TaskStatusRequest(status=TaskStatus.DONE, expected_version=0)
+        self.assertEqual(request.to_dict()["expectedVersion"], 0)
+        self.assertEqual(_get_kwargs(workspace_id=9, id=5, expected_version=0)["params"]["expectedVersion"], 0)
+        with self.assertRaises(TypeError):
+            TaskStatusRequest(status=TaskStatus.DONE)
+        self.assertIn("expected_version", TaskUpdateRequest.__annotations__)

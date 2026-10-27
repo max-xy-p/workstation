@@ -44,6 +44,7 @@ export type IssueTaskCreateRequest = Schemas['IssueTaskCreateRequest'];
 export type IssueTaskLinkRequest = Schemas['IssueTaskLinkRequest'];
 export type IssueTaskResult = Schemas['IssueTaskResult'];
 export type TaskRequest = Schemas['TaskRequest'];
+export type TaskUpdateRequest = Schemas['TaskUpdateRequest'];
 export type TaskResponse = Schemas['TaskResponse'];
 export type TaskPageResponse = Schemas['TaskPageResponse'];
 export type TaskStatus = Schemas['TaskStatus'];
@@ -540,7 +541,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
-            version?: number;
+            version: number;
         }[]>;
         get: (workspaceId: number, id: number) => Promise<{
             id: number;
@@ -555,7 +556,7 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
-            version?: number;
+            version: number;
         }>;
         create: (workspaceId: number, payload: TaskRequest) => Promise<{
             id: number;
@@ -570,9 +571,9 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
-            version?: number;
+            version: number;
         }>;
-        update: (workspaceId: number, id: number, payload: TaskRequest) => Promise<{
+        update: (workspaceId: number, id: number, payload: TaskUpdateRequest) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -585,9 +586,9 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
-            version?: number;
+            version: number;
         }>;
-        updateStatus: (workspaceId: number, id: number, status: TaskStatus) => Promise<{
+        updateStatus: (workspaceId: number, id: number, status: TaskStatus, expectedVersion: number) => Promise<{
             id: number;
             title: string;
             description: string | null;
@@ -600,9 +601,9 @@ export declare function createWorkstationApi(transport: WorkstationTransport): {
             evidenceNoteTitle: string | null;
             createdAt: string;
             updatedAt: string;
-            version?: number;
+            version: number;
         }>;
-        delete: (workspaceId: number, id: number) => Promise<null>;
+        delete: (workspaceId: number, id: number, expectedVersion: number) => Promise<null>;
     };
     noteApi: {
         revisions: (workspaceId: number, id: number, params?: NoteRevisionListParams) => Promise<{

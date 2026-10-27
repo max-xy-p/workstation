@@ -15,7 +15,8 @@ T = TypeVar("T", bound="TaskRequest")
 
 @_attrs_define
 class TaskRequest:
-    """
+    """创建无需版本，完整更新必须提供读取时的 expectedVersion。
+
     Attributes:
         title (str):
         project_id (int):
@@ -24,6 +25,7 @@ class TaskRequest:
         description (None | str | Unset):
         due_date (datetime.date | None | Unset):
         evidence_note_id (int | None | Unset):
+        expected_version (int | Unset):
     """
 
     title: str
@@ -33,6 +35,7 @@ class TaskRequest:
     description: None | str | Unset = UNSET
     due_date: datetime.date | None | Unset = UNSET
     evidence_note_id: int | None | Unset = UNSET
+    expected_version: int | Unset = UNSET
 
     def to_dict(self) -> dict[str, Any]:
         title = self.title
@@ -63,6 +66,8 @@ class TaskRequest:
         else:
             evidence_note_id = self.evidence_note_id
 
+        expected_version = self.expected_version
+
         field_dict: dict[str, Any] = {}
 
         field_dict.update(
@@ -79,6 +84,8 @@ class TaskRequest:
             field_dict["dueDate"] = due_date
         if evidence_note_id is not UNSET:
             field_dict["evidenceNoteId"] = evidence_note_id
+        if expected_version is not UNSET:
+            field_dict["expectedVersion"] = expected_version
 
         return field_dict
 
@@ -128,6 +135,8 @@ class TaskRequest:
 
         evidence_note_id = _parse_evidence_note_id(d.pop("evidenceNoteId", UNSET))
 
+        expected_version = d.pop("expectedVersion", UNSET)
+
         task_request = cls(
             title=title,
             project_id=project_id,
@@ -136,6 +145,7 @@ class TaskRequest:
             description=description,
             due_date=due_date,
             evidence_note_id=evidence_note_id,
+            expected_version=expected_version,
         )
 
         return task_request

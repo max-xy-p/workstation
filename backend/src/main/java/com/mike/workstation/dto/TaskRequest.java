@@ -13,4 +13,5 @@ public record TaskRequest(
         TaskStatus status,
         TaskPriority priority,
         LocalDate dueDate,
-        Long evidenceNoteId) {}
+        Long evidenceNoteId,
+        Long expectedVersion) {}

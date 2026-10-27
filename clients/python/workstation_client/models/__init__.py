@@ -78,6 +78,7 @@ from .task_request import TaskRequest
 from .task_response import TaskResponse
 from .task_status import TaskStatus
 from .task_status_request import TaskStatusRequest
+from .task_update_request import TaskUpdateRequest
 from .workspace_member_candidate import WorkspaceMemberCandidate
 from .workspace_member_request import WorkspaceMemberRequest
 from .workspace_member_response import WorkspaceMemberResponse
@@ -167,6 +168,7 @@ __all__ = (
     "TaskResponse",
     "TaskStatus",
     "TaskStatusRequest",
+    "TaskUpdateRequest",
     "WorkspaceMemberCandidate",
     "WorkspaceMemberRequest",
     "WorkspaceMemberResponse",
