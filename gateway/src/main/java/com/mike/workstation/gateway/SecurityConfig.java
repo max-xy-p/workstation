@@ -17,8 +17,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.InMemoryReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.ReactiveOAuth2UserService;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
-import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.AuthenticationMethod;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -295,13 +294,9 @@ public class SecurityConfig {
         return new GatewayOidcUserService(jwtDecoder);
     }
 
-    private DefaultServerOAuth2AuthorizationRequestResolver authorizationRequestResolver(
+    private ServerOAuth2AuthorizationRequestResolver authorizationRequestResolver(
             ReactiveClientRegistrationRepository clients) {
-        var resolver = new DefaultServerOAuth2AuthorizationRequestResolver(clients);
-        // PKCE 将授权请求与回调绑定，截获授权码的一方无法单独兑换 Token。
-        resolver.setAuthorizationRequestCustomizer(
-                OAuth2AuthorizationRequestCustomizers.withPkce());
-        return resolver;
+        return new RegistrationAuthorizationRequestResolver(clients);
     }
 
     static ServerWebExchangeMatcher bearerRequestMatcher() {

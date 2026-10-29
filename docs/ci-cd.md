@@ -6,13 +6,15 @@ CI 负责回答“这次修改是否仍然满足项目约束”，CD 负责回�
 
 ## 交付物
 
-Workstation 的应用交付物是三个容器镜像：
+Workstation 的应用交付物是五个容器镜像：
 
 - Backend：业务 API 和数据访问
 - Gateway：浏览器 BFF、机器 Token 入口和请求转发
+- Mail Service：邮件任务、Resend 投递与签名回调
+- Keycloak：身份中心及匹配版本的邮件发送扩展
 - Web：Frontend 静态资源和统一反向代理入口
 
-MySQL、Redis、RabbitMQ、Keycloak 和 XXL-JOB Admin 使用上游镜像，它们属于运行环境，不由本项目重复构建。
+MySQL、Redis、RabbitMQ 和 XXL-JOB Admin 使用上游镜像。Keycloak 基于固定版本的上游镜像加入项目邮件扩展，不修改其身份认证核心。
 
 SDK 是开发制品，不是 Workstation 应用容器。它使用独立标签和发布流程，详见 [`sdk-distribution.md`](sdk-distribution.md)。
 
@@ -22,12 +24,13 @@ SDK 是开发制品，不是 Workstation 应用容器。它使用独立标签和
 代码与配置
   -> Backend 测试
   -> Gateway 测试
+  -> 邮件服务真实 MySQL 测试与 Keycloak 邮件扩展测试
   -> OpenAPI 合法性、兼容性和生成漂移
   -> Python 认证层测试
   -> TypeScript SDK 类型检查、构建和测试
   -> Frontend 类型检查和构建
   -> SonarQube 扫描 Backend、Gateway、Frontend 和仓库其他源码与配置
-  -> 三个应用镜像构建
+  -> 五个应用镜像构建
 ```
 
 CI 同时覆盖多语言代码和生成产物，是为了避免契约只在某一种语言中更新。镜像构建也属于验证范围，因为本地源码构建成功不代表 Docker 构建上下文和复制路径一定正确。
@@ -36,9 +39,11 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 任务写接口自 5.0.0 起强制用户所见版本，配套 Frontend、Backend 和外部 SDK 调用方应一起升级；旧写请求返回参数错误，不使用默认版本兼容。数据库复用既有版本列，本轮没有新迁移。具体操作边界见 [任务编辑并发保护](task-concurrency.md)。
 
+公开注册依赖 Realm 的注册开关与普通默认角色。新环境使用仓库模板，已有身份数据库不会重新导入；应备份后先预览注册配置工具的计划，再由管理员应用，不通过重建数据库升级。步骤见 [公开注册](registration.md#已有-realm-升级)。
+
 ## SonarQube 分析
 
-仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中运行 Backend 和 Gateway 的 Maven 验证，向 Java 分析器提供字节码，并通过 JaCoCo XML 报告提供两个模块的测试覆盖率。扫描前还会检查两个模块合并的 JaCoCo 行与分支覆盖率是否至少为 80%；未达标时该作业失败。扫描作业同时安装 Frontend 与 TypeScript SDK 的依赖。覆盖率指标当前只评估 Backend 和 Gateway，Frontend、SDK 与脚本仍参与静态分析。自动生成的 Python SDK、TypeScript Schema 和构建产物不参与分析；测试目录单独标记为测试代码，包含 Backend、Gateway、TypeScript SDK、Python 认证层和 `frontend/tests`。测试包含模式自动将这些文件与业务代码分类分离，测试本身仍纳入对应分析；HTTP 等非法输入的拒绝用例不代表实际使用明文网络连接。分类行为见 [SonarQube Cloud 官方说明](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/excluding-files-based-on-patterns)。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
+仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中验证 Backend、Gateway、Mail Service 和 Keycloak 邮件扩展，提供四个 Java 模块的字节码与 JaCoCo 报告；该作业使用 JDK 21，前三个服务仍生成 Java 17 字节码。扫描前另行检查 Backend/Gateway 合并的行与分支覆盖率是否至少为 80%，未达标时失败。Frontend、SDK 与脚本仍参与静态分析，自动生成的 SDK 文件和构建产物不参与分析，各模块测试目录单独分类。分类行为见 [SonarQube Cloud 官方说明](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/excluding-files-based-on-patterns)。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
 
 启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。发布流程复用的 CI 不重复提交一次标签分析。
 
@@ -46,7 +51,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 | 标签 | 含义 | 结果 |
 | --- | --- | --- |
-| `v*` | Workstation 应用版本 | 发布三个应用镜像并部署 VPS |
+| `v*` | Workstation 应用版本 | 发布五个应用镜像并部署 VPS |
 | `sdk-v*` | SDK 契约版本 | 发布 SDK 制品，不部署 Workstation |
 
 标签是明确的发布意图，而不是普通提交的别名。已经发布的版本应保持不可变，后续修复使用新版本。
@@ -55,7 +60,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 1. 创建应用版本标签。
 2. 发布流程复用完整 CI，失败则停止。
-3. 构建 Backend、Gateway 和 Web 镜像。
+3. 构建 Backend、Gateway、Web、Mail Service 和包含邮件扩展的 Keycloak 五个镜像。
 4. 镜像以版本和 Commit 标识发布到 GHCR。
 5. 部署流程连接 VPS，并同步运行所需的部署描述。
 6. VPS 拉取本次版本镜像并更新容器。
@@ -74,6 +79,8 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 这种分离可以避免“在服务器上现场构建”的不可重复问题，也让回滚针对确定的镜像版本进行。
 
 ## 数据和身份配置
+
+邮件版本新增独立数据库及配套 Keycloak 镜像，升级前需补齐邮件运行凭据、验证 Resend 域名并初始化邮件数据库。已有 Realm 不会被模板覆盖，测试实际发信后再显式启用邮箱验证；详见[邮件服务升级流程](mail.md#新安装与已有部署)。邮件任务及加密密钥需纳入备份，版本回滚不会自动恢复 Realm 策略。
 
 容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql、migrate-source-confirmation.sql 和 migrate-external-api-limits.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 

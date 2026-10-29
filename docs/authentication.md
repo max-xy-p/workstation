@@ -27,10 +27,15 @@ Workstation 支持多个用户和机器主体，需要明确区分“谁在访�
 | 组件 | 主要职责 | 不负责的内容 |
 | --- | --- | --- |
 | Keycloak | 用户、密码、登录页面、SSO、Token、系统角色 | Workspace 成员关系、内容权限和业务规则 |
+| Mail Service | 邮件任务、Resend 投递、去重重试及签名回调 | 生成验证链接、验证账号身份、签发登录 Token |
 | Gateway | OAuth2 Client、浏览器 Session、CSRF、退出、Token 转发、系统角色入口校验 | Workspace 成员和资源级授权 |
 | Backend | 验证 JWT、检查系统角色、Workspace 成员授权和审计 | 登录页面、浏览器 Session、用户密码 |
 | Frontend | 触发登录、携带 Session/CSRF、选择 Workspace、展示服务端返回的权限状态 | 保存 Access Token、处理 Client Secret、替代 Backend 授权 |
 | Python 服务 | 使用自己的机器身份申请 Token 并调用 API | 复用用户 Session 或浏览器 Cookie |
+
+## 公开注册
+
+登录页提供 Keycloak 原生注册入口，普通注册者自动获得 WORKSTATION_USER，完成邮箱链接验证并首次登录后自动创建其个人 Workspace。系统准入不授予其他空间的成员权限。验证链接与结果由 Keycloak 管理，独立邮件服务通过 Resend 投递；详见[邮件服务](mail.md)及[公开注册](registration.md)。
 
 ## 两类调用方式
 

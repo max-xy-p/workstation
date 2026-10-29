@@ -6,6 +6,7 @@
 - Access Token 和 Refresh Token 不进入浏览器存储。
 - 浏览器写请求由 `frontend/src/api/client.ts` 自动携带 Cookie 和 CSRF Token。
 - Python 服务使用独立 Keycloak Client Credentials，经 Gateway 携带 Bearer Token 调用 Backend。
+- 邮件服务的内部发信接口仅供受控服务使用，Keycloak 与 Backend 使用不同的专用凭据；浏览器及公网不开放此接口。公网仅公开准确的 Resend 回调 POST 路径，使用原文签名及时间窗校验，不能用 Session 或内部发信凭据替代签名。
 - Gateway 只有在 Bearer Token 已成功认证后才能豁免 CSRF，不能只检查 `Authorization` Header 是否存在。
 - Gateway 转发机器请求时保留原始 Bearer Token。
 - Backend 始终独立校验：

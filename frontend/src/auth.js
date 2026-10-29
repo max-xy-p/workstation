@@ -58,6 +58,7 @@ export const auth = {
   state: readonly(state),
   ensureSession,
   login,
+  register: () => authApi.login(true),
   logout,
   clearSession
 };

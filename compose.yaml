@@ -12,6 +12,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.docker}
       KEYCLOAK_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in .env.docker}
+      MAIL_DB_USERNAME: ${MAIL_DB_USERNAME:-workstation_mail}
+      MAIL_DB_PASSWORD: ${MAIL_DB_PASSWORD:?Set MAIL_DB_PASSWORD in .env.docker}
       XXL_JOB_DB_USERNAME: ${XXL_JOB_DB_USERNAME:-xxl_job}
       XXL_JOB_DB_PASSWORD: ${XXL_JOB_DB_PASSWORD:?Set XXL_JOB_DB_PASSWORD in .env.docker}
       XXL_JOB_ADMIN_PASSWORD: ${XXL_JOB_ADMIN_PASSWORD:?Set XXL_JOB_ADMIN_PASSWORD in .env.docker}
@@ -26,6 +28,7 @@ services:
       - ./backend/src/main/resources/db/migrate-source-confirmation.sql:/docker-entrypoint-initdb.d/01e-source-confirmation.sql:ro
       - ./backend/src/main/resources/db/migrate-external-api-limits.sql:/docker-entrypoint-initdb.d/01f-external-api-limits.sql:ro
       - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
+      - ./mail-service/init-database.sh:/docker-entrypoint-initdb.d/02a-mail.sh:ro
       - ./xxl-job/tables_xxl_job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
       - ./backend/src/main/resources/db/init-xxl-job-database.sh:/docker-entrypoint-initdb.d/04-xxl-job-user.sh:ro
     healthcheck:
@@ -91,7 +94,9 @@ services:
         condition: service_healthy
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.3
+    build:
+      context: ./keycloak
+      dockerfile: Dockerfile
     restart: unless-stopped
     command:
       - start-dev
@@ -114,10 +119,37 @@ services:
       WORKSTATION_DEV_URL: ${WORKSTATION_DEV_URL:-http://localhost:5173}
       WORKSTATION_INITIAL_USERNAME: ${WORKSTATION_INITIAL_USERNAME:-owner}
       WORKSTATION_INITIAL_PASSWORD: ${WORKSTATION_INITIAL_PASSWORD:?Set WORKSTATION_INITIAL_PASSWORD in .env.docker}
+      MAIL_SERVICE_URL: http://mail-service:8082
+      MAIL_KEYCLOAK_TOKEN: ${MAIL_KEYCLOAK_TOKEN:?Set MAIL_KEYCLOAK_TOKEN in .env.docker}
+      MAIL_FROM: ${MAIL_FROM:-noreply@12718080.xyz}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Workstation}
     volumes:
       - ./keycloak/workstation-realm.json:/opt/keycloak/data/import/workstation-realm.json:ro
     ports:
       - "127.0.0.1:8090:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      mail-service:
+        condition: service_started
+
+  mail-service:
+    build:
+      context: ./mail-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MAIL_DB_URL: jdbc:mysql://db:3306/workstation_mail?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+      MAIL_DB_USERNAME: ${MAIL_DB_USERNAME:-workstation_mail}
+      MAIL_DB_PASSWORD: ${MAIL_DB_PASSWORD:?Set MAIL_DB_PASSWORD in .env.docker}
+      MAIL_KEYCLOAK_TOKEN: ${MAIL_KEYCLOAK_TOKEN:?Set MAIL_KEYCLOAK_TOKEN in .env.docker}
+      MAIL_BACKEND_TOKEN: ${MAIL_BACKEND_TOKEN:?Set MAIL_BACKEND_TOKEN in .env.docker}
+      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:?Set MAIL_ENCRYPTION_KEY in .env.docker}
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in .env.docker}
+      RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@12718080.xyz}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Workstation}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
     depends_on:
       db:
         condition: service_healthy

@@ -44,6 +44,14 @@ jobs:
             context: .
             dockerfile: ./frontend/Dockerfile
             image: workstation-web
+          - name: mail-service
+            context: ./mail-service
+            dockerfile: ./mail-service/Dockerfile
+            image: workstation-mail-service
+          - name: keycloak
+            context: ./keycloak
+            dockerfile: ./keycloak/Dockerfile
+            image: workstation-keycloak
 
     steps:
       - name: Checkout repository
@@ -140,7 +148,7 @@ jobs:
         shell: bash
         run: |
           ssh -p "$VPS_PORT" -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
-            "mkdir -p '$DEPLOY_PATH/backend/src/main/resources/db' '$DEPLOY_PATH/keycloak' '$DEPLOY_PATH/notes'"
+            "mkdir -p '$DEPLOY_PATH/backend/src/main/resources/db' '$DEPLOY_PATH/keycloak' '$DEPLOY_PATH/notes' '$DEPLOY_PATH/mail-service'"
           scp -P "$VPS_PORT" compose.prod.yaml \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/compose.prod.yaml"
           scp -P "$VPS_PORT" backend/src/main/resources/db/schema.sql \
@@ -149,6 +157,8 @@ jobs:
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/backend/src/main/resources/db/init-keycloak-database.sh"
           scp -P "$VPS_PORT" keycloak/workstation-realm.json \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/keycloak/workstation-realm.json"
+          scp -P "$VPS_PORT" mail-service/init-database.sh \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/mail-service/init-database.sh"
 
       - name: Pull and restart services
         shell: bash
@@ -170,7 +180,7 @@ jobs:
               IMAGE_TAG="$image_tag" docker compose \
                 --env-file .env.docker \
                 -f compose.prod.yaml \
-                logs --tail=100 db redis keycloak backend gateway web || true
+                logs --tail=100 db redis keycloak mail-service backend gateway web || true
             fi
             trap - EXIT
             exit "$exit_code"
@@ -201,7 +211,11 @@ jobs:
             if IMAGE_TAG="$image_tag" docker compose \
               --env-file .env.docker \
               -f compose.prod.yaml \
-              exec -T web wget -q -O /dev/null http://127.0.0.1/api/auth/csrf; then
+                exec -T web wget -q -O /dev/null http://127.0.0.1/api/auth/csrf &&
+              IMAGE_TAG="$image_tag" docker compose \
+                --env-file .env.docker \
+                -f compose.prod.yaml \
+                exec -T web wget -q -O /dev/null http://mail-service:8082/health; then
               IMAGE_TAG="$image_tag" docker compose \
                 --env-file .env.docker \
                 -f compose.prod.yaml \

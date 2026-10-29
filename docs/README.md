@@ -10,6 +10,8 @@
 | [`task-concurrency.md`](task-concurrency.md) | 任务版本校验、冲突处理及客户端升级边界 |
 | [`integrations.md`](integrations.md) | GitHub/GitLab 连接、仓库导入、开发快照和同步故障恢复 |
 | [`note-history.md`](note-history.md) | 笔记内容历史、差异查看、草稿保护、共享保留边界及升级回退 |
+| [`registration.md`](registration.md) | 公开注册、个人空间、默认角色与已有 Realm 升级 |
+| [`mail.md`](mail.md) | 邮箱验证、Resend、独立邮件服务、投递状态及已有部署升级 |
 | [`authentication.md`](authentication.md) | 认证设计、组件职责、浏览器与机器调用方式及其流程 |
 | [`audit/README.md`](audit/README.md) | 审计边界、Outbox、XXL-JOB、RabbitMQ、幂等与故障处理 |
 | [`openapi.md`](openapi.md) | 契约真源的含义、职责边界、Schema 原则和变更流程 |

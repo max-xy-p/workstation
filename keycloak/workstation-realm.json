@@ -3,7 +3,7 @@
   "displayName": "Workstation",
   "enabled": true,
   "sslRequired": "external",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "resetPasswordAllowed": true,
   "rememberMe": true,
   "loginWithEmailAllowed": true,
@@ -25,6 +25,22 @@
       {
         "name": "WORKSTATION_SERVICE",
         "description": "允许机器客户端进入 Workstation API"
+      },
+      {
+        "name": "default-roles-workstation",
+        "description": "新用户的普通准入与账号自助管理权限",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "WORKSTATION_USER"
+          ],
+          "client": {
+            "account": [
+              "view-profile",
+              "manage-account"
+            ]
+          }
+        }
       }
     ]
   },
@@ -131,5 +147,18 @@
         "WORKSTATION_SERVICE"
       ]
     }
-  ]
+  ],
+  "verifyEmail": true,
+  "actionTokenGeneratedByUserLifespan": 900,
+  "smtpServer": {
+    "from": "${MAIL_FROM}",
+    "fromDisplayName": "${MAIL_FROM_NAME}"
+  },
+  "passwordPolicy": "length(12)",
+  "defaultRole": {
+    "name": "default-roles-workstation",
+    "description": "新用户默认角色",
+    "composite": true,
+    "clientRole": false
+  }
 }

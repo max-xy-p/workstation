@@ -19,6 +19,8 @@ Browser
 
 浏览器不保存 Access Token 或 Refresh Token，只持有 HttpOnly 的 `WORKSTATION_SESSION` Cookie。所有业务 API 仍位于 `/api`。
 
+邮件发送使用同仓库的独立 Mail Service：Keycloak 的 EmailSenderProvider 扩展提交原生验证及找回密码邮件，邮件服务写入独立 MySQL 任务库后通过 Resend 投递。内部发信接口不经过公网入口，调用方凭据彼此独立；Nginx 仅公开具有原文签名认证的 Resend 投递回调。账号验证结果仍归 Keycloak 管理，邮件服务不维护账号或签发登录 Token。后续业务事务邮件可使用同一服务，当前没有额外业务通知触发器。启用、升级及可靠性边界见[邮件服务](docs/mail.md)。
+
 Python 客户端使用独立的 Keycloak Client Credentials，经同一 Gateway 入口携带 Bearer Token 调用业务 API，不使用浏览器 Session 或 CSRF：
 
 ```text
@@ -141,3 +143,7 @@ CI、GHCR 镜像发布和 VPS 部署流程见 [`docs/ci-cd.md`](docs/ci-cd.md)�
 ## 任务并发写入
 
 任务编辑、状态切换和删除以用户读取的版本作条件更新，数据库原子判断决定是否提交；成功更新递增版本，失败返回任务冲突或资源不存在，成功审计与修改同事务。来源确认沿用相同状态修改入口，依据笔记清除使旧任务版本失效。前端保留冲突输入并展示最新内容，仅用户显式确认后重提，不自动合并或覆盖。客户端升级边界见 [任务编辑并发保护](docs/task-concurrency.md)。
+
+## 公开账号准入
+
+访客通过现有 OIDC 授权请求的 prompt=create 进入 Keycloak 原生注册页，密码和账号校验只在身份中心进行。新账号默认获得普通用户准入角色；邮箱链接验证完成后，Backend 在首次空间列表请求中按稳定 sub 创建个人 Workspace 及 OWNER 成员关系。公开注册不改变其他 Workspace 的授权规则，机器主体不创建个人空间。Keycloak 通过独立邮件服务发送验证及找回密码邮件，新旧部署与角色边界见[公开注册](docs/registration.md)和[邮件服务](docs/mail.md)。

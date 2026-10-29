@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: Workstation 内部邮件服务
+  version: 1.0.0
+  description: 仅供受信任服务调用，不属于公共业务 SDK；邮件身份凭据独立于 Keycloak OIDC Token。
+servers:
+  - url: http://mail-service:8082
+security:
+  - internalBearer: []
+paths:
+  /internal/mail/messages:
+    post:
+      operationId: enqueueMail
+      description: 按调用方与 requestKey 去重；202 只表示持久化接收，不表示送达。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailRequest'
+      responses:
+        '202':
+          description: 已接收或返回同一请求的已有任务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailStatus'
+        '400': {description: 格式、正文或到期时间无效}
+        '401': {description: 内部凭据无效}
+        '409': {description: 相同标识对应不同内容}
+        '413': {description: 邮件请求过大}
+        '500': {description: 暂时无法持久化，请使用完全相同的请求重试}
+  /internal/mail/messages/{id}:
+    get:
+      operationId: getMailStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 只返回属于该调用方的任务元数据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailStatus'
+        '401': {description: 内部凭据无效}
+        '404': {description: 任务不存在或不属于调用方}
+  /hooks/resend:
+    post:
+      operationId: receiveResendDelivery
+      security: []
+      description: 使用 Svix 原文签名和五分钟时间窗验证；未配置签名密钥时关闭。公网入口为 /mail/hooks/resend。
+      parameters:
+        - {name: svix-id, in: header, required: true, schema: {type: string, maxLength: 128}}
+        - {name: svix-timestamp, in: header, required: true, schema: {type: string}}
+        - {name: svix-signature, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true}
+      responses:
+        '200': {description: 已幂等接收，或忽略不关注的事件}
+        '400': {description: 无效签名、时间戳或内容}
+        '404': {description: 未启用回调}
+        '500': {description: 暂时无法处理，供应商应重试}
+components:
+  securitySchemes:
+    internalBearer:
+      type: http
+      scheme: bearer
+      description: Keycloak 与 Backend 使用各自独立的内部调用凭据。
+  schemas:
+    MailRequest:
+      type: object
+      additionalProperties: false
+      required: [requestKey, to, subject, expiresAt]
+      properties:
+        requestKey: {type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_.:/-]+$'}
+        to: {type: string, format: email, maxLength: 254}
+        subject: {type: string, minLength: 1, maxLength: 200}
+        text: {type: [string, 'null'], maxLength: 100000}
+        html: {type: [string, 'null'], maxLength: 100000}
+        expiresAt:
+          type: string
+          format: date-time
+          description: 必须在未来 23 小时内；text 和 html 至少一个非空。
+    MailStatus:
+      type: object
+      required: [id, status, attempts, expiresAt]
+      properties:
+        id: {type: string, format: uuid}
+        status:
+          type: string
+          enum: [QUEUED, SENDING, SUBMITTED, DELIVERED, DELAYED, BOUNCED, COMPLAINED, FAILED, EXPIRED]
+          description: DELIVERED 表示收件服务器接收，不表示用户已阅读。
+        attempts: {type: integer, minimum: 0}
+        providerId: {type: [string, 'null']}
+        errorCode: {type: [string, 'null']}
+        expiresAt: {type: string, format: date-time}

@@ -2,7 +2,7 @@
 
 ## 技术栈
 
-- Java 17、Maven 3.9、Spring Boot 4、Spring Security、MyBatis、MySQL
+- Java 17、Maven 3.9、Spring Boot 4、Spring Security、MyBatis、MySQL；Keycloak 邮件扩展使用 Java 21
 - Spring Cloud Gateway、Keycloak、Redis、OAuth2/OIDC
 - Vue 3、Vue Router、Vite、TypeScript、Tiptap、Lucide
 - OpenAPI 3.1、Python 3.11+、uv、httpx
@@ -16,6 +16,8 @@ backend/src/main/java/com/mike/workstation/  后端业务代码
 backend/src/test/                         后端测试
 
 gateway/                                  Gateway/BFF、认证配置和测试
+mail-service/                             独立邮件任务、Resend 发送与投递回调
+keycloak/mail-provider/                   Keycloak 邮件发送扩展（Java 21）
 
 frontend/                                 Vue 应用、浏览器 API 适配和 Web 容器
 
@@ -25,7 +27,7 @@ clients/python/                           OpenAPI 生成的 Python Client
 clients/python-auth/                      Python Client Credentials 认证薄层
 clients/typescript/                       独立 TypeScript/Node SDK
 
-keycloak/                                 Realm 首次导入模板
+keycloak/                                 Realm 首次导入模板与身份中心镜像
 
 .github/workflows/                        CI、SDK 发布和应用发布流程
 

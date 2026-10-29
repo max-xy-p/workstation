@@ -6,6 +6,8 @@
 frontend/dist
 backend/target
 gateway/target
+mail-service/target
+keycloak/mail-provider/target
 .uv-cache
 .uv-tools
 **/.venv

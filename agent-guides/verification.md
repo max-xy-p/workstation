@@ -36,6 +36,18 @@ python scripts/check_java_coverage.py
 
 脚本读取两个模块的 JaCoCo XML 报告；综合行与分支覆盖率低于 80% 或报告缺失时返回非零状态。不得用之前任务留下的报告代替本次构建。单独运行 `mvn.cmd test` 不会生成供检查使用的 XML 报告。
 
+## 邮件服务与 Keycloak 扩展
+
+Keycloak 扩展需要 JDK 21；邮件服务生成 Java 17 字节码。使用以下命令验证：
+
+```powershell
+mvn.cmd -f mail-service/pom.xml clean verify
+mvn.cmd -f keycloak/mail-provider/pom.xml clean verify
+python -m unittest discover -s scripts/tests -p "test_mail*.py" -v
+```
+
+邮件测试默认使用隔离 H2，可通过 `workstation.mail.test.db` 切换本机 `workstation_mail_test` MySQL 库，密码从 `MAIL_TEST_DB_PASSWORD` 环境变量读取；禁止使用部署数据库。CI 邮件作业使用隔离 MySQL 8.4。模拟 Resend 测试不发送真实邮件；真实 Keycloak 注册与邮箱收件需另行验证。新增模块不改变 Backend/Gateway 80% 综合覆盖率脚本范围，但各自的 JaCoCo 报告纳入 Sonar 分析。
+
 ## TypeScript SDK
 
 ```powershell

@@ -90,9 +90,9 @@ export const authApi = {
   currentUser: () => api.get<CurrentUserResponse>('/auth/me', undefined, {
     suppressUnauthorized: true
   }),
-  login(): void {
+  login(registration = false): void {
     // 这里只发起 OIDC 登录；用户名和密码始终由 Keycloak 页面收集。
-    window.location.assign('/oauth2/authorization/keycloak');
+    window.location.assign(registration ? '/oauth2/authorization/keycloak?registration=true' : '/oauth2/authorization/keycloak');
   },
   async logout(): Promise<void> {
     await submitWithCsrf('/auth/logout');

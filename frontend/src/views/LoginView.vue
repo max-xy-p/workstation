@@ -35,11 +35,13 @@
           </div>
 
           <output v-if="expired" class="login-notice">登录状态已失效，请重新验证。</output>
-          <button class="login-submit" type="button" :disabled="submitting" @click="submit">
+          <button class="login-submit" type="button" :disabled="submitting" @click="submit(false)">
             <span>{{ submitting ? '正在前往身份中心…' : '使用统一身份登录' }}</span>
             <AppIcon v-if="!submitting" name="arrow" />
           </button>
 
+          <button class="secondary" type="button" :disabled="submitting" @click="submit(true)">创建新账号</button>
+          <p>注册并首次登录后，自动拥有独立的个人工作空间。</p>
           <p class="login-footnote">账号凭据只提交给 Keycloak，工作台不会在浏览器中保存访问令牌。</p>
         </div>
       </section>
@@ -69,11 +71,12 @@ function safeRedirect() {
     : null;
 }
 
-function submit() {
+function submit(registration = false) {
   submitting.value = true;
   const redirect = safeRedirect();
   if (redirect) sessionStorage.setItem('workstation:login-redirect', redirect);
   else sessionStorage.removeItem('workstation:login-redirect');
-  auth.login();
+  if (registration) auth.register();
+  else auth.login();
 }
 </script>

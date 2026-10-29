@@ -9,7 +9,8 @@
   - OpenAPI/Python；
   - TypeScript SDK；
   - Frontend；
-  - 三个应用镜像。
+  - Mail Service 与 Keycloak 邮件扩展；
+  - 五个应用镜像。
 - 不在文档或交付说明中声称运行了项目没有配置的测试、lint 或 format。
 - GHCR 应用镜像使用不可变版本标签。
 - 生产部署不依赖 `latest`。
