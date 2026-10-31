@@ -125,6 +125,9 @@
 
 ## 验证与说明
 
+- 2026-10-31 修复 Backend 非 root 运行用户无法创建 XXL-JOB 日志目录导致的启动循环：Dockerfile 在切换到 UID 10001 前准备 `/data/applogs/xxl-job/jobhandler` 并授权给 workstation 用户与组，部署说明补充已有日志卷的权限升级边界。经核实当前本地卷归属后，停止 Backend，仅修正 `workstation-local_xxl_executor_logs` 的属主并重建启动 Backend；保留日志，未变更数据库、身份配置或其他服务。新容器出现 Started WorkstationApplication，XXL-JOB 执行器和数据库连接启动成功，观察期间重启次数保持 0；独立新卷实测普通用户写入成功，临时卷已清理。
+  - 最后一次 Dockerfile 修改后，Backend/Gateway 均重新执行 `mvn.cmd -o -f <模块>/pom.xml clean verify` 成功：Backend 248 项通过、37 项外部 MySQL/Redis 测试因本轮未指定隔离地址而跳过，Gateway 20 项通过，无失败。亲自运行 `python scripts/check_java_coverage.py`，Backend 87.57%、Gateway 84.16%、综合 87.36%，达到 80%。Backend 镜像构建、新卷写入验证、两份 Compose 解析及差异空白检查通过。Sonar MCP 仍返回未授权，CLI 查询该 Dockerfile 的历史告警为 0；当前修改尚未经云端分析，不声明 Quality Gate 通过。
+
 - 2026-10-31 根据最新 Sonar 分析（提交 `24eb6f9`，36 条 OPEN，Quality Gate 为 ERROR）完成 29 条告警对应的源码调整：邮件校验限制输入长度并去除域名正则的回溯歧义；角色配置测试改用带访问集合的迭代遍历并覆盖循环引用；策略测试使用策略构造函数明确测试数据含义；邮件期限运算显式使用 long；Keycloak 镜像显式沿用 UID 1000，补全空生命周期钩子的职责注释；拆分 Webhook JSON 解析与平台响应解析，复用租约检查点，规范前端条件语句和 output 提示，重命名历史快照方法并提取同义常量。历史迁移改用唯一键上的反连接及等价恢复约束，隔离 MySQL 8.4 验证初始化、已有笔记基线、重复执行两轮及约束四种组合均通过。基础镜像原本即为 UID 1000，`23 * 3600` 原值也未溢出；两条密码提示实际来自 passwordPolicy 策略表达式，均非已发生的线上安全事件。
   - 最后一次 Java 修改后，Backend/Gateway 分别执行 `mvn.cmd -o -f <模块>/pom.xml clean verify`；Backend 显式连接本轮独立 MySQL/Redis，通过 285 项，Gateway 通过 20 项，均无失败或跳过。首次 Backend 验证因临时数据库 UTC 与本机 Java 北京时间不一致出现 6 失败、1 错误；核实测试容器 ID 后统一测试库时区并重建隔离数据，再完整重跑全部通过。亲自执行 `python scripts/check_java_coverage.py`，Backend 89.17%、Gateway 84.16%、综合 88.86%，达到 80%。
   - 邮件服务和 Keycloak 扩展的 clean verify 分别通过 23、4 项测试；全部脚本 18 项、Frontend 类型检查、39 项测试及生产构建通过。两份 Compose 解析、Java 格式与 Git 差异空白检查通过；Keycloak 独立镜像构建成功，检查运行用户为 1000 且版本命令正常。前端已有主包超过 500 kB 的提示仍存在。
