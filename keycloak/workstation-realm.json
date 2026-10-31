@@ -160,5 +160,9 @@
     "description": "新用户默认角色",
     "composite": true,
     "clientRole": false
-  }
+  },
+  "attributes": {
+    "workstation.email-code.enabled": "true"
+  },
+  "accessCodeLifespanUserAction": 300
 }

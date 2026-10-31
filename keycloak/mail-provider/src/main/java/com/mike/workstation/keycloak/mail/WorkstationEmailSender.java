@@ -1,5 +1,9 @@
 package com.mike.workstation.keycloak.mail;
 
+import org.keycloak.email.EmailException;
+import org.keycloak.email.EmailSenderProvider;
+import org.keycloak.util.JsonSerialization;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -7,21 +11,21 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.keycloak.email.EmailException;
-import org.keycloak.email.EmailSenderProvider;
-import org.keycloak.util.JsonSerialization;
 
 public class WorkstationEmailSender implements EmailSenderProvider {
+    static final String CODE_EXPIRES_AT = "workstation.code.expires-at";
     private final HttpClient client;
     private final URI endpoint;
     private final String token;
     private final Clock clock;
     private final long lifetime;
 
-    WorkstationEmailSender(HttpClient client, URI endpoint, String token, Clock clock, long lifetime) {
+    WorkstationEmailSender(
+            HttpClient client, URI endpoint, String token, Clock clock, long lifetime) {
         this.client = client;
         this.endpoint = endpoint;
         this.token = token;
@@ -30,7 +34,12 @@ public class WorkstationEmailSender implements EmailSenderProvider {
     }
 
     @Override
-    public void send(Map<String, String> config, String address, String subject, String textBody, String htmlBody)
+    public void send(
+            Map<String, String> config,
+            String address,
+            String subject,
+            String textBody,
+            String htmlBody)
             throws EmailException {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("requestKey", UUID.randomUUID().toString());
@@ -38,12 +47,26 @@ public class WorkstationEmailSender implements EmailSenderProvider {
         body.put("subject", subject);
         body.put("text", textBody);
         body.put("html", htmlBody);
-        body.put("expiresAt", clock.instant().plusSeconds(lifetime).toString());
+        Instant expiresAt = clock.instant().plusSeconds(lifetime);
+        String codeExpiry = config.get(CODE_EXPIRES_AT);
+        if (codeExpiry != null) {
+            Instant requestedExpiry = Instant.parse(codeExpiry);
+            if (requestedExpiry.isBefore(expiresAt)) {
+                expiresAt = requestedExpiry;
+            }
+        }
+        body.put("expiresAt", expiresAt.toString());
         try {
             // 同一次提交的网络重试复用完全相同的请求标识、正文和到期时间。
-            HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(10))
-                    .header("Authorization", "Bearer " + token).header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(JsonSerialization.writeValueAsString(body))).build();
+            HttpRequest request =
+                    HttpRequest.newBuilder(endpoint)
+                            .timeout(Duration.ofSeconds(10))
+                            .header("Authorization", "Bearer " + token)
+                            .header("Content-Type", "application/json")
+                            .POST(
+                                    HttpRequest.BodyPublishers.ofString(
+                                            JsonSerialization.writeValueAsString(body)))
+                            .build();
             if (submit(request) != 202) {
                 throw new EmailException("邮件服务未接收邮件，请稍后重试");
             }

@@ -10,7 +10,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 - 项目资料、项目详情、任务看板、版本冲突保护、依据笔记关联，以及 GitHub Issue 创建任务、来源关联、持续跟踪、Webhook 指定刷新及来源变化确认
 - GitHub/GitLab 数据源连接、多仓库关联、批量导入、手动与定时同步，近期开发情况快照，以及 Redis 共享 API 限流、冷却和持久化延期恢复；启用与升级见 [数据源流程](docs/integrations.md)
 - Keycloak 单点登录、Gateway/BFF 服务端会话和 CSRF 防护
-- 注册邮箱链接验证、独立邮件服务与 Resend 投递，启用和升级见[邮件服务](docs/mail.md)
+- 注册与找回密码的邮箱验证码、独立邮件服务与 Resend 投递，启用和升级见[邮件服务](docs/mail.md)
 - 个人与共享 Workspace、成员管理、数据隔离和可靠异步权限审计
 - 统一工作台导航、笔记专注模式，以及项目、任务、标签和数据源的按需编辑抽屉
 - OpenAPI 3.1 契约、TypeScript SDK 和 Client Credentials Python Client
