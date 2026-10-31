@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-10-29。
+> 核对日期：2026-10-31。
 
 ## 当前状态
 
@@ -93,6 +93,11 @@
 
 ## 已知问题
 
+- 2026-10-31 Sonar 最新分析（提交 `24eb6f9`，北京时间 15:19）中的 7 条建议经源码与规则定义核对后保留待复核，未修改云端 Issue 状态：
+  - `java:S6885` 共 3 条，位于 `AuditOutboxStateService.retryDelay`、`MailWorker.dispatchOne` 和 `ResendClient.interpret`：建议使用 Java 21 才有的 `Math.clamp`，但三个业务模块均生成 Java 17 字节码；扫描配置统一使用 Java 21，与混合版本工程不完全匹配。不能直接替换，否则 Java 17 编译失败；本轮保持兼容性与退避规则。
+  - `java:S9438` 共 2 条，位于 `Note.tags`、`IntegrationProgress.discoveryPage`：`@Data` 生成的 setter 被其他服务或 Jackson 使用，字段并非不可变；规则文档也明确排除 Lombok `@Data` 字段。将其改成 `final` 会移除 setter 或破坏恢复检查点的反序列化。
+  - `java:S1450` 共 2 条，位于 `IntegrationProgress.repositoryCursor`、`IntegrationProgress.repository`：两个字段通过 Lombok getter/setter 参与 `IntegrationWorker` 的跨分页执行，并随 JSON 检查点持久化，不能改成局部变量。后续需复核分析器对 Lombok 的识别及分析依赖配置。
+
 - 邮件服务尚未连接真实 Resend 账号验收；上线前需验证发件域名、配置密钥、创建独立邮件库，并显式升级已有 Realm。本轮 Docker 镜像构建及 SonarQube 分析未完成。
 
 - Webhook 投递与指定目标暂无自动清理；移除连接后保留历史但当前管理入口不可用。Webhook 必须手动配置 GitHub 侧；没有定时周期时，漏收事件仍需管理员手动同步校准。应用与数据库须沿用部署中的一致时区约定。
@@ -119,6 +124,11 @@
 - `WorkspaceDatabaseTests` 会在隔离库中遗留成员搜索样例，复用同一个库重跑可能发生主键重复；当前验证需为每轮测试准备全新隔离库，测试数据清理仍待完善。
 
 ## 验证与说明
+
+- 2026-10-31 根据最新 Sonar 分析（提交 `24eb6f9`，36 条 OPEN，Quality Gate 为 ERROR）完成 29 条告警对应的源码调整：邮件校验限制输入长度并去除域名正则的回溯歧义；角色配置测试改用带访问集合的迭代遍历并覆盖循环引用；策略测试使用策略构造函数明确测试数据含义；邮件期限运算显式使用 long；Keycloak 镜像显式沿用 UID 1000，补全空生命周期钩子的职责注释；拆分 Webhook JSON 解析与平台响应解析，复用租约检查点，规范前端条件语句和 output 提示，重命名历史快照方法并提取同义常量。历史迁移改用唯一键上的反连接及等价恢复约束，隔离 MySQL 8.4 验证初始化、已有笔记基线、重复执行两轮及约束四种组合均通过。基础镜像原本即为 UID 1000，`23 * 3600` 原值也未溢出；两条密码提示实际来自 passwordPolicy 策略表达式，均非已发生的线上安全事件。
+  - 最后一次 Java 修改后，Backend/Gateway 分别执行 `mvn.cmd -o -f <模块>/pom.xml clean verify`；Backend 显式连接本轮独立 MySQL/Redis，通过 285 项，Gateway 通过 20 项，均无失败或跳过。首次 Backend 验证因临时数据库 UTC 与本机 Java 北京时间不一致出现 6 失败、1 错误；核实测试容器 ID 后统一测试库时区并重建隔离数据，再完整重跑全部通过。亲自执行 `python scripts/check_java_coverage.py`，Backend 89.17%、Gateway 84.16%、综合 88.86%，达到 80%。
+  - 邮件服务和 Keycloak 扩展的 clean verify 分别通过 23、4 项测试；全部脚本 18 项、Frontend 类型检查、39 项测试及生产构建通过。两份 Compose 解析、Java 格式与 Git 差异空白检查通过；Keycloak 独立镜像构建成功，检查运行用户为 1000 且版本命令正常。前端已有主包超过 500 kB 的提示仍存在。
+  - Sonar MCP 仍继承旧凭据并返回未授权，本轮通过 CLI 仅在查询进程重载用户环境变量后成功读取报告、规则、安全热点（待审 0 项）和门禁；未输出凭据。另 7 条版本/Lombok 建议的依据见“已知问题”，未接受或关闭告警。本地未提交修改尚未经云端复扫，29 条告警是否关闭及新的 Quality Gate 需 CI 分析确认；不能以旧报告宣称通过。验证仅使用独立库、模拟邮件接口和独立镜像，未修改现有部署、真实用户或发出真实邮件。
 
 - 2026-10-29 实现独立 Mail Service 与匹配 Keycloak 26.7.3 的 EmailSenderProvider，统一通过 Resend HTTP API 投递。邮件任务使用独立 MySQL 库、调用方隔离、AES-GCM 加密、大小写敏感的请求去重、租约恢复、全局发送时钟、有限重试与到期清理；投递回调验证 Svix 原文签名和时间窗，支持重复、乱序及先于发送响应到达。新增内部 OpenAPI，不改变公共 SDK；Compose、五镜像 CI/发布、运行示例和已有 Realm 升级工具同步更新，公开注册工具保留邮箱验证策略。邮件模块最终 21 项测试在隔离 MySQL 8.0 与默认 H2 下均通过，邮件扩展 4 项、全部脚本 16 项通过；模块行与分支综合覆盖率分别为 81.60%、84.00%。独立真实 Keycloak 加本机模拟邮件接口验收通过：注册生成邮件、点击链接后 emailVerified 为 true、找回密码邮件、下游拒收错误传播；未发送真实邮件。Backend/Gateway 分别重新执行 clean verify，通过 248 项加跳过 37 项、20 项；亲自执行 scripts/check_java_coverage.py 通过，Backend 87.50%、Gateway 84.16%、综合 87.29%，达到 80%。两份 Compose、内部 OpenAPI、工作流 YAML/shell、初始化脚本的子 Shell 隔离、文档链接及差异空白检查通过。Docker daemon 未运行，镜像构建未执行；当前没有可用 Sonar MCP，未完成本轮静态分析；真实 Resend 收件与生产迁移未执行。临时 MySQL 和 Keycloak 已停止，保留用户已有未提交变更，未操作目标部署和真实用户。
 

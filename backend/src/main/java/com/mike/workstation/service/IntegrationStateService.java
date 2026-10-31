@@ -385,8 +385,8 @@ public class IntegrationStateService {
 
     @Transactional
     public void heartbeat(IntegrationRun run) {
-        check(run);
-        mapper.updateRun(run);
+        // 两个入口均通过同一个 Spring 事务代理进入；心跳复用检查点的租约校验与写入规则。
+        checkpoint(run);
     }
 
     @Transactional

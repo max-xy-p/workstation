@@ -10,7 +10,8 @@ from scripts.configure_public_registration import KeycloakAdmin, validate_base_u
 
 
 def email_patch(realm, sender, name):
-    if not re.fullmatch(r"[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+", sender):
+    # 限制输入大小，并让域名标签与分隔点互斥，避免失败匹配时反复回溯。
+    if len(sender) > 254 or not re.fullmatch(r"[^\s<>@]+@[^\s<>@.]+(?:\.[^\s<>@.]+)+", sender):
         raise ValueError("邮件发件人地址无效")
     if not name or any(char in name for char in "\r\n<>"):
         raise ValueError("邮件发件人名称无效")

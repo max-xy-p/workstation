@@ -132,7 +132,7 @@ class NoteRevisionServiceTests {
     @Test
     void unchangedContentDoesNotDuplicateSnapshot() {
         when(mapper.latestForUpdate(9L, 3L)).thenReturn(revision("A"));
-        service.record(note("A"), NoteRevisionSource.UPDATE, null);
+        service.recordSnapshot(note("A"), NoteRevisionSource.UPDATE, null);
         verify(mapper, never()).insert(any());
         verifyNoInteractions(principals);
     }
@@ -141,7 +141,7 @@ class NoteRevisionServiceTests {
     void returningToEarlierContentStillCreatesSnapshot() {
         actor();
         when(mapper.latestForUpdate(9L, 3L)).thenReturn(revision("B"));
-        service.record(note("A"), NoteRevisionSource.UPDATE, null);
+        service.recordSnapshot(note("A"), NoteRevisionSource.UPDATE, null);
         ArgumentCaptor<NoteRevision> captured = ArgumentCaptor.forClass(NoteRevision.class);
         verify(mapper).insert(captured.capture());
         assertThat(captured.getValue().getContent()).isEqualTo("A");
@@ -152,9 +152,9 @@ class NoteRevisionServiceTests {
     @Test
     void createImportAndExplicitRestoreAlwaysRecordServerOrigin() {
         actor();
-        service.record(note("A"), NoteRevisionSource.CREATE, null);
-        service.record(note("A"), NoteRevisionSource.IMPORT, null);
-        service.record(note("A"), NoteRevisionSource.RESTORE, 11L);
+        service.recordSnapshot(note("A"), NoteRevisionSource.CREATE, null);
+        service.recordSnapshot(note("A"), NoteRevisionSource.IMPORT, null);
+        service.recordSnapshot(note("A"), NoteRevisionSource.RESTORE, 11L);
         ArgumentCaptor<NoteRevision> captured = ArgumentCaptor.forClass(NoteRevision.class);
         verify(mapper, times(3)).insert(captured.capture());
         assertThat(captured.getAllValues())
@@ -170,7 +170,7 @@ class NoteRevisionServiceTests {
     @Test
     void updateWithoutAnyHistoryCreatesFirstSnapshot() {
         actor();
-        service.record(note("首次快照"), NoteRevisionSource.UPDATE, null);
+        service.recordSnapshot(note("首次快照"), NoteRevisionSource.UPDATE, null);
         verify(mapper).insert(any(NoteRevision.class));
     }
 
@@ -180,7 +180,7 @@ class NoteRevisionServiceTests {
         NoteRevision previous = revision("A");
         previous.setTitle("旧标题");
         when(mapper.latestForUpdate(9L, 3L)).thenReturn(previous);
-        service.record(note("A"), NoteRevisionSource.UPDATE, null);
+        service.recordSnapshot(note("A"), NoteRevisionSource.UPDATE, null);
         verify(mapper).insert(any(NoteRevision.class));
     }
 }

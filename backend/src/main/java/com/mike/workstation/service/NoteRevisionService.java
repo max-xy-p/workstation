@@ -70,7 +70,7 @@ public class NoteRevisionService {
         return revision;
     }
 
-    public void record(Note note, NoteRevisionSource source, Long restoredFromRevisionId) {
+    public void recordSnapshot(Note note, NoteRevisionSource source, Long restoredFromRevisionId) {
         if (source == NoteRevisionSource.UPDATE) {
             NoteRevision latest = revisions.latestForUpdate(note.getWorkspaceId(), note.getId());
             if (latest != null

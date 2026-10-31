@@ -86,7 +86,11 @@ const runner = createNoteDiffRunner();
 let disposed = false, pageRequest = 0, detailRequest = 0, refreshRequest = 0, comparisonRequest = 0;
 const sourceLabel = (source: NoteRevisionSource) => ({ CREATE: '创建', IMPORT: '导入', UPDATE: '编辑', RESTORE: '恢复', BASELINE: '基线' }[source]);
 const date = (value: string) => new Date(value).toLocaleString();
-function changeMark(kind: string) { if (kind === 'added') return '+'; if (kind === 'removed') return '−'; return ' '; }
+function changeMark(kind: string) {
+  if (kind === 'added') return '+';
+  if (kind === 'removed') return '−';
+  return ' ';
+}
 
 async function select(item: NoteRevisionSummaryResponse) {
   const request = ++detailRequest;

@@ -154,7 +154,7 @@ public class NoteService {
         note.setUpdatedAt(now);
         noteMapper.insert(note);
         note.setVersion(1L);
-        revisions.record(note, NoteRevisionSource.CREATE, null);
+        revisions.recordSnapshot(note, NoteRevisionSource.CREATE, null);
         replaceTags(workspaceId, note.getId(), request.tagIds());
         auditService.success(workspaceId, "NOTE_CREATE", "NOTE", note.getId());
         return get(workspaceId, note.getId());
@@ -188,7 +188,7 @@ public class NoteService {
             throw new NoteVersionConflictException();
         }
         note.setVersion(request.expectedVersion() + 1);
-        revisions.record(note, NoteRevisionSource.UPDATE, null);
+        revisions.recordSnapshot(note, NoteRevisionSource.UPDATE, null);
         taskMapper.clearEvidenceOutsideProject(
                 workspaceId, id, note.getProjectId(), note.getUpdatedAt());
         replaceTags(workspaceId, id, noteRequest.tagIds());
@@ -218,7 +218,7 @@ public class NoteService {
             throw new NoteVersionConflictException();
         }
         note.setVersion(request.expectedVersion() + 1);
-        revisions.record(note, NoteRevisionSource.RESTORE, revisionId);
+        revisions.recordSnapshot(note, NoteRevisionSource.RESTORE, revisionId);
         auditService.success(workspaceId, "NOTE_REVISION_RESTORE", "NOTE", id);
         return get(workspaceId, id);
     }

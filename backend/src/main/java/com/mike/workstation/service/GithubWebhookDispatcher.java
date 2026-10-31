@@ -22,6 +22,7 @@ import java.util.UUID;
 /** 同一来源通知合并成现有队列的目标作业；接收与执行状态都可在重启后恢复。 */
 @Service
 public class GithubWebhookDispatcher {
+    private static final String CANCELLED = "CANCELLED";
     private final GithubWebhookMapper hooks;
     private final IntegrationMapper integrations;
     private final IssueSourceMapper sources;
@@ -116,13 +117,13 @@ public class GithubWebhookDispatcher {
     /** 由持久化目标结果推进投递状态；重试只覆盖已经成功写入收件箱的通知。 */
     private void settle(Long w, Long c) {
         for (GithubWebhookDelivery d : hooks.settled(w, c)) {
-            if ("CANCELLED".equals(d.getRunStatus())) {
-                d.setStatus("CANCELLED");
+            if (CANCELLED.equals(d.getRunStatus())) {
+                d.setStatus(CANCELLED);
                 d.setLastError("连接、权限或 Webhook 配置已变化");
             } else if ("SUCCEEDED".equals(d.getTargetStatus())) {
                 d.setStatus("SUCCEEDED");
                 d.setLastError(null);
-            } else if ("CANCELLED".equals(d.getTargetStatus())) {
+            } else if (CANCELLED.equals(d.getTargetStatus())) {
                 d.setStatus("IGNORED");
                 d.setLastError("来源关联已变化");
             } else {

@@ -37,7 +37,8 @@ const statusLabel = (value: string) => ({ RECEIVED: '已接收', QUEUED: '已排
 const date = (value: string) => new Date(value).toLocaleString();
 function openSettings() { Object.assign(form, { enabled: config.configured ? config.enabled : true, secret: '' }); openPanel(); }
 async function loadPage(page: number) {
-  if (busy.value) return; busy.value = true;
+  if (busy.value) return;
+  busy.value = true;
   try { error.value = ''; Object.assign(deliveries, await webhookApi.deliveries(props.workspaceId, props.connectionId, page)); }
   catch (e) { error.value = e instanceof Error ? e.message : '读取投递失败'; }
   finally { busy.value = false; }
@@ -58,7 +59,8 @@ async function save() {
   if (saved) { form.secret = ''; await load(); }
 }
 async function retry(id: number) {
-  if (busy.value) return; busy.value = true;
+  if (busy.value) return;
+  busy.value = true;
   let succeeded = false;
   try { error.value = ''; await webhookApi.retry(props.workspaceId, props.connectionId, id); succeeded = true; }
   catch (e) { error.value = e instanceof Error ? e.message : '重试投递失败'; }

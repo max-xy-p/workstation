@@ -1,16 +1,18 @@
 USE workstation;
 
+SET @migration_noop_sql = 'SELECT 1';
+
 -- 已有数据库须暂停写入并备份；所有新增结构可重复执行，不自动转化历史任务。
 SET @task_index_sql = IF(
     EXISTS(SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tasks' AND index_name='uk_tasks_workspace_id_id'),
-    'SELECT 1', 'ALTER TABLE tasks ADD UNIQUE KEY uk_tasks_workspace_id_id (workspace_id,id)');
+    @migration_noop_sql, 'ALTER TABLE tasks ADD UNIQUE KEY uk_tasks_workspace_id_id (workspace_id,id)');
 PREPARE task_index_stmt FROM @task_index_sql;
 EXECUTE task_index_stmt;
 DEALLOCATE PREPARE task_index_stmt;
 
 SET @issue_fields_sql = IF(
     EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='external_development_items' AND column_name='issue_number'),
-    'SELECT 1', 'ALTER TABLE external_development_items ADD COLUMN issue_number BIGINT NULL, ADD COLUMN state_reason VARCHAR(64) NULL');
+    @migration_noop_sql, 'ALTER TABLE external_development_items ADD COLUMN issue_number BIGINT NULL, ADD COLUMN state_reason VARCHAR(64) NULL');
 PREPARE issue_fields_stmt FROM @issue_fields_sql;
 EXECUTE issue_fields_stmt;
 DEALLOCATE PREPARE issue_fields_stmt;
@@ -52,7 +54,7 @@ CREATE TABLE IF NOT EXISTS task_issue_links (
 
 SET @issue_cursor_sql = IF(
     EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='integration_sync_runs' AND column_name='issue_cursor'),
-    'SELECT 1', 'ALTER TABLE integration_sync_runs ADD COLUMN issue_cursor BIGINT NOT NULL DEFAULT 0, ADD COLUMN issue_upper_bound BIGINT NULL');
+    @migration_noop_sql, 'ALTER TABLE integration_sync_runs ADD COLUMN issue_cursor BIGINT NOT NULL DEFAULT 0, ADD COLUMN issue_upper_bound BIGINT NULL');
 PREPARE issue_cursor_stmt FROM @issue_cursor_sql;
 EXECUTE issue_cursor_stmt;
 DEALLOCATE PREPARE issue_cursor_stmt;

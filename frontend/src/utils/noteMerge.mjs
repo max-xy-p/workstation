@@ -21,7 +21,10 @@ function edits(base, changed, side) {
   if (!parts) throw new Error('比较复杂');
   let position = 0, edit = null;
   const result = [];
-  const flush = () => { if (edit) result.push(edit); edit = null; };
+  const flush = () => {
+    if (edit) result.push(edit);
+    edit = null;
+  };
   for (const part of parts) {
     if (!part.added && !part.removed) { flush(); position += part.value.length; continue; }
     edit ||= { start: position, end: position, lines: [], side };

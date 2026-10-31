@@ -24,8 +24,8 @@
         <button v-if="canWrite" type="button" :disabled="saving || restoringHistory || mergeApplying" @click="openMerge">处理冲突</button>
       </div>
     </section>
-    <section v-else-if="mergePendingConfirmation" class="panel note-conflict-panel" role="status">
-      <h2>合并结果已保留为草稿</h2><p>请核对标题、正文和关联属性，再点击“确认保存合并结果”。自动保存已暂停，原本地草稿仍保留。</p>
+    <section v-else-if="mergePendingConfirmation" class="panel note-conflict-panel">
+      <h2>合并结果已保留为草稿</h2><output class="merge-draft-notice">请核对标题、正文和关联属性，再点击“确认保存合并结果”。自动保存已暂停，原本地草稿仍保留。</output>
     </section>
 
     <form class="editor-document" @submit.prevent="save">
@@ -569,7 +569,13 @@ watch(form, () => {
     return;
   }
   syncStatus.value = conflictActive.value ? 'CONFLICT' : 'PENDING';
-  saveState.value = conflictActive.value ? '请处理版本冲突' : (mergePendingConfirmation.value ? '合并草稿等待确认保存' : '待同步');
+  if (conflictActive.value) {
+    saveState.value = '请处理版本冲突';
+  } else if (mergePendingConfirmation.value) {
+    saveState.value = '合并草稿等待确认保存';
+  } else {
+    saveState.value = '待同步';
+  }
   draftTimer = window.setTimeout(() => { void saveDraft(); }, 350);
   scheduleAutoSave();
 }, { deep: true });
@@ -611,6 +617,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.merge-draft-notice { display: block; }
 .note-conflict-panel { margin-bottom: 1rem; }
 .note-conflict-panel pre { max-height: 18rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-conflict-panel .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }

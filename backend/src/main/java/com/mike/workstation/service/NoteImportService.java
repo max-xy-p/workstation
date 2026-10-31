@@ -133,7 +133,7 @@ public class NoteImportService {
                 tagMapper.insertNoteTag(workspaceId, note.getId(), tagId);
             }
             note.setVersion(1L);
-            revisions.record(note, NoteRevisionSource.IMPORT, null);
+            revisions.recordSnapshot(note, NoteRevisionSource.IMPORT, null);
 
             return new NoteImportItemResponse(
                     filePath, title, STATUS_IMPORTED, "导入成功", note.getId());

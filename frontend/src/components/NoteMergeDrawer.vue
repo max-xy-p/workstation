@@ -4,7 +4,7 @@
     <output v-if="loading" class="merge-loading">正在读取最新版本并比较三份内容…</output>
     <template v-else-if="merge && remote">
       <div class="merge-overview"><p>编辑基准 {{ baseVersion ? 'v' + baseVersion : '未知' }}<span> / </span>服务端 v{{ remote.version }}</p><strong>{{ remaining ? '还有 ' + remaining + ' 处冲突' : '全部冲突已处理' }}</strong></div>
-      <p v-if="merge.reason" class="merge-notice" role="status">{{ merge.reason }}</p>
+      <output v-if="merge.reason" class="merge-notice">{{ merge.reason }}</output>
       <p class="merge-explanation">{{ merge.reason ? '请对照双方原文选择或手动编辑正文。' : '不同位置的正文修改已自动合并，重叠修改需逐项选择。' }}标题和关联属性也会检查，标签按整个集合选择。</p>
       <template v-if="!preview">
         <div v-for="item in merge.fields" :key="item.field">
@@ -97,7 +97,7 @@ onBeforeUnmount(() => { disposed = true; ++request; runner.dispose(); });
 .merge-overview p { color: var(--ink-soft); }
 .merge-overview strong { color: var(--moss-dark); }
 .merge-explanation, .merge-preview > p { color: var(--ink-soft); font-size: 13px; line-height: 1.8; margin-bottom: 24px; }
-.merge-notice { padding: 14px; background: #fff8e9; color: #78551f; border-radius: 6px; font-size: 13px; line-height: 1.8; }
+.merge-notice { display: block; padding: 14px; background: #fff8e9; color: #78551f; border-radius: 6px; font-size: 13px; line-height: 1.8; }
 .merge-field-result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; padding-block: 12px; margin: 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .merge-field-result span { flex: 1; overflow-wrap: anywhere; min-width: 0; }
 .merge-field-result small { color: var(--ink-soft); }

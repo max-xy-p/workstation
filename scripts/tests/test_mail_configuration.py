@@ -35,3 +35,11 @@ class MailConfigurationTests(unittest.TestCase):
         self.assertTrue(registration_patch({"verifyEmail": True})["verifyEmail"])
         self.assertFalse(registration_patch({"verifyEmail": False})["verifyEmail"])
         self.assertTrue(registration_patch({})["verifyEmail"])
+
+    def test_sender_accepts_subdomains_and_rejects_empty_labels_and_oversized_input(self):
+        for sender in ["name+tag@sub.example.com", "a@example.com"]:
+            self.assertEqual(email_patch({}, sender, "Workstation")["smtpServer"]["from"], sender)
+        for sender in ["a@sub..example.com", "a@.example.com", "a@example.com.",
+                       "a" * 100_000 + "@example.com", "a@" + "." * 100_000]:
+            with self.assertRaises(ValueError):
+                email_patch({}, sender, "Workstation")

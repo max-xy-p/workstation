@@ -167,10 +167,7 @@ public class RemoteApi {
                     throw new ExternalApiDeferredException(delay, "平台请求受限，请在冷却结束后重试");
                 }
                 if (response.statusCode() == 200) {
-                    if (response.body().length() > 2_000_000) {
-                        throw new BusinessException("平台响应超过允许大小");
-                    }
-                    return json.readTree(response.body());
+                    return readResponse(response.body());
                 }
                 checkRetryable(response, attempt);
                 Thread.sleep(1000L << attempt);
@@ -184,6 +181,13 @@ public class RemoteApi {
             }
         }
         throw new BusinessException("平台请求失败");
+    }
+
+    private JsonNode readResponse(String body) {
+        if (body.length() > 2_000_000) {
+            throw new BusinessException("平台响应超过允许大小");
+        }
+        return json.readTree(body);
     }
 
     private void checkRetryable(HttpResponse<String> response, int attempt) {

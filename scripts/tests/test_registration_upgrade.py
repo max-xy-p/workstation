@@ -16,7 +16,8 @@ class RegistrationUpgradeTests(unittest.TestCase):
         self.assertEqual(password_policy("digits(1)"), "length(12) and digits(1)")
 
     def test_patch_does_not_include_users_clients_or_other_realm_settings(self):
-        patch = registration_patch({"passwordPolicy": "length(20)", "users": ["existing"], "sslRequired": "external"})
+        policy = password_policy("length(20)")
+        patch = registration_patch({"passwordPolicy": policy, "users": ["existing"], "sslRequired": "external"})
         self.assertEqual(set(patch), {"registrationAllowed", "verifyEmail", "passwordPolicy"})
         self.assertEqual(patch["passwordPolicy"], "length(20)")
 
@@ -33,7 +34,7 @@ class RegistrationUpgradeTests(unittest.TestCase):
                 return [{"id": "account"}]
             if path.endswith("/composites"):
                 return [child] if child else []
-            return {"defaultRole": {"id": "default", "name": "default-roles-workstation", "composite": True}, "passwordPolicy": "length(16)"}
+            return {"defaultRole": {"id": "default", "name": "default-roles-workstation", "composite": True}, "passwordPolicy": password_policy("length(16)")}
         admin.request = request
         return admin, mutations
 

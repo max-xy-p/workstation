@@ -36,6 +36,7 @@ import java.util.UUID;
 /** 配置、验签与持久化接收的短事务，不在接收线程请求 GitHub。 */
 @Service
 public class GithubWebhookService {
+    private static final String ISSUE_FIELD = "issue";
     public static final int MAX_BODY_BYTES = 1_000_000;
     private final GithubWebhookMapper hooks;
     private final IntegrationMapper integrations;
@@ -190,15 +191,7 @@ public class GithubWebhookService {
             }
             return;
         }
-        JsonNode payload;
-        try {
-            payload = json.readTree(body);
-        } catch (RuntimeException ex) {
-            throw new BusinessException("Webhook JSON 不合法");
-        }
-        if (payload == null || !payload.isObject()) {
-            throw new BusinessException("Webhook JSON 必须为对象");
-        }
+        JsonNode payload = readPayload(body);
         GithubWebhookDelivery delivery = new GithubWebhookDelivery();
         delivery.setWebhookId(hook.getId());
         delivery.setWorkspaceId(hook.getWorkspaceId());
@@ -218,13 +211,26 @@ public class GithubWebhookService {
         hooks.insert(delivery);
     }
 
+    private JsonNode readPayload(byte[] body) {
+        JsonNode payload;
+        try {
+            payload = json.readTree(body);
+        } catch (RuntimeException ex) {
+            throw new BusinessException("Webhook JSON 不合法");
+        }
+        if (payload == null || !payload.isObject()) {
+            throw new BusinessException("Webhook JSON 必须为对象");
+        }
+        return payload;
+    }
+
     private void select(GithubWebhookDelivery delivery, JsonNode payload) {
         String action = payload.path("action").asText("");
         if (action.isBlank()
                 || action.length() > 64
                 || !payload.path("repository").path("id").isIntegralNumber()
-                || !payload.path("issue").path("id").isIntegralNumber()
-                || !payload.path("issue").path("number").isIntegralNumber()) {
+                || !payload.path(ISSUE_FIELD).path("id").isIntegralNumber()
+                || !payload.path(ISSUE_FIELD).path("number").isIntegralNumber()) {
             throw new BusinessException("Issue 事件缺少有效身份或动作");
         }
         delivery.setAction(action);
@@ -233,9 +239,10 @@ public class GithubWebhookService {
                         delivery.getWorkspaceId(),
                         delivery.getConnectionId(),
                         payload.path("repository").path("id").asText(),
-                        payload.path("issue").path("id").asText());
+                        payload.path(ISSUE_FIELD).path("id").asText());
         if (source == null
-                || !source.getIssueNumber().equals(payload.path("issue").path("number").asLong())
+                || !source.getIssueNumber()
+                        .equals(payload.path(ISSUE_FIELD).path("number").asLong())
                 || "STOPPED".equals(source.getTrackingStatus())) {
             return;
         }
