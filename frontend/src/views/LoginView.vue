@@ -29,20 +29,17 @@
         <span class="sheet-tab">工作台登录</span>
         <div class="login-form">
           <div class="login-form-heading">
-            <span class="section-kicker">欢迎回来</span>
-            <h2>登录工作台</h2>
-            <p>通过统一身份中心验证身份，继续整理你的知识。</p>
+            <h2>进入工作台</h2>
+            <p>登录后，继续整理你的笔记、项目和任务。</p>
           </div>
 
           <output v-if="expired" class="login-notice">登录状态已失效，请重新验证。</output>
-          <button class="login-submit" type="button" :disabled="submitting" @click="submit(false)">
-            <span>{{ submitting ? '正在前往身份中心…' : '使用统一身份登录' }}</span>
+          <button class="login-submit" type="button" :disabled="submitting" @click="submit">
+            <span>{{ submitting ? '正在跳转…' : '登录或注册' }}</span>
             <AppIcon v-if="!submitting" name="arrow" />
           </button>
 
-          <button class="secondary" type="button" :disabled="submitting" @click="submit(true)">创建新账号</button>
-          <p>注册并首次登录后，自动拥有独立的个人工作空间。</p>
-          <p class="login-footnote">账号凭据只提交给 Keycloak，工作台不会在浏览器中保存访问令牌。</p>
+          <p class="login-footnote">新用户可在下一页注册账号，验证邮箱后开始使用。</p>
         </div>
       </section>
     </div>
@@ -71,12 +68,12 @@ function safeRedirect() {
     : null;
 }
 
-function submit(registration = false) {
+function submit() {
+  if (submitting.value) return;
   submitting.value = true;
   const redirect = safeRedirect();
   if (redirect) sessionStorage.setItem('workstation:login-redirect', redirect);
   else sessionStorage.removeItem('workstation:login-redirect');
-  if (registration) auth.register();
-  else auth.login();
+  auth.login();
 }
 </script>

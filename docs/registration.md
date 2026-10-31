@@ -1,6 +1,6 @@
 # 公开注册与个人工作空间
 
-Workstation 允许访客创建自己的独立账号。登录页的“创建新账号”会进入 Keycloak 原生注册页，用户按原生流程填写资料并设置密码，在同一认证页面输入邮件中的六位验证码后返回工作台。密码至少 12 个字符。Keycloak 管理验证码与邮箱验证结果，邮件服务通过 Resend 统一投递；工作空间归属仍使用已验证令牌中的 sub，而不是邮箱或昵称。发送配置及故障边界见[邮件服务](mail.md)。
+Workstation 允许访客创建自己的独立账号。工作台入口只保留“登录或注册”按钮，进入 Keycloak 身份页后选择注册，用户按原生流程填写资料并设置密码，在同一认证页面输入邮件中的六位验证码后返回工作台。密码至少 12 个字符。Keycloak 管理验证码与邮箱验证结果，邮件服务通过 Resend 统一投递；工作空间归属仍使用已验证令牌中的 sub，而不是邮箱或昵称。发送配置及故障边界见[邮件服务](mail.md)。
 
 新账号自动获得 WORKSTATION_USER 普通系统准入角色，不获得 WORKSTATION_ADMIN、WORKSTATION_SERVICE 或身份管理权限。首次进入工作台时，Backend 沿用现有事务创建个人 Workspace，并赋予该账号此空间的 OWNER 权限。个人空间按主体唯一，重复进入不会重复创建；显示名称相同的账号仍是独立主体。
 
@@ -8,7 +8,7 @@ Workstation 允许访客创建自己的独立账号。登录页的“创建新�
 
 ## 账号与认证职责
 
-账号、密码和注册校验由 Keycloak 维护。Frontend 只发起注册跳转，Gateway 在现有授权请求中添加标准 prompt=create，保留 state、nonce、PKCE 与原有回调校验；访问令牌仍保存在 Gateway，浏览器使用 Session 和写请求 CSRF。注册没有开放匿名业务接口，也没有增加另一套账号表或密码接口。标准入口见 [Keycloak 官方说明](https://www.keycloak.org/docs/26.3.5/server_admin/)。
+账号、密码和注册校验由 Keycloak 维护。Frontend 统一发起 OIDC 登录跳转，用户在 Keycloak 页面选择注册，保留 state、nonce、PKCE 与原有回调校验；Gateway 仍兼容显式注册请求的标准 prompt=create 参数。访问令牌仍保存在 Gateway，浏览器使用 Session 和写请求 CSRF。注册没有开放匿名业务接口，也没有增加另一套账号表或密码接口。标准入口见 [Keycloak 官方说明](https://www.keycloak.org/docs/26.3.5/server_admin/)。
 
 WORKSTATION_INITIAL_USERNAME / PASSWORD 仅在首次导入 Realm 时创建初始平台账号，新用户不需要知道它们。该账号第一次登录仍需修改临时密码。KEYCLOAK_ADMIN_USERNAME / PASSWORD 用于身份中心管理控制台，是另一组管理员凭据；它们同样不是普通注册用户需要的信息。
 

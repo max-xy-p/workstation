@@ -35,7 +35,7 @@ Workstation 支持多个用户和机器主体，需要明确区分“谁在访�
 
 ## 公开注册
 
-登录页提供 Keycloak 原生注册入口，普通注册者自动获得 WORKSTATION_USER，完成邮箱验证码验证并首次登录后自动创建其个人 Workspace。系统准入不授予其他空间的成员权限。验证码与验证结果由 Keycloak 管理，独立邮件服务通过 Resend 投递；详见[邮件服务](mail.md)及[公开注册](registration.md)。
+工作台通过单一“登录或注册”入口进入 Keycloak，注册选项统一保留在身份页，普通注册者自动获得 WORKSTATION_USER，完成邮箱验证码验证并首次登录后自动创建其个人 Workspace。系统准入不授予其他空间的成员权限。验证码与验证结果由 Keycloak 管理，独立邮件服务通过 Resend 投递；详见[邮件服务](mail.md)及[公开注册](registration.md)。
 
 ## 两类调用方式
 

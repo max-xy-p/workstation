@@ -146,4 +146,4 @@ CI、GHCR 镜像发布和 VPS 部署流程见 [`docs/ci-cd.md`](docs/ci-cd.md)�
 
 ## 公开账号准入
 
-访客通过现有 OIDC 授权请求的 prompt=create 进入 Keycloak 原生注册页，密码和账号校验只在身份中心进行。新账号默认获得普通用户准入角色；邮箱验证码验证完成后，Backend 在首次空间列表请求中按稳定 sub 创建个人 Workspace 及 OWNER 成员关系。公开注册不改变其他 Workspace 的授权规则，机器主体不创建个人空间。Keycloak 通过独立邮件服务发送验证及找回密码邮件，新旧部署与角色边界见[公开注册](docs/registration.md)和[邮件服务](docs/mail.md)。
+访客通过统一的 OIDC 登录入口进入 Keycloak，在身份页选择注册，密码和账号校验只在身份中心进行。新账号默认获得普通用户准入角色；邮箱验证码验证完成后，Backend 在首次空间列表请求中按稳定 sub 创建个人 Workspace 及 OWNER 成员关系。公开注册不改变其他 Workspace 的授权规则，机器主体不创建个人空间。Keycloak 通过独立邮件服务发送验证及找回密码邮件，新旧部署与角色边界见[公开注册](docs/registration.md)和[邮件服务](docs/mail.md)。
