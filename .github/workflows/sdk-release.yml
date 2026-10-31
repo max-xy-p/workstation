@@ -16,6 +16,8 @@ jobs:
   verify:
     name: 验证仓库
     uses: ./.github/workflows/ci.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   publish:
     name: 构建并发布 SDK 制品

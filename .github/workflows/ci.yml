@@ -9,6 +9,10 @@ on:
       - master
   workflow_dispatch:
   workflow_call:
+    secrets:
+      SONAR_TOKEN:
+        description: SonarQube 项目分析凭据
+        required: true
 
 permissions:
   contents: read
@@ -287,6 +291,16 @@ jobs:
       - mail
 
     steps:
+      - name: 检查 SonarQube 凭据
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [[ -z "$SONAR_TOKEN" ]]; then
+            echo "::error::缺少 SONAR_TOKEN。请在仓库 Actions Secrets 中配置，并由调用工作流显式传递。"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:

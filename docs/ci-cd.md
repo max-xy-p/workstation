@@ -45,7 +45,7 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 仓库根目录的 `sonar-project.properties` 定义单个项目的分析范围。CI 在扫描作业中验证 Backend、Gateway、Mail Service 和 Keycloak 邮件扩展，提供四个 Java 模块的字节码与 JaCoCo 报告；该作业使用 JDK 21，前三个服务仍生成 Java 17 字节码。扫描前另行检查 Backend/Gateway 合并的行与分支覆盖率是否至少为 80%，未达标时失败。Frontend、SDK 与脚本仍参与静态分析，自动生成的 SDK 文件和构建产物不参与分析，各模块测试目录单独分类。分类行为见 [SonarQube Cloud 官方说明](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/excluding-files-based-on-patterns)。扫描作业等待 Quality Gate 结果，云端新代码覆盖率仍由 Quality Gate 独立判断；同仓库 Pull Request、`master` 推送和手动 CI 触发会执行扫描。外部 Fork 的 Pull Request 不接收扫描凭证。
 
-启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。发布流程复用的 CI 不重复提交一次标签分析。
+启用时，需要在 SonarQube Cloud 项目的 `Administration > Analysis Method` 中关闭自动分析，并在 GitHub 仓库的 Actions Secret 中配置具有该项目分析权限的 `SONAR_TOKEN`。Token 只保存在凭证系统中，不写入仓库。云端首次完成 CI 分析后，应确认文件列表同时包含 `backend/src/main/java`、`gateway/src/main/java` 和 `frontend/src`，并核对 Quality Gate 与 Java 告警。应用发布与 SDK 发布复用 CI 时，会继承调用方的标签推送或手动触发事件，因此也执行扫描并等待 Quality Gate；失败会阻止发布。两个发布入口只显式传递 `SONAR_TOKEN`，不继承部署或其他用途的凭据。复用工作流将其声明为必需 Secret；直接运行 CI 时，扫描作业也会先检查凭据是否为空。Token 应配置为仓库 Actions Secret，或具有此仓库访问权限的组织 Secret；本机环境变量和未绑定 Environment 的环境 Secret 不会自动提供给这些作业。
 
 ## 标签的含义
 

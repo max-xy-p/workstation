@@ -19,6 +19,8 @@ jobs:
   ci:
     name: Verify release
     uses: ./.github/workflows/ci.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   publish:
     name: Publish ${{ matrix.name }}
