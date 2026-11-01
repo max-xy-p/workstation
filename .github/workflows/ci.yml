@@ -38,6 +38,7 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p "test_registration*.py" -v
           python3 -m unittest discover -s scripts/tests -p "test_mail*.py" -v
           python3 -m unittest discover -s scripts/tests -p "test_email_codes.py" -v
+          python3 -m unittest discover -s scripts/tests -p "test_deployment*.py" -v
           docker compose --env-file .env.docker.example config --quiet
           docker compose --env-file .env.docker.example -f compose.prod.yaml config --quiet
 

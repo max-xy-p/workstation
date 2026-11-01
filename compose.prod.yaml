@@ -20,17 +20,72 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./backend/src/main/resources/db/migrate-project-integrations.sql:/docker-entrypoint-initdb.d/01a-project-integrations.sql:ro
-      - ./backend/src/main/resources/db/migrate-note-revisions.sql:/docker-entrypoint-initdb.d/01b-note-revisions.sql:ro
-      - ./backend/src/main/resources/db/migrate-task-issues.sql:/docker-entrypoint-initdb.d/01c-task-issues.sql:ro
-      - ./backend/src/main/resources/db/migrate-github-webhooks.sql:/docker-entrypoint-initdb.d/01d-github-webhooks.sql:ro
-      - ./backend/src/main/resources/db/migrate-source-confirmation.sql:/docker-entrypoint-initdb.d/01e-source-confirmation.sql:ro
-      - ./backend/src/main/resources/db/migrate-external-api-limits.sql:/docker-entrypoint-initdb.d/01f-external-api-limits.sql:ro
-      - ./backend/src/main/resources/db/init-keycloak-database.sh:/docker-entrypoint-initdb.d/02-keycloak.sh:ro
-      - ./mail-service/init-database.sh:/docker-entrypoint-initdb.d/02a-mail.sh:ro
-      - ./xxl-job/tables_xxl_job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
-      - ./backend/src/main/resources/db/init-xxl-job-database.sh:/docker-entrypoint-initdb.d/04-xxl-job-user.sh:ro
+      - type: bind
+        source: ./backend/src/main/resources/db/schema.sql
+        target: /docker-entrypoint-initdb.d/01-schema.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-project-integrations.sql
+        target: /docker-entrypoint-initdb.d/01a-project-integrations.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-note-revisions.sql
+        target: /docker-entrypoint-initdb.d/01b-note-revisions.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-task-issues.sql
+        target: /docker-entrypoint-initdb.d/01c-task-issues.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-github-webhooks.sql
+        target: /docker-entrypoint-initdb.d/01d-github-webhooks.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-source-confirmation.sql
+        target: /docker-entrypoint-initdb.d/01e-source-confirmation.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/migrate-external-api-limits.sql
+        target: /docker-entrypoint-initdb.d/01f-external-api-limits.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/init-keycloak-database.sh
+        target: /docker-entrypoint-initdb.d/02-keycloak.sh
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./mail-service/init-database.sh
+        target: /docker-entrypoint-initdb.d/02a-mail.sh
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./xxl-job/tables_xxl_job.sql
+        target: /docker-entrypoint-initdb.d/03-xxl-job.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./backend/src/main/resources/db/init-xxl-job-database.sh
+        target: /docker-entrypoint-initdb.d/04-xxl-job-user.sh
+        read_only: true
+        bind:
+          create_host_path: false
     healthcheck:
       # mysqladmin ping 在鉴权失败时仍可能返回成功；执行 SQL 才能确认数据库真正可用。
       test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql --protocol=tcp --host=127.0.0.1 --user=root --silent --skip-column-names --execute='SELECT 1' | grep -qx 1"]
@@ -121,7 +176,12 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@12718080.xyz}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Workstation}
     volumes:
-      - ./keycloak/workstation-realm.json:/opt/keycloak/data/import/workstation-realm.json:ro
+      - type: bind
+        source: ./keycloak/workstation-realm.json
+        target: /opt/keycloak/data/import/workstation-realm.json
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
       db:
         condition: service_healthy
