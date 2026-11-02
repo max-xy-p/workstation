@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS mail_messages (
     payload MEDIUMTEXT,
     status VARCHAR(24) NOT NULL,
     attempts INT NOT NULL DEFAULT 0,
+    dispatch_version BIGINT NOT NULL DEFAULT 1,
     created_at TIMESTAMP(6) NOT NULL,
     expires_at TIMESTAMP(6) NOT NULL,
     next_attempt_at TIMESTAMP(6) NOT NULL,
@@ -30,4 +31,18 @@ CREATE TABLE IF NOT EXISTS mail_delivery_events (
     occurred_at TIMESTAMP(6) NOT NULL,
     received_at TIMESTAMP(6) NOT NULL,
     INDEX mail_delivery_lookup (provider_id, occurred_at)
+);
+CREATE TABLE IF NOT EXISTS mail_outbox (
+    id VARCHAR(36) PRIMARY KEY,
+    task_id VARCHAR(36) NOT NULL,
+    dispatch_version BIGINT NOT NULL,
+    delay_seconds BIGINT NOT NULL DEFAULT 0,
+    state VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP(6) NOT NULL,
+    expires_at TIMESTAMP(6) NOT NULL,
+    next_attempt_at TIMESTAMP(6) NOT NULL,
+    lease_token VARCHAR(36),
+    lease_until TIMESTAMP(6),
+    UNIQUE (task_id, dispatch_version),
+    INDEX mail_outbox_pending (state, next_attempt_at)
 );

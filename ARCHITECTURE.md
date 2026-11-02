@@ -19,7 +19,7 @@ Browser
 
 浏览器不保存 Access Token 或 Refresh Token，只持有 HttpOnly 的 `WORKSTATION_SESSION` Cookie。所有业务 API 仍位于 `/api`。
 
-邮件发送使用同仓库的独立 Mail Service：Keycloak 的 EmailSenderProvider 扩展提交原生验证及找回密码邮件，邮件服务写入独立 MySQL 任务库后通过 Resend 投递。内部发信接口不经过公网入口，调用方凭据彼此独立；Nginx 仅公开具有原文签名认证的 Resend 投递回调。账号验证结果仍归 Keycloak 管理，邮件服务不维护账号或签发登录 Token。后续业务事务邮件可使用同一服务，当前没有额外业务通知触发器。启用、升级及可靠性边界见[邮件服务](docs/mail.md)。
+邮件发送使用同仓库的独立 Mail Service：Keycloak 验证码扩展通过 EmailSenderProvider 提交邮件，邮件服务在独立 MySQL 库的同一事务中保存加密邮件和 Outbox。Relay 使用 Publisher Confirm 将任务引用发布到 RabbitMQ，消费者处理投递，固定 TTL 延迟队列负责重试；数据库保留状态、去重与发布补偿记录，并提供跨实例节流，不再扫描任务表领取邮件。内部发信接口不经过公网入口，调用方凭据彼此独立；Nginx 仅公开具有原文签名认证的 Resend 投递回调。账号验证结果仍归 Keycloak 管理，邮件服务不维护账号或签发登录 Token。后续业务事务邮件可使用同一服务，当前没有额外业务通知触发器。启用、升级及可靠性边界见[邮件服务](docs/mail.md)。
 
 Python 客户端使用独立的 Keycloak Client Credentials，经同一 Gateway 入口携带 Bearer Token 调用业务 API，不使用浏览器 Session 或 CSRF：
 
@@ -132,7 +132,7 @@ integration_sync_runs 的内部进度保存发现页码和有界采集中间结�
 
 - MySQL 8：使用独立的 `workstation`、`keycloak` 与 `xxl_job` 数据库分别保存业务、身份和调度数据。
 - Redis 8：Gateway 服务端 Session，以及 Backend 外部 API 共享令牌桶与限流冷却；任务和恢复进度仍在 MySQL。
-- RabbitMQ 4：审计消息持久化传输、消费重试和死信隔离。
+- RabbitMQ 4：审计与邮件消息持久化传输，邮件延迟重试、消费确认和死信隔离。
 - XXL-JOB 3：调度审计 Outbox Relay，提供任务日志、告警和手工补偿入口。
 - 本机文件系统：受 `NOTE_IMPORT_ALLOWED_ROOTS` 限制的 Markdown 导入源。
 - Nginx：唯一公开入口和同源反向代理。

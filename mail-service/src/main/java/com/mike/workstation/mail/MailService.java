@@ -3,6 +3,8 @@ package com.mike.workstation.mail;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import tools.jackson.databind.ObjectMapper;
@@ -30,6 +32,7 @@ public class MailService {
         this.clock = clock;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public MailStatus enqueue(String caller, MailRequest request) {
         String serialized = json.writeValueAsString(request);
         String fingerprint = fingerprint(serialized);

@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
         "mail.keycloak-token=keycloak-test-token-32-characters-minimum",
         "mail.backend-token=backend-test-token-32-characters-minimum",
         "mail.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        "mail.resend-api-key=test-key", "mail.worker-enabled=false",
+        "mail.resend-api-key=test-key", "mail.worker-enabled=false", "spring.rabbitmq.password=test-password",
         "mail.webhook-secret=whsec_c2VjcmV0", "mail.from=noreply@example.com", "mail.from-name=Workstation"})
 @AutoConfigureMockMvc
 class MailIntegrationTests {
@@ -59,12 +59,16 @@ class MailIntegrationTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired PayloadCipher cipher;
     @Autowired MailProperties properties;
+    @Autowired MailOutboxRepository outbox;
+    @Autowired MailOutboxRelay relay;
+    @MockitoBean MailMessagePublisher publisher;
     @MockitoBean Clock clock;
     @MockitoBean ResendClient resend;
 
     @BeforeEach
     void resetDatabase() {
         jdbc.update("DELETE FROM mail_messages");
+        jdbc.update("DELETE FROM mail_outbox");
         jdbc.update("DELETE FROM mail_delivery_events");
         jdbc.update("UPDATE mail_dispatch_clock SET next_at = '2000-01-01 00:00:00'");
         when(clock.instant()).thenReturn(NOW);
@@ -154,7 +158,7 @@ class MailIntegrationTests {
     void dispatchSuccessIsSubmittedRatherThanDeliveredAndErasesPayload() {
         MailStatus task = service.enqueue("keycloak", request("a"));
         when(resend.send(eq(task.id()), any())).thenReturn(new ResendClient.Result("provider-1", false, null, 0));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("SUBMITTED", service.status("keycloak", task.id()).status());
         assertNull(jdbc.queryForObject("SELECT payload FROM mail_messages WHERE id = ?", String.class, task.id()));
     }
@@ -164,12 +168,12 @@ class MailIntegrationTests {
         MailStatus task = service.enqueue("keycloak", request("a"));
         when(resend.send(eq(task.id()), any())).thenReturn(new ResendClient.Result(null, true, "PROVIDER_HTTP_429", 90))
                 .thenReturn(new ResendClient.Result("provider-1", false, null, 0));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("QUEUED", service.status("keycloak", task.id()).status());
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         verify(resend, times(1)).send(eq(task.id()), any());
         when(clock.instant()).thenReturn(NOW.plusSeconds(91));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 2));
         verify(resend, times(2)).send(eq(task.id()), any());
         assertEquals("SUBMITTED", service.status("keycloak", task.id()).status());
     }
@@ -178,7 +182,7 @@ class MailIntegrationTests {
     void permanentErrorsDoNotRetry() {
         MailStatus task = service.enqueue("keycloak", request("a"));
         when(resend.send(anyString(), any())).thenReturn(new ResendClient.Result(null, false, "PROVIDER_HTTP_422", 0));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("FAILED", service.status("keycloak", task.id()).status());
         assertNull(repository.byId("keycloak", task.id()).payload());
     }
@@ -187,7 +191,7 @@ class MailIntegrationTests {
     void expiredMailIsNeverSentAndPayloadIsPurged() {
         MailStatus task = service.enqueue("keycloak", request("a"));
         when(clock.instant()).thenReturn(NOW.plusSeconds(601));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("EXPIRED", service.status("keycloak", task.id()).status());
         assertNull(repository.byId("keycloak", task.id()).payload());
         verifyNoInteractions(resend);
@@ -196,9 +200,10 @@ class MailIntegrationTests {
     @Test
     void expiredLeaseCanBeRecoveredAndOldWorkerCannotFinish() {
         MailStatus task = service.enqueue("keycloak", request("a"));
-        MailTask old = repository.claim(NOW);
-        assertNull(repository.claim(NOW.plusSeconds(2)));
-        MailTask recovered = repository.claim(NOW.plusSeconds(61));
+        MailDispatch dispatch = new MailDispatch(task.id(), 1);
+        MailTask old = repository.claim(dispatch, NOW).task();
+        assertNull(repository.claim(dispatch, NOW.plusSeconds(2)).task());
+        MailTask recovered = repository.claim(dispatch, NOW.plusSeconds(61)).task();
         assertEquals(old.id(), recovered.id());
         assertNotEquals(old.leaseToken(), recovered.leaseToken());
         repository.finish(old, "FAILED", null, "OLD_WORKER");
@@ -209,12 +214,13 @@ class MailIntegrationTests {
 
     @Test
     void competingWorkersOnlyClaimOneTaskPerGlobalRateSlot() throws Exception {
-        service.enqueue("keycloak", request("a"));
-        service.enqueue("keycloak", request("b"));
+        MailStatus first = service.enqueue("keycloak", request("a"));
+        MailStatus second = service.enqueue("keycloak", request("b"));
         var pool = Executors.newFixedThreadPool(4);
         try {
             var futures = pool.invokeAll(java.util.stream.IntStream.range(0, 4)
-                    .<java.util.concurrent.Callable<MailTask>>mapToObj(i -> () -> repository.claim(NOW)).toList());
+                    .<java.util.concurrent.Callable<MailTask>>mapToObj(i -> () -> repository.claim(
+                            new MailDispatch(i % 2 == 0 ? first.id() : second.id(), 1), NOW).task()).toList());
             int claimed = 0;
             for (var future : futures) {
                 if (future.get(10, TimeUnit.SECONDS) != null) {
@@ -222,7 +228,7 @@ class MailIntegrationTests {
                 }
             }
             assertEquals(1, claimed);
-            assertNotNull(repository.claim(NOW.plusSeconds(1)));
+            assertNotNull(repository.claim(new MailDispatch(second.id(), 1), NOW.plusSeconds(61)).task());
         } finally {
             pool.shutdownNow();
         }
@@ -231,7 +237,7 @@ class MailIntegrationTests {
     @Test
     void validWebhookCanArriveBeforeProviderResponseAndDuplicatesAreSafe() throws Exception {
         MailStatus task = service.enqueue("keycloak", request("a"));
-        MailTask claimed = repository.claim(NOW);
+        MailTask claimed = repository.claim(new MailDispatch(task.id(), 1), NOW).task();
         String event = json.writeValueAsString(Map.of("type", "email.delivered", "created_at", NOW.toString(),
                 "data", Map.of("email_id", "provider-1")));
         webhook("event-1", NOW.getEpochSecond(), event, true);
@@ -269,7 +275,7 @@ class MailIntegrationTests {
     void brokenCiphertextFailsWithoutSendingOrLoggingOriginalContent() {
         MailStatus task = service.enqueue("keycloak", request("a"));
         jdbc.update("UPDATE mail_messages SET payload = 'invalid' WHERE id = ?", task.id());
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("PAYLOAD_UNREADABLE", service.status("keycloak", task.id()).errorCode());
         assertNull(repository.byId("keycloak", task.id()).payload());
         verifyNoInteractions(resend);
@@ -280,13 +286,70 @@ class MailIntegrationTests {
         MailStatus task = service.enqueue("keycloak", request("a"));
         jdbc.update("UPDATE mail_messages SET attempts = 7 WHERE id = ?", task.id());
         when(resend.send(anyString(), any())).thenReturn(new ResendClient.Result(null, true, "PROVIDER_HTTP_503", 60));
-        worker().dispatchOne();
+        worker().dispatch(new MailDispatch(task.id(), 1));
         assertEquals("FAILED", service.status("keycloak", task.id()).status());
         assertEquals(8, service.status("keycloak", task.id()).attempts());
         repository.delivery("event-1", "provider-1", "DELIVERED", NOW, NOW);
         repository.purge(NOW.plusSeconds(31L * 86400));
         assertNull(repository.byId("keycloak", task.id()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM mail_delivery_events", Integer.class));
+    }
+
+    @Test
+    void taskAndOutboxCommitTogetherAndRollbackOnOutboxFailure() {
+        MailStatus task = service.enqueue("keycloak", request("atomic"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM mail_outbox WHERE task_id = ?", Integer.class, task.id()));
+        jdbc.execute("ALTER TABLE mail_outbox RENAME TO mail_outbox_unavailable");
+        try {
+            assertThrows(org.springframework.dao.DataAccessException.class, () -> service.enqueue("keycloak", request("rollback")));
+        } finally {
+            jdbc.execute("ALTER TABLE mail_outbox_unavailable RENAME TO mail_outbox");
+        }
+        assertNull(repository.byKey("keycloak", "rollback"));
+    }
+
+    @Test
+    void brokerFailureKeepsOutboxAndConfirmedRetryMarksPublished() {
+        MailStatus task = service.enqueue("keycloak", request("outbox"));
+        doThrow(new IllegalStateException("模拟 Broker 暂不可用")).doNothing().when(publisher).publish(any(), anyLong());
+        assertFalse(relay.relayOne());
+        assertEquals("PENDING", jdbc.queryForObject("SELECT state FROM mail_outbox WHERE task_id = ?", String.class, task.id()));
+        assertFalse(relay.relayOne());
+        when(clock.instant()).thenReturn(NOW.plusSeconds(11));
+        assertTrue(relay.relayOne());
+        assertEquals("PUBLISHED", jdbc.queryForObject("SELECT state FROM mail_outbox WHERE task_id = ?", String.class, task.id()));
+        verify(publisher, times(2)).publish(eq(new MailDispatch(task.id(), 1)), anyLong());
+        verifyNoInteractions(resend);
+    }
+
+    @Test
+    void unconfirmedOutboxLeaseIsRecoveredAndExpiredTasksAreNotPublished() {
+        MailStatus task = service.enqueue("keycloak", request("lease"));
+        MailOutboxRepository.Entry abandoned = outbox.claim(NOW);
+        assertNotNull(abandoned);
+        assertNull(outbox.claim(NOW.plusSeconds(1)));
+        when(clock.instant()).thenReturn(NOW.plusSeconds(31));
+        assertTrue(relay.relayOne());
+        verify(publisher).publish(eq(new MailDispatch(task.id(), 1)), eq(0L));
+        outbox.failed(abandoned, NOW.plusSeconds(32));
+        assertEquals("PUBLISHED", jdbc.queryForObject("SELECT state FROM mail_outbox WHERE task_id = ?", String.class, task.id()));
+        service.enqueue("keycloak", request("expired-outbox"));
+        when(clock.instant()).thenReturn(NOW.plusSeconds(601));
+        assertTrue(relay.relayOne());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM mail_outbox WHERE state = 'CANCELLED'", Integer.class));
+        verify(publisher, times(1)).publish(any(), anyLong());
+    }
+
+    @Test
+    void retryCommitsNewDispatchVersionAndOldMessagesAreIgnored() {
+        MailStatus task = service.enqueue("keycloak", request("version"));
+        when(resend.send(anyString(), any())).thenReturn(new ResendClient.Result(null, true, "TEMPORARY", 1));
+        worker().dispatch(new MailDispatch(task.id(), 1));
+        assertEquals(2, repository.byId("keycloak", task.id()).dispatchVersion());
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM mail_outbox WHERE task_id = ?", Integer.class, task.id()));
+        assertEquals(0, worker().dispatch(new MailDispatch(task.id(), 1)).delaySeconds());
+        assertTrue(worker().dispatch(new MailDispatch(task.id(), 2)).delaySeconds() > 0);
+        verify(resend, times(1)).send(anyString(), any());
     }
 
     private void webhook(String id, long timestamp, String body, boolean accepted) throws Exception {

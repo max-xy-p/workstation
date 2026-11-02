@@ -161,6 +161,8 @@ jobs:
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/keycloak/workstation-realm.json"
           scp -P "$VPS_PORT" mail-service/init-database.sh \
             "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/mail-service/init-database.sh"
+          scp -P "$VPS_PORT" mail-service/migrate-rabbitmq.sql \
+            "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/mail-service/migrate-rabbitmq.sql"
 
       - name: Pull and restart services
         shell: bash

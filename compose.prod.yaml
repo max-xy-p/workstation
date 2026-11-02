@@ -205,8 +205,14 @@ services:
       MAIL_FROM: ${MAIL_FROM:-noreply@12718080.xyz}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Workstation}
       MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-workstation}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env.docker}
     depends_on:
       db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   backend:

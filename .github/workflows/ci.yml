@@ -103,10 +103,23 @@ jobs:
     name: 邮件服务与 Keycloak 扩展验证
     runs-on: ubuntu-latest
     services:
+      rabbitmq:
+        image: rabbitmq:4.3.6-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: mail-test
+          RABBITMQ_DEFAULT_PASS: mail-ci-isolated-password
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
       mysql:
         image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: mail-ci-isolated-password
+          MYSQL_ROOT_HOST: "%"
           MYSQL_DATABASE: workstation_mail_test
         ports:
           - 3306:3306
@@ -127,8 +140,9 @@ jobs:
       - name: 验证邮件服务和身份邮件扩展
         env:
           MAIL_TEST_DB_PASSWORD: mail-ci-isolated-password
+          MAIL_TEST_RABBIT_PASSWORD: mail-ci-isolated-password
         run: |
-          mvn --batch-mode --no-transfer-progress -f mail-service/pom.xml clean verify '-Dworkstation.mail.test.db=jdbc:mysql://127.0.0.1:3306/workstation_mail_test?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true'
+          mvn --batch-mode --no-transfer-progress -f mail-service/pom.xml clean verify '-Dworkstation.mail.test.db=jdbc:mysql://127.0.0.1:3306/workstation_mail_test?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true' -Dworkstation.mail.test.rabbit=true
           mvn --batch-mode --no-transfer-progress -f keycloak/mail-provider/pom.xml clean verify
 
   openapi:

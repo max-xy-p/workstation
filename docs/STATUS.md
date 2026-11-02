@@ -1,8 +1,10 @@
 # 项目状态
 
-> 核对日期：2026-11-01。
+> 核对日期：2026-11-02。
 
 ## 当前状态
+
+邮件投递已切换为 RabbitMQ 消费与延迟重试。MySQL 保留加密邮件、投递状态、去重和 Outbox 发布补偿，消费者不再扫描邮件表领取任务；已有邮件库需先停止旧工作进程、备份并执行邮件迁移脚本。
 
 2026-11-01 部署初始化修复：发布流程补齐全部数据库 SQL、初始化脚本及 XXL-JOB 建库文件；生产文件挂载禁止自动创建目录，启动前核对文件类型；新增关键业务表与迁移字段检查、Keycloak 发现接口检查，修正 Web 健康检查端口为 8080，并将服务探测重试窗口扩至约 6 分钟（不含请求耗时）。CI 新增上传清单与生产挂载一致性回归。实际验证：全部 25 项脚本测试通过（含 2 项新增部署测试），开发与生产 Compose 静态配置校验通过，5 段发布脚本 Bash 语法检查通过，Git 差异空白检查通过。首次沙箱内测试因临时文件权限失败，沙箱外复跑通过；本机 Docker 引擎未运行，尚未执行容器初始化与生产恢复验证；SonarQube MCP 未提供，未完成静态分析。服务器已有或初始化中断的数据库仍需备份并核对后补迁移，重新发布不会自动修复其结构。
 
@@ -10,7 +12,7 @@
 
 ## 已完成
 
-- [x] 独立邮件服务、Resend 适配、加密任务、幂等重试、投递签名回调及 Keycloak 邮件发送扩展；注册和找回密码使用邮箱验证码，密码更新沿用原生认证流程
+- [x] 独立邮件服务、Resend 适配、加密任务、事务 Outbox、RabbitMQ 发布确认与消费确认、延迟重试、死信及投递签名回调；注册和找回密码使用 Keycloak 扩展的邮箱验证码
 
 - [x] Keycloak 公开注册、普通默认角色与统一登录/注册入口，保留 OIDC/PKCE；首次登录复用个人空间初始化，已有 Realm 提供预览与幂等升级工具，真实多账号注册及数据隔离验收通过
 
@@ -40,7 +42,7 @@
 - [x] 可搜索的 Workspace 切换器、个人/共享分组、创建入口、键盘与移动端操作，以及成员名称模糊查询和局部管理状态
 - [x] Frontend Workspace 路由和上下文，以及按用户、Workspace、笔记与编辑会话隔离的 IndexedDB 草稿键
 - [x] OpenAPI、Python SDK、Python 认证层和 TypeScript SDK 同步为 `5.0.0`，包含笔记历史、Issue 任务关联、Webhook 与来源变化确认契约
-- [x] MySQL 分库保存 Workstation、Keycloak 和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计消息
+- [x] MySQL 分库保存 Workstation、Keycloak、邮件和 XXL-JOB 数据，Redis 保存 Gateway Session，RabbitMQ 传输审计与邮件消息
 - [x] 笔记创建、详情、更新、软删除、回收站恢复、永久删除和列表
 - [x] Tiptap 所见即所得 Markdown 编辑及基础格式工具栏
 - [x] 手动保存、快捷键保存、8 秒自动保存和 IndexedDB 草稿恢复
@@ -100,7 +102,7 @@
   - `java:S9438` 共 2 条，位于 `Note.tags`、`IntegrationProgress.discoveryPage`：`@Data` 生成的 setter 被其他服务或 Jackson 使用，字段并非不可变；规则文档也明确排除 Lombok `@Data` 字段。将其改成 `final` 会移除 setter 或破坏恢复检查点的反序列化。
   - `java:S1450` 共 2 条，位于 `IntegrationProgress.repositoryCursor`、`IntegrationProgress.repository`：两个字段通过 Lombok getter/setter 参与 `IntegrationWorker` 的跨分页执行，并随 JSON 检查点持久化，不能改成局部变量。后续需复核分析器对 Lombok 的识别及分析依赖配置。
 
-- 邮件服务尚未连接真实 Resend 账号验收；上线前需验证发件域名、配置密钥、创建独立邮件库，并显式升级已有 Realm。本轮 Docker 镜像构建及 SonarQube 分析未完成。
+- 邮件服务尚未连接真实 Resend 账号验收；上线前需验证发件域名、配置密钥、创建或迁移独立邮件库，并显式升级已有 Realm。RabbitMQ 版本邮件镜像构建及隔离容器启动已通过，本轮源码的 SonarQube 云端复扫未完成。
 
 - Webhook 投递与指定目标暂无自动清理；移除连接后保留历史但当前管理入口不可用。Webhook 必须手动配置 GitHub 侧；没有定时周期时，漏收事件仍需管理员手动同步校准。应用与数据库须沿用部署中的一致时区约定。
 
@@ -126,6 +128,8 @@
 - `WorkspaceDatabaseTests` 会在隔离库中遗留成员搜索样例，复用同一个库重跑可能发生主键重复；当前验证需为每轮测试准备全新隔离库，测试数据清理仍待完善。
 
 ## 验证与说明
+
+- 2026-11-02 邮件投递切换为 RabbitMQ：任务与 Outbox 同事务落库，持久化任务引用通过 mandatory 和 Publisher Confirm 发布，消费者提交数据库结果后确认消息；新增投递版本隔离重复与旧消息、Quorum 固定 TTL 延迟队列、至少一次死信转发和永久失败隔离，保留数据库节流及 Resend 幂等键，移除定时扫描邮件表发信。提供可重复执行的旧库迁移，补齐 Compose、运行示例、CI 的隔离 Broker 和发布文件。最终 `mail-service` 的 `clean verify` 在隔离 MySQL 8.4/RabbitMQ 4.3.6 下 37 项全部通过，无失败、错误或跳过，行与分支综合覆盖率 85.36%；默认 H2 模式 31 项通过、6 项外部依赖用例明确跳过，覆盖率 84.19%。覆盖消息发布拒绝/无法路由、重复消费、延迟重试、消费失败恢复、事务回滚、旧库接管及重复迁移。额外验证持久化消息经历 Broker 重启后仍可消费。邮件 Docker 镜像构建通过，Java 17 容器连接独立 MySQL/RabbitMQ、健康检查及匿名内部接口拒绝通过；全部 25 项脚本测试、两份 Compose、工作流 YAML/Bash、文档链接与差异空白检查通过。一轮验证因镜像验收误用消息测试 vhost 导致超时，隔离后完整重跑通过。通过 Sonar MCP 查询既有邮件模块问题及 S6885 定义，调整受影响 Worker 的冗余退避截断；本轮源码未上传云端复扫，不声明 Quality Gate 通过。未修改 Backend/Gateway，未重跑其覆盖率；没有发送真实邮件或修改部署数据。三个临时测试容器、匿名卷及专用网络已核对标记后清理。
 
 - 2026-10-31：修复应用发布与 SDK 发布调用复用 CI 时未传递 `SONAR_TOKEN` 的问题；复用 CI 声明必需 Secret，直接 CI 在扫描前检查空值，并同步发布文档中的标签扫描行为。三份工作流 YAML 解析、两个调用入口的 Secret 映射、Fork 条件保持和 Git Bash 下空值失败/非空成功分支检查通过，`git diff --check` 通过。首次 Shell 检查因预设 Git Bash 路径不存在未执行，改用本机实际路径后通过。未访问仓库 Secret 配置或远程 Actions 日志，未运行云端 Sonar 分析、发布或部署；实际 Token 配置及云端结果仍需提交后确认。
 

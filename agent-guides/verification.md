@@ -38,6 +38,8 @@ python scripts/check_java_coverage.py
 
 ## 邮件服务与 Keycloak 扩展
 
+邮件 RabbitMQ 集成测试使用独立 Broker，附加 `-Dworkstation.mail.test.rabbit=true` 启用。默认连接本机 5672，可用 `workstation.mail.test.rabbit.port` 指定隔离端口；测试用户为 mail-test，密码从 `MAIL_TEST_RABBIT_PASSWORD` 读取，禁止连接部署 Broker。未启用时明确跳过；CI 邮件作业提供隔离 RabbitMQ 4.3.6。测试覆盖真实监听确认、延迟重试、死信恢复和无法路由，Resend 被模拟，不发送真实邮件。
+
 Keycloak 扩展需要 JDK 21；邮件服务生成 Java 17 字节码。使用以下命令验证：
 
 ```powershell

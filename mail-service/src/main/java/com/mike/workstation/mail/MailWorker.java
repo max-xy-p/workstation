@@ -28,46 +28,37 @@ public class MailWorker {
         this.properties = properties;
     }
 
-    @Scheduled(fixedDelay = 1000)
-    public void dispatch() {
-        if (!properties.workerEnabled()) {
-            return;
+    public MailDeliveryResult dispatch(MailDispatch dispatch) {
+        MailTaskRepository.Claim claim = repository.claim(dispatch, clock.instant());
+        if (claim.task() == null) {
+            return new MailDeliveryResult(claim.delaySeconds(), claim.failed());
         }
-        try {
-            dispatchOne();
-        } catch (RuntimeException error) {
-            // 仅记录固定错误码；租约到期后恢复，不输出可能带敏感参数的 SQL/HTTP 异常。
-            LOG.warn("邮件任务处理暂时失败，将在租约到期后恢复");
-        }
-    }
-
-    void dispatchOne() {
-        MailTask task = repository.claim(clock.instant());
-        if (task == null) {
-            return;
-        }
+        MailTask task = claim.task();
         MailRequest request;
         try {
             request = json.readValue(cipher.decrypt(task.id(), task.payload()), MailRequest.class);
         } catch (RuntimeException error) {
             repository.finish(task, "FAILED", null, "PAYLOAD_UNREADABLE");
-            return;
+            return new MailDeliveryResult(0, true);
         }
         if (!task.expiresAt().isAfter(clock.instant())) {
             repository.finish(task, "EXPIRED", null, null);
-            return;
+            return MailDeliveryResult.done();
         }
         ResendClient.Result result = resend.send(task.id(), request);
         if (result.providerId() != null) {
             repository.finish(task, "SUBMITTED", result.providerId(), null);
-            return;
+            return MailDeliveryResult.done();
         }
-        Instant next = clock.instant().plusSeconds(Math.max(result.retryAfterSeconds(),
-                Math.min(3600, 5L << Math.min(task.attempts(), 9))));
+        // 领取时已限制最多八次，指数退避无需重复截断。
+        Instant next = clock.instant().plusSeconds(Math.max(result.retryAfterSeconds(), 5L << task.attempts()));
         if (result.retryable() && task.attempts() < 8 && next.isBefore(task.expiresAt())) {
-            repository.retry(task, next, result.errorCode());
+            // 重试状态与新版本 Outbox 同事务提交后，消费者才允许确认当前消息。
+            repository.retry(task, next, result.errorCode(), clock.instant());
+            return MailDeliveryResult.done();
         } else {
             repository.finish(task, "FAILED", null, result.errorCode());
+            return new MailDeliveryResult(0, true);
         }
     }
 

@@ -16,7 +16,7 @@ backend/src/main/java/com/mike/workstation/  后端业务代码
 backend/src/test/                         后端测试
 
 gateway/                                  Gateway/BFF、认证配置和测试
-mail-service/                             独立邮件任务、Resend 发送与投递回调
+mail-service/                             邮件记录、Outbox、RabbitMQ 投递与 Resend 回调
 keycloak/mail-provider/                   Keycloak 邮件发送扩展（Java 21）
 
 frontend/                                 Vue 应用、浏览器 API 适配和 Web 容器

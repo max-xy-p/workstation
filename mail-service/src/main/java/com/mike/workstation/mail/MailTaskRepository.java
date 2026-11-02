@@ -35,38 +35,57 @@ public class MailTaskRepository {
                 VALUES (?, ?, ?, ?, ?, 'QUEUED', ?, ?, ?)
                 """, id, caller, request.requestKey(), fingerprint, payload, timestamp(now),
                 timestamp(request.expiresAt()), timestamp(now));
+        addOutbox(id, 1, 0, now, request.expiresAt());
     }
 
     @Transactional
-    public MailTask claim(Instant now) {
-        // 所有实例先锁定同一时钟行，限制整个 Resend 账号的发送速率，领取后立即释放事务。
+    public Claim claim(MailDispatch dispatch, Instant now) {
+        // 只按 RabbitMQ 消息中的主键读取任务，不再扫描任务表找活。
+        MailTask task = first(jdbc.query("SELECT * FROM mail_messages WHERE id = ? FOR UPDATE",
+                this::map, dispatch.taskId()));
+        if (task == null || task.dispatchVersion() != dispatch.version()) {
+            return new Claim(null, 0, false);
+        }
+        if (!List.of("QUEUED", "SENDING").contains(task.status())) {
+            return new Claim(null, 0, "FAILED".equals(task.status()));
+        }
+        if (!task.expiresAt().isAfter(now)) {
+            jdbc.update("UPDATE mail_messages SET status = 'EXPIRED', payload = NULL, lease_token = NULL, lease_until = NULL WHERE id = ?",
+                    task.id());
+            return new Claim(null, 0, false);
+        }
+        Instant ready = jdbc.queryForObject("""
+                SELECT CASE WHEN status = 'SENDING' THEN lease_until ELSE next_attempt_at END
+                FROM mail_messages WHERE id = ?
+                """, (rs, row) -> rs.getTimestamp(1).toInstant(), task.id());
+        if (ready != null && ready.isAfter(now)) {
+            return new Claim(null, delay(now, ready), false);
+        }
+        if (task.attempts() >= 8) {
+            jdbc.update("""
+                    UPDATE mail_messages SET status = 'FAILED', payload = NULL, error_code = 'ATTEMPTS_EXHAUSTED',
+                    lease_token = NULL, lease_until = NULL WHERE id = ?
+                    """, task.id());
+            return new Claim(null, 0, true);
+        }
+        // 时钟表只负责跨实例发送节流，不承载排队；延迟交给 RabbitMQ。
         Instant next = jdbc.queryForObject("SELECT next_at FROM mail_dispatch_clock WHERE id = 1 FOR UPDATE",
                 (rs, row) -> rs.getTimestamp(1).toInstant());
         if (next != null && next.isAfter(now)) {
-            return null;
+            return new Claim(null, delay(now, next), false);
         }
-        jdbc.update("""
-                UPDATE mail_messages SET status = 'EXPIRED', payload = NULL, lease_token = NULL, lease_until = NULL
-                WHERE expires_at <= ? AND status IN ('QUEUED', 'SENDING')
-                """, timestamp(now));
-        List<MailTask> tasks = jdbc.query("""
-                SELECT * FROM mail_messages WHERE expires_at > ? AND
-                ((status = 'QUEUED' AND next_attempt_at <= ?) OR (status = 'SENDING' AND lease_until <= ?))
-                ORDER BY created_at, id LIMIT 1 FOR UPDATE
-                """, this::map, timestamp(now), timestamp(now), timestamp(now));
-        if (tasks.isEmpty()) {
-            return null;
-        }
-        MailTask task = tasks.get(0);
         String lease = UUID.randomUUID().toString();
         jdbc.update("""
                 UPDATE mail_messages SET status = 'SENDING', attempts = attempts + 1, lease_token = ?, lease_until = ?
                 WHERE id = ?
                 """, lease, timestamp(now.plusSeconds(60)), task.id());
         jdbc.update("UPDATE mail_dispatch_clock SET next_at = ? WHERE id = 1", timestamp(now.plusSeconds(1)));
-        return new MailTask(task.id(), task.caller(), task.fingerprint(), task.payload(), "SENDING",
-                task.attempts() + 1, task.expiresAt(), lease, task.providerId(), task.errorCode());
+        return new Claim(new MailTask(task.id(), task.caller(), task.fingerprint(), task.payload(), "SENDING",
+                task.attempts() + 1, task.expiresAt(), lease, task.providerId(), task.errorCode(),
+                task.dispatchVersion()), 0, false);
     }
+
+    public record Claim(MailTask task, long delaySeconds, boolean failed) { }
 
     @Transactional
     public void finish(MailTask task, String status, String providerId, String code) {
@@ -80,13 +99,28 @@ public class MailTaskRepository {
     }
 
     @Transactional
-    public void retry(MailTask task, Instant next, String code) {
-        jdbc.update("""
+    public void retry(MailTask task, Instant next, String code, Instant now) {
+        int changed = jdbc.update("""
                 UPDATE mail_messages SET status = 'QUEUED', next_attempt_at = ?, error_code = ?,
-                lease_token = NULL, lease_until = NULL WHERE id = ? AND lease_token = ? AND status = 'SENDING'
+                dispatch_version = dispatch_version + 1, lease_token = NULL, lease_until = NULL
+                WHERE id = ? AND lease_token = ? AND status = 'SENDING'
                 """, timestamp(next), code, task.id(), task.leaseToken());
-        jdbc.update("UPDATE mail_dispatch_clock SET next_at = ? WHERE id = 1 AND next_at < ?",
-                timestamp(next), timestamp(next));
+        if (changed == 1) {
+            addOutbox(task.id(), task.dispatchVersion() + 1, delay(now, next), now, task.expiresAt());
+            jdbc.update("UPDATE mail_dispatch_clock SET next_at = ? WHERE id = 1 AND next_at < ?",
+                    timestamp(next), timestamp(next));
+        }
+    }
+
+    private void addOutbox(String taskId, long version, long seconds, Instant now, Instant expires) {
+        jdbc.update("""
+                INSERT INTO mail_outbox (id, task_id, dispatch_version, delay_seconds, created_at, expires_at, next_attempt_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, UUID.randomUUID().toString(), taskId, version, seconds, timestamp(now), timestamp(expires), timestamp(now));
+    }
+
+    private long delay(Instant now, Instant until) {
+        return Math.max(1, (until.toEpochMilli() - now.toEpochMilli() + 999) / 1000);
     }
 
     @Transactional
@@ -98,6 +132,7 @@ public class MailTaskRepository {
                 """, timestamp(now));
         jdbc.update("DELETE FROM mail_messages WHERE expires_at < ?", timestamp(now.minusSeconds(30L * 86400)));
         jdbc.update("DELETE FROM mail_delivery_events WHERE received_at < ?", timestamp(now.minusSeconds(30L * 86400)));
+        jdbc.update("DELETE FROM mail_outbox WHERE expires_at < ?", timestamp(now.minusSeconds(30L * 86400)));
     }
 
     @Transactional
@@ -137,6 +172,6 @@ public class MailTaskRepository {
         return new MailTask(rs.getString("id"), rs.getString("caller"), rs.getString("fingerprint"),
                 rs.getString("payload"), rs.getString("status"), rs.getInt("attempts"),
                 rs.getTimestamp("expires_at").toInstant(), rs.getString("lease_token"),
-                rs.getString("provider_id"), rs.getString("error_code"));
+                rs.getString("provider_id"), rs.getString("error_code"), rs.getLong("dispatch_version"));
     }
 }
