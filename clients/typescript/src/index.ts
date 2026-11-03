@@ -4,6 +4,9 @@ type Schemas = components['schemas'];
 
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type InvitationRequest = Schemas['InvitationRequest'];
+export type InvitationResponse = Schemas['InvitationResponse'];
+export type InvitationTokenRequest = Schemas['InvitationTokenRequest'];
 export type WorkspaceRequest = Schemas['WorkspaceRequest'];
 export type WorkspaceResponse = Schemas['WorkspaceResponse'];
 export type WorkspaceMemberRequest = Schemas['WorkspaceMemberRequest'];
@@ -117,6 +120,13 @@ async function listAllPages<T, P extends QueryParams>(
 export function createWorkstationApi(transport: WorkstationTransport) {
   const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
+    invitationApi: {
+      list: (w: number) => transport.get<InvitationResponse[]>(`${workspacePath(w)}/invitations`),
+      create: (w: number, body: InvitationRequest) => transport.post<InvitationResponse, InvitationRequest>(`${workspacePath(w)}/invitations`, body),
+      revoke: (w: number, id: string) => transport.post<InvitationResponse>(`${workspacePath(w)}/invitations/${encodeURIComponent(id)}/revoke`),
+      preview: (token: string) => transport.post<InvitationResponse, InvitationTokenRequest>('/invitations/preview', { token }),
+      accept: (token: string) => transport.post<WorkspaceResponse, InvitationTokenRequest>('/invitations/accept', { token }),
+    },
     webhookApi: {
       get: (w: number, id: number) => transport.get<GithubWebhookResponse>(`${workspacePath(w)}/integrations/${id}/webhook`),
       configure: (w: number, id: number, body: GithubWebhookRequest) => transport.put<GithubWebhookResponse, GithubWebhookRequest>(`${workspacePath(w)}/integrations/${id}/webhook`, body),

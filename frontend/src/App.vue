@@ -50,7 +50,7 @@ const loggingOut = ref(false);
 const focused = ref(false);
 provide('notesFocus', focused);
 const notesPage = computed(() => isNotesRoute(route.name));
-const isBarePage = computed(() => ['login', 'workspace-unavailable', 'root'].includes(route.name));
+const isBarePage = computed(() => ['login', 'workspace-unavailable', 'root', 'invitation'].includes(route.name));
 const workspaceParams = computed(() => ({ workspaceId: workspace.currentId.value }));
 const ownerInitial = computed(() => auth.state.user?.username?.slice(0, 1).toUpperCase() || '知');
 const workspaceRoleLabel = computed(() => ({ OWNER: '所有者', ADMIN: '管理员', EDITOR: '编辑者', VIEWER: '只读成员' }[workspace.state.current?.role] || '工作空间成员'));
@@ -75,7 +75,7 @@ async function signOut() {
 }
 function handleUnauthorized() {
   if (route.name === 'login') return;
-  const redirect = route.fullPath;
+  const redirect = route.name === 'invitation' ? '/invitations' : route.fullPath;
   auth.clearSession();
   void router.replace({ name: 'login', query: { redirect, reason: 'expired' } });
 }

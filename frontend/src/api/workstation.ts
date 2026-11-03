@@ -103,6 +103,7 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  invitationApi,
   issueApi,
   webhookApi,
   integrationApi,

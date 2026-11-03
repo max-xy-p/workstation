@@ -46,6 +46,31 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
     services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_HOST: "%"
+          MYSQL_DATABASE: workstation
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:4.3.6-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: invite-test
+          RABBITMQ_DEFAULT_PASS: invite-isolated-test-password
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
       redis:
         image: redis:8-alpine
         ports:
@@ -75,7 +100,16 @@ jobs:
         run: chmod +x mvnw
 
       - name: Verify backend
-        run: ./mvnw --batch-mode verify -Dworkstation.test.redis=localhost:6379
+        shell: bash
+        run: |
+          for script in schema.sql migrate-project-integrations.sql migrate-note-revisions.sql \
+            migrate-task-issues.sql migrate-github-webhooks.sql migrate-source-confirmation.sql \
+            migrate-external-api-limits.sql migrate-workspace-invitations.sql; do
+            docker exec -i ${{ job.services.mysql.id }} mysql -uroot --default-character-set=utf8mb4 < "src/main/resources/db/$script"
+          done
+          ./mvnw --batch-mode verify -Dworkstation.test.redis=localhost:6379 \
+            -Dworkstation.test.db=jdbc:mysql://127.0.0.1:3306/workstation \
+            -Dworkstation.invitation.test.rabbit=true
 
   gateway:
     name: Gateway tests

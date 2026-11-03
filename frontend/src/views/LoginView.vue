@@ -63,6 +63,8 @@ const expired = computed(() => route.query.reason === 'expired');
 
 function safeRedirect() {
   const target = route.query.redirect;
+  if (!target && sessionStorage.getItem('workstation:login-redirect') === '/invitations'
+      && sessionStorage.getItem('workstation:invitation-token')) return '/invitations';
   return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
     ? target
     : null;

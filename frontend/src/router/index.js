@@ -6,6 +6,7 @@ import TasksView from '../views/TasksView.vue';
 import NotesView from '../views/NotesView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
 import LoginView from '../views/LoginView.vue';
+import InvitationView from '../views/InvitationView.vue';
 import WorkspaceUnavailableView from '../views/WorkspaceUnavailableView.vue';
 import WorkspaceSettingsView from '../views/WorkspaceSettingsView.vue';
 import SearchView from '../views/SearchView.vue';
@@ -14,6 +15,7 @@ import { auth } from '../auth';
 import { workspace } from '../workspace';
 
 export const routes = [
+  { path: '/invitations', name: 'invitation', component: InvitationView, meta: { title: '接受邀请', public: true } },
   { path: '/w/:workspaceId/integrations', name: 'integrations', component: IntegrationsView, meta: { title: '数据源' } },
   { path: '/w/:workspaceId/integrations/:connectionId', name: 'integration-detail', component: IntegrationsView, meta: { title: '连接详情' } },
   { path: '/login', name: 'login', component: LoginView, meta: { title: '登录', public: true } },

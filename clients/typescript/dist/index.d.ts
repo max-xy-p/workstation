@@ -2,6 +2,9 @@ import type { components, operations } from './generated/schema.js';
 type Schemas = components['schemas'];
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type InvitationRequest = Schemas['InvitationRequest'];
+export type InvitationResponse = Schemas['InvitationResponse'];
+export type InvitationTokenRequest = Schemas['InvitationTokenRequest'];
 export type WorkspaceRequest = Schemas['WorkspaceRequest'];
 export type WorkspaceResponse = Schemas['WorkspaceResponse'];
 export type WorkspaceMemberRequest = Schemas['WorkspaceMemberRequest'];
@@ -89,6 +92,61 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    invitationApi: {
+        list: (w: number) => Promise<{
+            id: string;
+            workspaceId: number;
+            workspaceName: string;
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            mailStatus: "PENDING" | "PUBLISHED" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+            createdAt: string;
+            expiresAt: string;
+        }[]>;
+        create: (w: number, body: InvitationRequest) => Promise<{
+            id: string;
+            workspaceId: number;
+            workspaceName: string;
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            mailStatus: "PENDING" | "PUBLISHED" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+            createdAt: string;
+            expiresAt: string;
+        }>;
+        revoke: (w: number, id: string) => Promise<{
+            id: string;
+            workspaceId: number;
+            workspaceName: string;
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            mailStatus: "PENDING" | "PUBLISHED" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+            createdAt: string;
+            expiresAt: string;
+        }>;
+        preview: (token: string) => Promise<{
+            id: string;
+            workspaceId: number;
+            workspaceName: string;
+            email: string;
+            role: components["schemas"]["WorkspaceRole"];
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            mailStatus: "PENDING" | "PUBLISHED" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+            createdAt: string;
+            expiresAt: string;
+        }>;
+        accept: (token: string) => Promise<{
+            id: number;
+            name: string;
+            type: components["schemas"]["WorkspaceType"];
+            role: components["schemas"]["WorkspaceRole"];
+            permissions: components["schemas"]["WorkspacePermission"][];
+            createdAt: string;
+            updatedAt: string;
+        }>;
+    };
     webhookApi: {
         get: (w: number, id: number) => Promise<{
             configured: boolean;

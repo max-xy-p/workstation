@@ -82,13 +82,15 @@ Python 验证先按锁文件安装第三方依赖，并禁止从第三方源码�
 
 ## 数据和身份配置
 
+邮箱邀请版本需先备份并执行业务库邀请迁移，再部署配套应用。功能默认关闭，启用需独立邀请签名密钥、公开入口和 Backend 专用邮件凭据；发布会检查邀请及 Outbox 表，迁移脚本随数据库文件上传，不自动修改已有库。完整流程见 [空间邀请](workspace-invitations.md#启用升级与回退)。
+
 邮件投递改用 RabbitMQ 的版本需要在停止旧邮件工作进程、备份后，对邮件数据库执行 `mail-service/migrate-rabbitmq.sql`，再部署新版。发布流程只同步迁移文件，不自动对部署数据库执行迁移；不能混跑两种消费者，具体边界见[邮件队列升级](mail.md#已有邮件队列升级到-rabbitmq)。
 
 邮件版本新增独立数据库及配套 Keycloak 镜像，升级前需补齐邮件运行凭据、验证 Resend 域名并初始化邮件数据库。已有 Realm 不会被模板覆盖，测试实际发信后再显式启用邮箱验证；详见[邮件服务升级流程](mail.md#新安装与已有部署)。邮件任务及加密密钥需纳入备份，版本回滚不会自动恢复 Realm 策略。验证码版本需先部署配套 Keycloak 镜像，再按[邮件升级流程](mail.md#新安装与已有部署)应用已有 Realm 的验证码开关；不覆盖账号或定制认证流程。
 
 Backend 以 UID 10001 的普通用户运行，镜像预先准备并授权 `/data/applogs/xxl-job/jobhandler`，供执行器写入日志。新建日志卷继承该目录的权限；已有日志卷不会因镜像更新自动调整属主。若旧卷由 root 创建，应先停止 Backend，仅将对应 `xxl_executor_logs` 卷内的目录和日志授权给镜像中的 `workstation` 用户与组，再更新启动；保留日志内容，不通过删除数据卷或让业务服务长期使用 root 规避权限问题。
 
-容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql、migrate-source-confirmation.sql 和 migrate-external-api-limits.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
+容器镜像可以替换，数据库和 Keycloak 身份数据不能按同样方式随意重建。全新环境依次由 schema.sql、migrate-project-integrations.sql、migrate-note-revisions.sql、migrate-task-issues.sql、migrate-github-webhooks.sql、migrate-source-confirmation.sql、migrate-external-api-limits.sql 和 migrate-workspace-invitations.sql 创建业务结构，开发与生产 Compose 已配置执行顺序；已有数据卷不会重新执行首次初始化，因此结构变化必须通过明确的迁移完成。
 
 初始化中途失败后，数据目录可能已经存在，后续重启也不会补跑遗漏脚本。应保留数据，在维护窗口确认目标库、备份并核对已完成的结构，再按依赖顺序补执行对应版本的迁移。重新发布只补齐服务器文件，不会自动修复已有库；关键结构检查失败时发布直接报错，不自动执行生产迁移。
 

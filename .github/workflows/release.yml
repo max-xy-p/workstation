@@ -231,6 +231,8 @@ jobs:
           SELECT source_version FROM external_issue_sources LIMIT 0;
           SELECT confirmation_version FROM task_issue_links LIMIT 0;
           SELECT next_attempt_at, progress_json FROM integration_sync_runs LIMIT 0;
+          SELECT id, token_hash FROM workspace_invitations LIMIT 0;
+          SELECT id, state FROM invitation_mail_outbox LIMIT 0;
           SQL
 
           for attempt in {1..120}; do

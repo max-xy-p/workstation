@@ -16,6 +16,12 @@ mvn.cmd package
 
 真实 MySQL Mapper 测试仍通过 `workstation.test.db` 指定隔离库，执行前按部署顺序初始化并完成限流队列迁移，禁止连接部署数据库。Windows 调用 Maven 批处理时，含 `&` 的 JDBC 参数应通过子进程参数或安全的环境变量传递，避免 shell 将其拆成额外命令。
 
+### 邀请的真实数据库与消息验证
+
+Backend 的邀请数据库测试复用 `workstation.test.db`，只允许指向隔离的 workstation 测试库，验证真实服务事务代理、并发创建与接受、回滚、租约恢复及迁移重复执行。先按 Compose 顺序执行基础 SQL 和迁移，包含 `migrate-workspace-invitations.sql`。
+
+附加 `-Dworkstation.invitation.test.rabbit=true` 启用隔离 RabbitMQ 测试，端口通过 `workstation.invitation.test.rabbit.port` 指定，测试账号 invite-test，密码从 INVITATION_TEST_RABBIT_PASSWORD 读取；测试会删除自身的邀请队列与交换机，禁止连接部署 Broker。未提供数据库或 Broker 开关时相关测试明确跳过，CI Backend 作业提供隔离 MySQL、RabbitMQ 和 Redis 并启用验证。
+
 ## Gateway
 
 ```powershell

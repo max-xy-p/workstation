@@ -31,6 +31,12 @@ from .integration_run_response_kind import IntegrationRunResponseKind
 from .integration_run_response_status import IntegrationRunResponseStatus
 from .integration_scope import IntegrationScope
 from .integration_trigger_request import IntegrationTriggerRequest
+from .invitation_request import InvitationRequest
+from .invitation_request_role import InvitationRequestRole
+from .invitation_response import InvitationResponse
+from .invitation_response_mail_status import InvitationResponseMailStatus
+from .invitation_response_status import InvitationResponseStatus
+from .invitation_token_request import InvitationTokenRequest
 from .issue_source_confirm_request import IssueSourceConfirmRequest
 from .issue_source_confirm_request_action import IssueSourceConfirmRequestAction
 from .issue_source_state import IssueSourceState
@@ -121,6 +127,12 @@ __all__ = (
     "IntegrationRunResponseStatus",
     "IntegrationScope",
     "IntegrationTriggerRequest",
+    "InvitationRequest",
+    "InvitationRequestRole",
+    "InvitationResponse",
+    "InvitationResponseMailStatus",
+    "InvitationResponseStatus",
+    "InvitationTokenRequest",
     "IssueSourceConfirmRequest",
     "IssueSourceConfirmRequestAction",
     "IssueSourceState",

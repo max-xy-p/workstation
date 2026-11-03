@@ -1,6 +1,7 @@
 package com.mike.workstation.security;
 
 import com.mike.workstation.domain.PrincipalType;
+import com.mike.workstation.exception.WorkspaceAccessDeniedException;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -12,6 +13,22 @@ import java.util.stream.Collectors;
 /** 集中解析 JWT，业务 Controller 和 Service 不直接读取 Claim。 */
 @Component
 public class CurrentPrincipalResolver {
+    /** 只信任已经验证的访问令牌中的邮箱声明，机器主体不能接受邀请。 */
+    public String requireVerifiedEmail() {
+        CurrentPrincipal principal = require();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (principal.principalType() != PrincipalType.USER
+                || !(authentication instanceof JwtAuthenticationToken token)
+                || !Boolean.TRUE.equals(token.getToken().getClaimAsBoolean("email_verified"))) {
+            throw new WorkspaceAccessDeniedException("请先验证受邀邮箱");
+        }
+        String email = token.getToken().getClaimAsString("email");
+        if (email == null || email.isBlank()) {
+            throw new WorkspaceAccessDeniedException("访问令牌缺少受邀邮箱");
+        }
+        return email;
+    }
+
     public CurrentPrincipal require() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken token)

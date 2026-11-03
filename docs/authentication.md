@@ -71,6 +71,8 @@ Workspace 成员角色保存在 Workstation 数据库中：
 
 ## 浏览器登录流程
 
+共享空间支持向尚未进入过系统的用户发送邮箱邀请。接受邀请必须匹配访问令牌中已验证的邮箱，成员角色仍保存在业务库，邀请不能授予 Keycloak 系统角色。完整使用和失效规则见 [空间邀请](workspace-invitations.md)。
+
 ```text
 Browser
   -> Gateway 发起登录

@@ -62,6 +62,20 @@ class ResourceServerIntegrationTests {
 
     @MockitoBean private TaskService taskService;
 
+    @MockitoBean private com.mike.workstation.service.InvitationService invitations;
+
+    @Test
+    void invitationAcceptanceStillRequiresAuthenticatedSystemUser() throws Exception {
+        mockMvc.perform(post("/api/invitations/accept")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"sample\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/invitations/preview")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER")))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"token\":\"sample\"}"))
+                .andExpect(status().isOk());
+        verify(invitations).preview(new com.mike.workstation.dto.InvitationTokenRequest("sample"));
+    }
+
     @Test
     void taskWritesExposeVersionConflictAndRequireDeleteVersion() throws Exception {
         var user = jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"));

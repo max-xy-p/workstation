@@ -21,6 +21,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - type: bind
+        source: ./backend/src/main/resources/db/migrate-workspace-invitations.sql
+        target: /docker-entrypoint-initdb.d/01g-workspace-invitations.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: ./backend/src/main/resources/db/schema.sql
         target: /docker-entrypoint-initdb.d/01-schema.sql
         read_only: true
@@ -229,6 +235,11 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/auth/realms/workstation/protocol/openid-connect/certs
       OAUTH2_AUDIENCE: workstation-api
       DASHBOARD_RECENT_LIMIT: ${DASHBOARD_RECENT_LIMIT:-5}
+      INVITATIONS_ENABLED: ${INVITATIONS_ENABLED:-false}
+      INVITATIONS_SIGNING_KEY: ${INVITATIONS_SIGNING_KEY:-}
+      WORKSTATION_PUBLIC_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}
+      MAIL_SERVICE_URL: http://mail-service:8082
+      MAIL_BACKEND_TOKEN: ${MAIL_BACKEND_TOKEN:?Set MAIL_BACKEND_TOKEN in .env.docker}
       INTEGRATIONS_ENABLED: ${INTEGRATIONS_ENABLED:-false}
       INTEGRATIONS_KEY_VERSION: ${INTEGRATIONS_KEY_VERSION:-v1}
       INTEGRATIONS_ENCRYPTION_KEY: ${INTEGRATIONS_ENCRYPTION_KEY:-}

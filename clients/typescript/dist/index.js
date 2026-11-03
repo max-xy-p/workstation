@@ -13,6 +13,13 @@ async function listAllPages(transport, path, params) {
 export function createWorkstationApi(transport) {
     const workspacePath = (workspaceId) => `/workspaces/${workspaceId}`;
     return {
+        invitationApi: {
+            list: (w) => transport.get(`${workspacePath(w)}/invitations`),
+            create: (w, body) => transport.post(`${workspacePath(w)}/invitations`, body),
+            revoke: (w, id) => transport.post(`${workspacePath(w)}/invitations/${encodeURIComponent(id)}/revoke`),
+            preview: (token) => transport.post('/invitations/preview', { token }),
+            accept: (token) => transport.post('/invitations/accept', { token }),
+        },
         webhookApi: {
             get: (w, id) => transport.get(`${workspacePath(w)}/integrations/${id}/webhook`),
             configure: (w, id, body) => transport.put(`${workspacePath(w)}/integrations/${id}/webhook`, body),

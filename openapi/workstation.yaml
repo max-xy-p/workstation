@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 5.0.0
+  version: 5.1.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -23,6 +23,97 @@ tags:
 security:
   - workstationOAuth: []
 paths:
+  /api/workspaces/{workspaceId}/invitations:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [workspace-members]
+      operationId: listWorkspaceInvitations
+      summary: 查询最近 100 条邀请，仅成员管理员可见
+      responses:
+        "200":
+          description: 邀请列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InvitationResponse" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [workspace-members]
+      operationId: createWorkspaceInvitation
+      summary: 创建有效期为 23 小时的邮箱邀请，相同请求标识幂等
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationRequest" }
+      responses:
+        "201":
+          description: 已持久化邀请和发信事件，不表示邮件已送达
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/workspaces/{workspaceId}/invitations/{invitationId}/revoke:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - { name: invitationId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [workspace-members]
+      operationId: revokeWorkspaceInvitation
+      summary: 撤销尚未接受的邀请
+      responses:
+        "200":
+          description: 当前邀请
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/invitations/preview:
+    post:
+      tags: [workspace-members]
+      operationId: previewWorkspaceInvitation
+      summary: 已登录用户使用凭据查看邀请，必须匹配已验证邮箱，不消费邀请
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationTokenRequest" }
+      responses:
+        "200":
+          description: 邀请详情
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/invitations/accept:
+    post:
+      tags: [workspace-members]
+      operationId: acceptWorkspaceInvitation
+      summary: 显式接受邀请，同事务建立成员关系，重复接受不会恢复被移除的权限
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationTokenRequest" }
+      responses:
+        "200":
+          description: 已加入的工作空间，已有成员保留原角色
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/workspaces:
     get:
       tags: [workspaces]
@@ -1684,12 +1775,42 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ApiError" }
     Conflict:
-      description: 版本、数据源配置或任务来源关联冲突；调用方应按错误码重新读取并处理本地操作
+      description: 版本、邀请请求、数据源配置或任务来源关联冲突；调用方应按错误码重新读取并处理本地操作
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ApiError" }
 
   schemas:
+    InvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId, email, role]
+      properties:
+        requestId: { type: string, format: uuid }
+        email: { type: string, format: email, maxLength: 254 }
+        role:
+          type: string
+          enum: [ADMIN, EDITOR, VIEWER]
+    InvitationTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, minLength: 80, maxLength: 80 }
+    InvitationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, workspaceId, workspaceName, email, role, status, mailStatus, createdAt, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        workspaceId: { type: integer, format: int64 }
+        workspaceName: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+        status: { type: string, enum: [PENDING, ACCEPTED, REVOKED, EXPIRED] }
+        mailStatus: { type: string, enum: [PENDING, PUBLISHED, ACCEPTED, CANCELLED, EXPIRED] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
     ApiError:
       type: object
       additionalProperties: false

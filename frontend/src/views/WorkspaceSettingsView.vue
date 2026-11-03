@@ -46,6 +46,8 @@
       </section>
     </div>
 
+    <WorkspaceInvitations v-if="canManageMembers && current?.type === 'SHARED'" :workspace-id="workspaceId" />
+
     <Teleport to="body">
       <dialog ref="removeDialog" class="member-confirm-dialog" aria-labelledby="remove-title" @close="removeTarget = null" @cancel="cancelRemoval">
         <h2 id="remove-title">移除成员</h2>
@@ -63,6 +65,7 @@ import { Check, Plus, Search, UserRound, Users, X } from '@lucide/vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { workspaceApi } from '../api/workstation';
+import WorkspaceInvitations from '../components/WorkspaceInvitations.vue';
 import { workspace } from '../workspace';
 import { auth } from '../auth';
 import { workspaceIdFromRoute } from '../utils/workspaceRoute';

@@ -19,7 +19,7 @@ Browser
 
 浏览器不保存 Access Token 或 Refresh Token，只持有 HttpOnly 的 `WORKSTATION_SESSION` Cookie。所有业务 API 仍位于 `/api`。
 
-邮件发送使用同仓库的独立 Mail Service：Keycloak 验证码扩展通过 EmailSenderProvider 提交邮件，邮件服务在独立 MySQL 库的同一事务中保存加密邮件和 Outbox。Relay 使用 Publisher Confirm 将任务引用发布到 RabbitMQ，消费者处理投递，固定 TTL 延迟队列负责重试；数据库保留状态、去重与发布补偿记录，并提供跨实例节流，不再扫描任务表领取邮件。内部发信接口不经过公网入口，调用方凭据彼此独立；Nginx 仅公开具有原文签名认证的 Resend 投递回调。账号验证结果仍归 Keycloak 管理，邮件服务不维护账号或签发登录 Token。后续业务事务邮件可使用同一服务，当前没有额外业务通知触发器。启用、升级及可靠性边界见[邮件服务](docs/mail.md)。
+邮件发送使用同仓库的独立 Mail Service：Keycloak 验证码扩展通过 EmailSenderProvider 提交邮件，邮件服务在独立 MySQL 库的同一事务中保存加密邮件和 Outbox。Relay 使用 Publisher Confirm 将任务引用发布到 RabbitMQ，消费者处理投递，固定 TTL 延迟队列负责重试；数据库保留状态、去重与发布补偿记录，并提供跨实例节流，不再扫描任务表领取邮件。内部发信接口不经过公网入口，调用方凭据彼此独立；Nginx 仅公开具有原文签名认证的 Resend 投递回调。账号验证结果仍归 Keycloak 管理，邮件服务不维护账号或签发登录 Token。共享空间邀请通过 Backend 专用 Outbox 与 MQ 消费者转交同一邮件服务；用户明确接受后，Backend 同事务创建成员关系并消费邀请。启用、升级及可靠性边界见[邮件服务](docs/mail.md)和[空间邀请](docs/workspace-invitations.md)。
 
 Python 客户端使用独立的 Keycloak Client Credentials，经同一 Gateway 入口携带 Bearer Token 调用业务 API，不使用浏览器 Session 或 CSRF：
 

@@ -45,6 +45,12 @@ mybatis:
     map-underscore-to-camel-case: true
 
 workstation:
+  invitations:
+    enabled: ${INVITATIONS_ENABLED:false}
+    public-url: ${WORKSTATION_PUBLIC_URL:http://localhost:8088}
+    signing-key: ${INVITATIONS_SIGNING_KEY:}
+    mail-url: ${MAIL_SERVICE_URL:http://mail-service:8082}
+    mail-token: ${MAIL_BACKEND_TOKEN:}
   security:
     oauth2:
       issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8088/auth/realms/workstation}

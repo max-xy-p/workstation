@@ -74,4 +74,16 @@ class CurrentPrincipalResolverTests {
         var authentication = new JwtAuthenticationToken(jwt, roles);
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
+
+    @Test
+    void invitationsRequireVerifiedEmailOfHumanUser() {
+        authenticate(Map.of("sub", "user", "email", "guest@example.com", "email_verified", true), "ROLE_WORKSTATION_USER");
+        assertThat(resolver.requireVerifiedEmail()).isEqualTo("guest@example.com");
+        authenticate(Map.of("sub", "user", "email", "guest@example.com", "email_verified", false), "ROLE_WORKSTATION_USER");
+        assertThatThrownBy(resolver::requireVerifiedEmail).isInstanceOf(com.mike.workstation.exception.WorkspaceAccessDeniedException.class);
+        authenticate(Map.of("sub", "user", "email_verified", true), "ROLE_WORKSTATION_USER");
+        assertThatThrownBy(resolver::requireVerifiedEmail).isInstanceOf(com.mike.workstation.exception.WorkspaceAccessDeniedException.class);
+        authenticate(Map.of("sub", "machine", "email", "guest@example.com", "email_verified", true), "ROLE_WORKSTATION_SERVICE");
+        assertThatThrownBy(resolver::requireVerifiedEmail).isInstanceOf(com.mike.workstation.exception.WorkspaceAccessDeniedException.class);
+    }
 }
