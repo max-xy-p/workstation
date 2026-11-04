@@ -120,6 +120,8 @@ Gateway 的验证保护统一入口，并区分浏览器请求和机器请求；
 
 ## 安全边界
 
+通知中心属于当前用户，不接受查询其他主体的参数。SSE 仅发送固定刷新提示，每次连接不超过当前 JWT 的有效期；通知正文、未读数和已读操作仍通过认证 HTTP API 读取或更新，并重新过滤当前空间成员关系。详见 [站内通知](notifications.md)。
+
 - Web/Nginx 和 Gateway 是统一外部入口，客户端不直连 Backend。
 - 生产环境使用 HTTPS，Secret 和完整 Token 不进入日志或 Git。
 - 浏览器 Gateway Client、Python Client 和其他机器服务不共享 Secret。

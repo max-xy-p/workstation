@@ -22,6 +22,14 @@ Backend 的邀请数据库测试复用 `workstation.test.db`，只允许指向�
 
 附加 `-Dworkstation.invitation.test.rabbit=true` 启用隔离 RabbitMQ 测试，端口通过 `workstation.invitation.test.rabbit.port` 指定，测试账号 invite-test，密码从 INVITATION_TEST_RABBIT_PASSWORD 读取；测试会删除自身的邀请队列与交换机，禁止连接部署 Broker。未提供数据库或 Broker 开关时相关测试明确跳过，CI Backend 作业提供隔离 MySQL、RabbitMQ 和 Redis 并启用验证。
 
+### 通知中心验证
+
+通知数据库用例复用隔离 `workstation.test.db`，初始化顺序最后追加 `migrate-notifications.sql` 与 `migrate-notifications-direct.sql`。升级脚本包含存储过程分隔符，应由 MySQL 客户端执行；Java 测试重复验证建表脚本。测试通过真实事务代理验证直接写入、业务回滚、去重、旧快照下的成员移除、收件箱序号及待发布版本竞争。
+
+附加 `-Dworkstation.notification.test.rabbit=true` 验证两个独立实例队列的持久化广播、离线副本、仅本实例延迟恢复及无法路由；端口用 `workstation.notification.test.rabbit.port` 指定，账号与隔离邀请 Broker 相同，禁止连接部署 Broker。该 MQ 用例不依赖数据库，也不使用 Redis。
+
+通知迁移测试通过 `NOTIFICATION_MIGRATION_TEST_CONTAINER` 显式指定隔离 MySQL 容器，运行 `scripts/tests/test_notification_migration.py`。它仅创建和清理随机前缀测试库，覆盖未完成旧任务拒绝升级、历史及去重保留和重复升级；CI Backend 作业执行此用例，没有环境变量时明确跳过。
+
 ## Gateway
 
 ```powershell

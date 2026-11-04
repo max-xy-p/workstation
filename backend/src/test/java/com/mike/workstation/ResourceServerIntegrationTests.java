@@ -8,6 +8,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +64,27 @@ class ResourceServerIntegrationTests {
     @MockitoBean private TaskService taskService;
 
     @MockitoBean private com.mike.workstation.service.InvitationService invitations;
+
+    @Test
+    void notificationEndpointsRequireHumanIdentityEvenWhenFeatureIsDisabled() throws Exception {
+        mockMvc.perform(get("/api/notifications/state")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/notifications/read-all").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"throughSequence\":0}")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/notifications/state")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        mockMvc.perform(get("/api/notifications/state")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_SERVICE"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/notifications/stream")
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_SERVICE"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/notifications/stream")
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isNotFound());
+    }
 
     @Test
     void invitationAcceptanceStillRequiresAuthenticatedSystemUser() throws Exception {

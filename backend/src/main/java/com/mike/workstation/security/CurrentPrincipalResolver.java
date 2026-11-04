@@ -8,11 +8,19 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.time.Instant;
 import java.util.stream.Collectors;
 
 /** 集中解析 JWT，业务 Controller 和 Service 不直接读取 Claim。 */
 @Component
 public class CurrentPrincipalResolver {
+    /** SSE 每次连接的寿命不能超过当前已验证访问令牌的到期时间。 */
+    public Instant requireExpiresAt() {
+        require();
+        var authentication = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getToken().getExpiresAt();
+    }
+
     /** 只信任已经验证的访问令牌中的邮箱声明，机器主体不能接受邀请。 */
     public String requireVerifiedEmail() {
         CurrentPrincipal principal = require();

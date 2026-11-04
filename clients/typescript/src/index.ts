@@ -4,6 +4,11 @@ type Schemas = components['schemas'];
 
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type NotificationState = Schemas['NotificationState'];
+export type NotificationResponse = Schemas['NotificationResponse'];
+export type NotificationPageResponse = Schemas['NotificationPageResponse'];
+export type NotificationReadAllRequest = Schemas['NotificationReadAllRequest'];
+export type NotificationListParams = NonNullable<operations['listNotifications']['parameters']['query']>;
 export type InvitationRequest = Schemas['InvitationRequest'];
 export type InvitationResponse = Schemas['InvitationResponse'];
 export type InvitationTokenRequest = Schemas['InvitationTokenRequest'];
@@ -120,6 +125,13 @@ async function listAllPages<T, P extends QueryParams>(
 export function createWorkstationApi(transport: WorkstationTransport) {
   const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
+    notificationApi: {
+      state: () => transport.get<NotificationState>('/notifications/state'),
+      list: (params?: NotificationListParams) => transport.get<NotificationPageResponse>('/notifications', params),
+      get: (id: string) => transport.get<NotificationResponse>(`/notifications/${encodeURIComponent(id)}`),
+      read: (id: string) => transport.put<null, undefined>(`/notifications/${encodeURIComponent(id)}/read`, undefined),
+      readAll: (body: NotificationReadAllRequest) => transport.put<null, NotificationReadAllRequest>('/notifications/read-all', body),
+    },
     invitationApi: {
       list: (w: number) => transport.get<InvitationResponse[]>(`${workspacePath(w)}/invitations`),
       create: (w: number, body: InvitationRequest) => transport.post<InvitationResponse, InvitationRequest>(`${workspacePath(w)}/invitations`, body),

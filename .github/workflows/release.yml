@@ -233,6 +233,9 @@ jobs:
           SELECT next_attempt_at, progress_json FROM integration_sync_runs LIMIT 0;
           SELECT id, token_hash FROM workspace_invitations LIMIT 0;
           SELECT id, state FROM invitation_mail_outbox LIMIT 0;
+          SELECT event_id, fingerprint FROM notification_events LIMIT 0;
+          SELECT recipient, last_sequence, signal_pending FROM notification_inboxes LIMIT 0;
+          SELECT id, sequence FROM notifications LIMIT 0;
           SQL
 
           for attempt in {1..120}; do

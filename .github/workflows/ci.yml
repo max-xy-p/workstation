@@ -104,12 +104,14 @@ jobs:
         run: |
           for script in schema.sql migrate-project-integrations.sql migrate-note-revisions.sql \
             migrate-task-issues.sql migrate-github-webhooks.sql migrate-source-confirmation.sql \
-            migrate-external-api-limits.sql migrate-workspace-invitations.sql; do
+            migrate-external-api-limits.sql migrate-workspace-invitations.sql migrate-notifications.sql migrate-notifications-direct.sql; do
             docker exec -i ${{ job.services.mysql.id }} mysql -uroot --default-character-set=utf8mb4 < "src/main/resources/db/$script"
           done
           ./mvnw --batch-mode verify -Dworkstation.test.redis=localhost:6379 \
             -Dworkstation.test.db=jdbc:mysql://127.0.0.1:3306/workstation \
-            -Dworkstation.invitation.test.rabbit=true
+            -Dworkstation.invitation.test.rabbit=true -Dworkstation.notification.test.rabbit=true
+          NOTIFICATION_MIGRATION_TEST_CONTAINER=${{ job.services.mysql.id }} \
+            python3 -m unittest discover -s ../scripts/tests -p "test_notification_migration.py" -v
 
   gateway:
     name: Gateway tests

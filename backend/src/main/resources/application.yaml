@@ -45,6 +45,12 @@ mybatis:
     map-underscore-to-camel-case: true
 
 workstation:
+  notifications:
+    enabled: ${NOTIFICATIONS_ENABLED:false}
+    instance-id: ${NOTIFICATIONS_INSTANCE_ID:backend}
+    max-connections: ${NOTIFICATIONS_MAX_CONNECTIONS:500}
+    connections-per-user: ${NOTIFICATIONS_CONNECTIONS_PER_USER:5}
+    retention-days: ${NOTIFICATIONS_RETENTION_DAYS:90}
   invitations:
     enabled: ${INVITATIONS_ENABLED:false}
     public-url: ${WORKSTATION_PUBLIC_URL:http://localhost:8088}

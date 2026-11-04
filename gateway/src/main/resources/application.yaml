@@ -29,6 +29,25 @@ spring:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
             response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:30s}
           routes:
+            # SSE 单独关闭上游总响应超时，身份校验仍沿用原认证链。
+            - id: workstation-notifications-bearer
+              order: -4
+              uri: ${BACKEND_BASE_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/notifications/stream
+                - Header=Authorization, '(?i)Bearer\s+.+'
+              metadata:
+                response-timeout: -1
+            - id: workstation-notifications-browser
+              order: -3
+              uri: ${BACKEND_BASE_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/notifications/stream
+              metadata:
+                response-timeout: -1
+              filters:
+                - SaveSession
+                - TokenRelay
             # 回调使用签名认证，不接触浏览器 Session 或平台访问 Token。
             - id: workstation-github-webhook
               order: -2

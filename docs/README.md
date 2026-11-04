@@ -13,6 +13,7 @@
 | [`registration.md`](registration.md) | 公开注册、个人空间、默认角色与已有 Realm 升级 |
 | [`mail.md`](mail.md) | 邮箱验证、Resend、独立邮件服务、投递状态及已有部署升级 |
 | [`workspace-invitations.md`](workspace-invitations.md) | 邮箱邀请、明确接受、成员授权、异步投递及升级边界 |
+| [`notifications.md`](notifications.md) | 通知中心、可靠生成、已读状态、SSE、权限过滤及升级边界 |
 | [`authentication.md`](authentication.md) | 认证设计、组件职责、浏览器与机器调用方式及其流程 |
 | [`audit/README.md`](audit/README.md) | 审计边界、Outbox、XXL-JOB、RabbitMQ、幂等与故障处理 |
 | [`openapi.md`](openapi.md) | 契约真源的含义、职责边界、Schema 原则和变更流程 |

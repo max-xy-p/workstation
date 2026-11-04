@@ -20,6 +20,8 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/db/migrate-notifications-direct.sql:/docker-entrypoint-initdb.d/01i-notifications-direct.sql:ro
+      - ./backend/src/main/resources/db/migrate-notifications.sql:/docker-entrypoint-initdb.d/01h-notifications.sql:ro
       - ./backend/src/main/resources/db/migrate-workspace-invitations.sql:/docker-entrypoint-initdb.d/01g-workspace-invitations.sql:ro
       - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./backend/src/main/resources/db/migrate-project-integrations.sql:/docker-entrypoint-initdb.d/01a-project-integrations.sql:ro
@@ -176,6 +178,11 @@ services:
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/auth/realms/workstation/protocol/openid-connect/certs
       OAUTH2_AUDIENCE: workstation-api
       DASHBOARD_RECENT_LIMIT: ${DASHBOARD_RECENT_LIMIT:-5}
+      NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-false}
+      NOTIFICATIONS_INSTANCE_ID: ${NOTIFICATIONS_INSTANCE_ID:-backend}
+      NOTIFICATIONS_MAX_CONNECTIONS: ${NOTIFICATIONS_MAX_CONNECTIONS:-500}
+      NOTIFICATIONS_CONNECTIONS_PER_USER: ${NOTIFICATIONS_CONNECTIONS_PER_USER:-5}
+      NOTIFICATIONS_RETENTION_DAYS: ${NOTIFICATIONS_RETENTION_DAYS:-90}
       INVITATIONS_ENABLED: ${INVITATIONS_ENABLED:-false}
       INVITATIONS_SIGNING_KEY: ${INVITATIONS_SIGNING_KEY:-}
       WORKSTATION_PUBLIC_URL: ${WORKSTATION_PUBLIC_URL:-http://localhost:8088}

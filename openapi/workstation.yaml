@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 5.1.0
+  version: 5.2.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -10,6 +10,7 @@ servers:
   - url: http://localhost:8088
     description: Local Docker Compose
 tags:
+  - name: notifications
   - name: workspaces
   - name: workspace-members
   - name: audit
@@ -23,6 +24,108 @@ tags:
 security:
   - workstationOAuth: []
 paths:
+  /api/notifications/state:
+    get:
+      tags: [notifications]
+      operationId: getNotificationState
+      summary: 当前用户通知开关、未读数和已提交序号
+      responses:
+        "200":
+          description: 功能关闭时返回 enabled=false，不读取通知表
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: 查询当前用户仍有 Workspace 访问权限的通知
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: unreadOnly, in: query, schema: { type: boolean, default: false } }
+        - name: upToSequence
+          in: query
+          description: 使用 state.latestSequence 固定分页上界，不能读取其他用户的通知
+          schema: { type: integer, format: int64, minimum: 0 }
+      responses:
+        "200":
+          description: 通知分页，功能关闭时为空
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPageResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/notifications/{notificationId}:
+    parameters:
+      - { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [notifications]
+      operationId: getNotification
+      summary: 打开通知前重新检查接收者与空间成员关系
+      responses:
+        "200":
+          description: 通知详情
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notifications/{notificationId}/read:
+    parameters:
+      - { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [notifications]
+      operationId: markNotificationRead
+      summary: 幂等标记自己的通知已读
+      responses:
+        "204": { description: 已读状态已持久化 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notifications/read-all:
+    put:
+      tags: [notifications]
+      operationId: markAllNotificationsRead
+      summary: 仅标记客户端所见序号上界内、仍有空间访问权限的通知
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationReadAllRequest" }
+      responses:
+        "204": { description: 范围内通知已读，之后的新通知不受影响 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/notifications/stream:
+    get:
+      tags: [notifications]
+      operationId: streamNotificationChanges
+      summary: 认证后的 SSE 刷新提醒，不传递通知正文或未读数
+      description: 每次连接发送 refresh，十五秒心跳；连接最多五十五秒且不超过 JWT 到期时间。重连后以 HTTP state 和列表补查，不使用 Last-Event-ID 回放。
+      responses:
+        "200":
+          description: refresh 事件的数据为固定对象，客户端重新查询 HTTP API
+          headers:
+            X-Accel-Buffering: { schema: { type: string, const: "no" } }
+            Cache-Control: { schema: { type: string } }
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 当前用户或节点的通知连接数已达上限
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /api/workspaces/{workspaceId}/invitations:
     parameters:
       - $ref: "#/components/parameters/WorkspaceId"
@@ -1781,6 +1884,49 @@ components:
           schema: { $ref: "#/components/schemas/ApiError" }
 
   schemas:
+    NotificationState:
+      type: object
+      additionalProperties: false
+      required: [enabled, unreadCount, latestSequence, revision]
+      properties:
+        enabled: { type: boolean }
+        unreadCount: { type: integer, format: int64, minimum: 0 }
+        latestSequence: { type: integer, format: int64, minimum: 0 }
+        revision: { type: integer, format: int64, minimum: 0 }
+    NotificationResourceType:
+      type: string
+      enum: [WORKSPACE, PROJECT, TASK, NOTE]
+    NotificationResponse:
+      type: object
+      additionalProperties: false
+      required: [id, sequence, workspaceId, type, title, body, resourceType, resourceId, createdAt, readAt]
+      properties:
+        id: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        workspaceId: { type: integer, format: int64 }
+        type: { type: string, maxLength: 80 }
+        title: { type: string, maxLength: 200 }
+        body: { type: string, maxLength: 2000 }
+        resourceType: { $ref: "#/components/schemas/NotificationResourceType" }
+        resourceId: { type: [integer, "null"], format: int64 }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: [string, "null"], format: date-time }
+    NotificationPageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, total, hasMore]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/NotificationResponse" } }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        total: { type: integer, format: int64, minimum: 0 }
+        hasMore: { type: boolean }
+    NotificationReadAllRequest:
+      type: object
+      additionalProperties: false
+      required: [throughSequence]
+      properties:
+        throughSequence: { type: integer, format: int64, minimum: 0 }
     InvitationRequest:
       type: object
       additionalProperties: false

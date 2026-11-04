@@ -1,5 +1,5 @@
 import { createWorkstationApi } from '@workstation/api-client';
-import { api, resetCsrfToken, submitWithCsrf } from './client';
+import { api, openEventStream, resetCsrfToken, submitWithCsrf } from './client';
 
 export type {
   IssueSourceConfirmRequest,
@@ -103,6 +103,7 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  notificationApi,
   invitationApi,
   issueApi,
   webhookApi,
@@ -116,3 +117,7 @@ export const {
   noteFolderApi,
   tagApi
 } = workstationApi;
+
+export function subscribeNotifications(refresh: () => void, disconnected: () => void) {
+  return openEventStream('/notifications/stream', refresh, disconnected);
+}

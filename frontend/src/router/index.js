@@ -6,6 +6,7 @@ import TasksView from '../views/TasksView.vue';
 import NotesView from '../views/NotesView.vue';
 import TaxonomyView from '../views/TaxonomyView.vue';
 import LoginView from '../views/LoginView.vue';
+import NotificationsView from '../views/NotificationsView.vue';
 import InvitationView from '../views/InvitationView.vue';
 import WorkspaceUnavailableView from '../views/WorkspaceUnavailableView.vue';
 import WorkspaceSettingsView from '../views/WorkspaceSettingsView.vue';
@@ -15,6 +16,7 @@ import { auth } from '../auth';
 import { workspace } from '../workspace';
 
 export const routes = [
+  { path: '/notifications', name: 'notifications', component: NotificationsView, meta: { title: '通知中心' } },
   { path: '/invitations', name: 'invitation', component: InvitationView, meta: { title: '接受邀请', public: true } },
   { path: '/w/:workspaceId/integrations', name: 'integrations', component: IntegrationsView, meta: { title: '数据源' } },
   { path: '/w/:workspaceId/integrations/:connectionId', name: 'integration-detail', component: IntegrationsView, meta: { title: '连接详情' } },
@@ -56,6 +58,7 @@ async function resolveLoginRoute() {
 async function resolveSignedInRoute(to) {
   if (to.name === 'login') return resolveLoginRoute();
   const defaultWorkspace = await workspace.ensureWorkspace();
+  if (to.name === 'notifications') return true;
   if (!defaultWorkspace) return to.name === 'workspace-unavailable' ? true : { name: 'workspace-unavailable' };
   if (to.name === 'root') {
     return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };

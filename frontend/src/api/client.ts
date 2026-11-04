@@ -108,6 +108,15 @@ export function resetCsrfToken(): void {
   csrfRequest = null;
 }
 
+// EventSource 复用 Gateway Cookie；流中没有业务正文，失败后通过普通 API 检查会话。
+export function openEventStream(path: string, refresh: () => void, disconnected: () => void): { close(): void } | null {
+  if (typeof EventSource === 'undefined') return null;
+  const stream = new EventSource(buildUrl(path).toString(), { withCredentials: true });
+  stream.addEventListener('refresh', refresh);
+  stream.onerror = disconnected;
+  return stream;
+}
+
 export async function submitWithCsrf(path: string): Promise<void> {
   await loadCsrfToken();
   // OIDC 退出需要浏览器跟随页面跳转，因此使用原生表单，而不是普通 fetch。

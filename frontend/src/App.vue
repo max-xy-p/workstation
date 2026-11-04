@@ -1,5 +1,6 @@
 <template>
   <RouterView v-if="isBarePage" />
+  <main v-else-if="!auth.state.user" class="page" role="status">正在确认登录状态…</main>
   <div v-else class="app-shell" :class="{ 'app-notes': notesPage, 'app-focused': notesPage && focused }">
     <a class="skip-link" href="#workspace-main">跳到主要内容</a>
     <aside class="sidebar">
@@ -24,6 +25,7 @@
       <header class="topbar">
         <div class="page-context"><h1>{{ notesPage ? '笔记' : route.meta.title }}</h1><p>{{ currentDescription }}</p></div>
         <div class="topbar-actions">
+          <NotificationBell />
           <WorkspaceSwitcher class="mobile-space-switcher" />
           <div id="page-actions"></div>
           <RouterLink v-if="route.name === 'dashboard' && workspace.hasPermission('NOTE_WRITE')" class="button" :to="{ name: 'note-new', params: workspaceParams }"><AppIcon name="write" /><span>新建笔记</span></RouterLink>
@@ -40,6 +42,8 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import WorkspaceSwitcher from './components/WorkspaceSwitcher.vue';
 import AppIcon from './components/AppIcon.vue';
+import NotificationBell from './components/NotificationBell.vue';
+import { notifications } from './notifications';
 import { auth } from './auth';
 import { workspace } from './workspace';
 import { isNavigationActive, isNotesRoute, pageViewKey } from './utils/pageLayout.mjs';
@@ -47,6 +51,8 @@ import { isNavigationActive, isNotesRoute, pageViewKey } from './utils/pageLayou
 const route = useRoute();
 const router = useRouter();
 const loggingOut = ref(false);
+watch(() => auth.state.user?.principalType === 'USER' ? auth.state.user.subjectId : null,
+  (subject) => notifications.start(subject), { immediate: true });
 const focused = ref(false);
 provide('notesFocus', focused);
 const notesPage = computed(() => isNotesRoute(route.name));
@@ -63,7 +69,8 @@ const descriptions = {
   'project-detail': '项目资料、开发情况与关联工作。', tasks: '按状态组织当前空间的工作。',
   notes: '整理、阅读和编辑工作中的知识。', integrations: '管理代码托管连接与同步状态。',
   'integration-detail': '查看仓库、执行记录和连接设置。', taxonomy: '用标签串联你的知识。',
-  search: '查找当前空间的项目、任务和笔记。', 'workspace-settings': '管理空间信息与协作成员。'
+  search: '查找当前空间的项目、任务和笔记。', 'workspace-settings': '管理空间信息与协作成员。',
+  notifications: '查看与你有关的空间更新。'
 };
 const currentDescription = computed(() => descriptions[notesPage.value ? 'notes' : route.name] || '');
 watch(() => [route.name, route.params.workspaceId], () => { if (!notesPage.value) focused.value = false; });
@@ -80,5 +87,5 @@ function handleUnauthorized() {
   void router.replace({ name: 'login', query: { redirect, reason: 'expired' } });
 }
 onMounted(() => window.addEventListener('workstation:unauthorized', handleUnauthorized));
-onBeforeUnmount(() => window.removeEventListener('workstation:unauthorized', handleUnauthorized));
+onBeforeUnmount(() => { notifications.stop(); window.removeEventListener('workstation:unauthorized', handleUnauthorized); });
 </script>

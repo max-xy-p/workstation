@@ -2,6 +2,11 @@ import type { components, operations } from './generated/schema.js';
 type Schemas = components['schemas'];
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type NotificationState = Schemas['NotificationState'];
+export type NotificationResponse = Schemas['NotificationResponse'];
+export type NotificationPageResponse = Schemas['NotificationPageResponse'];
+export type NotificationReadAllRequest = Schemas['NotificationReadAllRequest'];
+export type NotificationListParams = NonNullable<operations['listNotifications']['parameters']['query']>;
 export type InvitationRequest = Schemas['InvitationRequest'];
 export type InvitationResponse = Schemas['InvitationResponse'];
 export type InvitationTokenRequest = Schemas['InvitationTokenRequest'];
@@ -92,6 +97,35 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    notificationApi: {
+        state: () => Promise<{
+            enabled: boolean;
+            unreadCount: number;
+            latestSequence: number;
+            revision: number;
+        }>;
+        list: (params?: NotificationListParams) => Promise<{
+            items: components["schemas"]["NotificationResponse"][];
+            page: number;
+            size: number;
+            total: number;
+            hasMore: boolean;
+        }>;
+        get: (id: string) => Promise<{
+            id: string;
+            sequence: number;
+            workspaceId: number;
+            type: string;
+            title: string;
+            body: string;
+            resourceType: components["schemas"]["NotificationResourceType"];
+            resourceId: number | null;
+            createdAt: string;
+            readAt: string | null;
+        }>;
+        read: (id: string) => Promise<null>;
+        readAll: (body: NotificationReadAllRequest) => Promise<null>;
+    };
     invitationApi: {
         list: (w: number) => Promise<{
             id: string;

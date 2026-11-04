@@ -38,6 +38,7 @@ class CurrentPrincipalResolverTests {
         assertThat(principal.username()).isEqualTo("worker");
         assertThat(principal.displayName()).isEqualTo("任务服务");
         assertThat(principal.systemRoles()).containsExactly("WORKSTATION_SERVICE");
+        assertThat(resolver.requireExpiresAt()).isAfter(Instant.now());
     }
 
     @Test

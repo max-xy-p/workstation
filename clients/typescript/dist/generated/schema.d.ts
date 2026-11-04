@@ -3,6 +3,115 @@
  * Do not make direct changes to the file.
  */
 export interface paths {
+    "/api/notifications/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 当前用户通知开关、未读数和已提交序号 */
+        get: operations["getNotificationState"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询当前用户仍有 Workspace 访问权限的通知 */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        /** 打开通知前重新检查接收者与空间成员关系 */
+        get: operations["getNotification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{notificationId}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** 幂等标记自己的通知已读 */
+        put: operations["markNotificationRead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 仅标记客户端所见序号上界内、仍有空间访问权限的通知 */
+        put: operations["markAllNotificationsRead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 认证后的 SSE 刷新提醒，不传递通知正文或未读数
+         * @description 每次连接发送 refresh，十五秒心跳；连接最多五十五秒且不超过 JWT 到期时间。重连后以 HTTP state 和列表补查，不使用 Last-Event-ID 回放。
+         */
+        get: operations["streamNotificationChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workspaces/{workspaceId}/invitations": {
         parameters: {
             query?: never;
@@ -1049,6 +1158,47 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        NotificationState: {
+            enabled: boolean;
+            /** Format: int64 */
+            unreadCount: number;
+            /** Format: int64 */
+            latestSequence: number;
+            /** Format: int64 */
+            revision: number;
+        };
+        /** @enum {string} */
+        NotificationResourceType: "WORKSPACE" | "PROJECT" | "TASK" | "NOTE";
+        NotificationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            sequence: number;
+            /** Format: int64 */
+            workspaceId: number;
+            type: string;
+            title: string;
+            body: string;
+            resourceType: components["schemas"]["NotificationResourceType"];
+            /** Format: int64 */
+            resourceId: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            readAt: string | null;
+        };
+        NotificationPageResponse: {
+            items: components["schemas"]["NotificationResponse"][];
+            page: number;
+            size: number;
+            /** Format: int64 */
+            total: number;
+            hasMore: boolean;
+        };
+        NotificationReadAllRequest: {
+            /** Format: int64 */
+            throughSequence: number;
+        };
         InvitationRequest: {
             /** Format: uuid */
             requestId: string;
@@ -1860,6 +2010,165 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getNotificationState: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 功能关闭时返回 enabled=false，不读取通知表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                unreadOnly?: boolean;
+                /** @description 使用 state.latestSequence 固定分页上界，不能读取其他用户的通知 */
+                upToSequence?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 通知分页，功能关闭时为空 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPageResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 通知详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已读状态已持久化 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    markAllNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationReadAllRequest"];
+            };
+        };
+        responses: {
+            /** @description 范围内通知已读，之后的新通知不受影响 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    streamNotificationChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description refresh 事件的数据为固定对象，客户端重新查询 HTTP API */
+            200: {
+                headers: {
+                    "X-Accel-Buffering"?: "no";
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 当前用户或节点的通知连接数已达上限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listWorkspaceInvitations: {
         parameters: {
             query?: never;

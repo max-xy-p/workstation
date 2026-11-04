@@ -2,6 +2,7 @@ package com.mike.workstation.exception;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,13 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(NotificationStreamLimitException.class)
+    public ResponseEntity<ApiError> handleNotificationStreamLimit(NotificationStreamLimitException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiError.of("NOTIFICATION_STREAM_LIMIT", ex.getMessage()));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiError> handleHttpStatus(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode())
@@ -53,6 +61,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(NotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiError.of("NOT_FOUND", ex.getMessage()));
     }
 
@@ -73,6 +82,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WorkspaceAccessDeniedException.class)
     public ResponseEntity<ApiError> handleWorkspaceAccessDenied(WorkspaceAccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiError.of("WORKSPACE_ACCESS_DENIED", ex.getMessage()));
     }
 
