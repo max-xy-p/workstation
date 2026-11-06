@@ -18,7 +18,7 @@ mvn.cmd package
 
 ### 邀请的真实数据库与消息验证
 
-Backend 的邀请数据库测试复用 `workstation.test.db`，只允许指向隔离的 workstation 测试库，验证真实服务事务代理、并发创建与接受、回滚、租约恢复及迁移重复执行。先按 Compose 顺序执行基础 SQL 和迁移，包含 `migrate-workspace-invitations.sql`。
+Backend 的邀请数据库测试复用 `workstation.test.db`，只允许指向隔离的 workstation 测试库，验证真实服务事务代理、并发创建与接受、成员业务通知及回滚、租约恢复和迁移重复执行。先按 Compose 顺序执行基础 SQL 和迁移，包含邀请和通知的全部脚本。
 
 附加 `-Dworkstation.invitation.test.rabbit=true` 启用隔离 RabbitMQ 测试，端口通过 `workstation.invitation.test.rabbit.port` 指定，测试账号 invite-test，密码从 INVITATION_TEST_RABBIT_PASSWORD 读取；测试会删除自身的邀请队列与交换机，禁止连接部署 Broker。未提供数据库或 Broker 开关时相关测试明确跳过，CI Backend 作业提供隔离 MySQL、RabbitMQ 和 Redis 并启用验证。
 

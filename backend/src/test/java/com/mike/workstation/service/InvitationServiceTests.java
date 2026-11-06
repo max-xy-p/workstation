@@ -28,11 +28,13 @@ class InvitationServiceTests {
     private final WorkspaceAuthorizationService authorization = mock(WorkspaceAuthorizationService.class);
     private final CurrentPrincipalResolver principal = mock(CurrentPrincipalResolver.class);
     private final AuditService audit = mock(AuditService.class);
+    private final NotificationWriter writer = mock(NotificationWriter.class);
+    private final WorkspaceNotifications notifications = new WorkspaceNotifications(writer);
     private final InvitationProperties properties = new InvitationProperties(true, "https://work.example",
             Base64.getEncoder().encodeToString(new byte[32]), "http://mail:8082", "x".repeat(32));
     private final InvitationTokenService tokens = new InvitationTokenService(properties);
     private final InvitationService service = new InvitationService(mapper, workspaces, authorization,
-            principal, tokens, properties, audit);
+            principal, tokens, properties, audit, notifications);
     private Workspace workspace;
     private WorkspaceInvitation invitation;
     private String requestId;
@@ -77,7 +79,7 @@ class InvitationServiceTests {
     @Test
     void rejectsDisabledPersonalServiceOwnerInvalidAndOverQuotaRequests() {
         var disabled = new InvitationService(mapper, workspaces, authorization, principal, tokens,
-                new InvitationProperties(false, "", "", "", ""), audit);
+                new InvitationProperties(false, "", "", "", ""), audit, notifications);
         assertThatThrownBy(() -> disabled.create(9L, null)).isInstanceOf(BusinessException.class);
         workspace.setType(WorkspaceType.PERSONAL);
         assertThatThrownBy(() -> service.create(9L, null)).isInstanceOf(BusinessException.class);
@@ -126,6 +128,10 @@ class InvitationServiceTests {
         verify(workspaces).upsertPrincipal(any());
         verify(workspaces).insertMember(argThat(m -> m.getRole() == WorkspaceRole.EDITOR && m.getSubjectId().equals("user")));
         verify(mapper).transition(invitation.getId(), "ACCEPTED", "user");
+        verify(writer).writeRequired(argThat(command ->
+                command.type().equals("WORKSPACE_INVITATION_ACCEPTED")
+                        && command.recipients().equals(List.of("inviter"))
+                        && !command.body().contains(invitation.getEmail())));
         reset(workspaces);
         when(workspaces.findForPrincipal(anyLong(), anyString())).thenReturn(workspace);
         when(workspaces.findMember(9L, "user")).thenReturn(new WorkspaceMember());
@@ -145,6 +151,7 @@ class InvitationServiceTests {
         invitation.setAcceptedBy("other-user");
         assertThatThrownBy(() -> service.accept(token())).isInstanceOf(BusinessException.class);
         verify(workspaces, never()).insertMember(any());
+        verifyNoInteractions(writer);
     }
 
     @Test
@@ -180,8 +187,10 @@ class InvitationServiceTests {
 
     private void prepareAccept() {
         when(mapper.find(invitation.getId())).thenReturn(invitation);
+        when(mapper.lock(invitation.getId())).thenReturn(invitation);
         when(principal.requireVerifiedEmail()).thenReturn(invitation.getEmail());
         when(workspaces.findForPrincipal(anyLong(), anyString())).thenReturn(workspace);
+        when(mapper.transition(invitation.getId(), "ACCEPTED", "user")).thenReturn(1);
     }
 
     private InvitationTokenRequest token() {

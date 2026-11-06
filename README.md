@@ -14,7 +14,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 - 注册与找回密码的邮箱验证码、独立邮件服务与 Resend 投递，启用和升级见[邮件服务](docs/mail.md)
 - 个人与共享 Workspace、成员管理、数据隔离和可靠异步权限审计
 - 共享空间邮箱邀请、确认接受和撤销，启用与升级见[空间邀请](docs/workspace-invitations.md)
-- 通知中心基础设施、未读状态与 SSE 刷新，业务事件按需接入，见[站内通知](docs/notifications.md)
+- 邀请接受、成员加入和角色变更的站内通知，支持未读状态与 SSE 刷新，见[站内通知](docs/notifications.md)
 - 统一工作台导航、笔记专注模式，以及项目、任务、标签和数据源的按需编辑抽屉
 - OpenAPI 3.1 契约、TypeScript SDK 和 Client Credentials Python Client
 

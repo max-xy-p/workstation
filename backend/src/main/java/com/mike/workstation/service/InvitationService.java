@@ -46,10 +46,12 @@ public class InvitationService {
     private final InvitationTokenService tokens;
     private final InvitationProperties properties;
     private final AuditService audit;
+    private final WorkspaceNotifications notifications;
 
     public InvitationService(InvitationMapper mapper, WorkspaceMapper workspaces,
             WorkspaceAuthorizationService authorization, CurrentPrincipalResolver principals,
-            InvitationTokenService tokens, InvitationProperties properties, AuditService audit) {
+            InvitationTokenService tokens, InvitationProperties properties, AuditService audit,
+            WorkspaceNotifications notifications) {
         this.mapper = mapper;
         this.workspaces = workspaces;
         this.authorization = authorization;
@@ -57,6 +59,7 @@ public class InvitationService {
         this.tokens = tokens;
         this.properties = properties;
         this.audit = audit;
+        this.notifications = notifications;
     }
 
     public List<InvitationResponse> list(Long workspaceId) {
@@ -123,7 +126,10 @@ public class InvitationService {
         WorkspaceInvitation candidate = resolve(request);
         workspaces.lockWorkspace(candidate.getWorkspaceId());
         // 在获得空间锁后重新读取，串行化接受、撤销及成员角色变更。
-        WorkspaceInvitation invitation = mapper.find(candidate.getId());
+        WorkspaceInvitation invitation = mapper.lock(candidate.getId());
+        if (invitation == null) {
+            throw new NotFoundException(INVALID);
+        }
         String subject = principals.require().subjectId();
         WorkspaceMember member = workspaces.findMember(invitation.getWorkspaceId(), subject);
         if ("ACCEPTED".equals(invitation.getStatus())) {
@@ -157,8 +163,12 @@ public class InvitationService {
             member.setJoinedAt(now());
             workspaces.insertMember(member);
         }
-        mapper.transition(invitation.getId(), "ACCEPTED", subject);
+        if (mapper.transition(invitation.getId(), "ACCEPTED", subject) != 1) {
+            throw new InvitationConflictException("邀请状态已变化，请重新打开邀请");
+        }
         mapper.cancel(invitation.getId());
+        notifications.invitationAccepted(invitation.getWorkspaceId(), inviter.getName(), invitation.getId(),
+                invitation.getCreatedBy(), subject);
         audit.success(invitation.getWorkspaceId(), "INVITATION_ACCEPT", "WORKSPACE_INVITATION", null);
         return memberWorkspace(invitation.getWorkspaceId(), subject);
     }

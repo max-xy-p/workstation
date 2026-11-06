@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mike.workstation.domain.PrincipalType;
@@ -41,6 +42,7 @@ class WorkspaceServiceTests {
     @Mock private CurrentPrincipalResolver principalResolver;
     @Mock private WorkspaceAuthorizationService authorization;
     @Mock private AuditService auditService;
+    @Mock private WorkspaceNotifications notifications;
     @InjectMocks private WorkspaceService workspaceService;
 
     @Test
@@ -134,11 +136,15 @@ class WorkspaceServiceTests {
         when(workspaceMapper.findPrincipal("subject-2")).thenReturn(principal);
         when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
                 .thenReturn(null, member("subject-2", WorkspaceRole.EDITOR));
+        when(workspaceMapper.insertMember(any())).thenReturn(1);
+        when(principalResolver.require()).thenReturn(
+                new CurrentPrincipal("subject-1", PrincipalType.USER, "owner", null, Set.of()));
 
         workspaceService.addMember(
                 WORKSPACE_ID, new WorkspaceMemberRequest("subject-2", WorkspaceRole.EDITOR));
 
         verify(workspaceMapper).insertMember(any(WorkspaceMember.class));
+        verify(notifications).memberAdded(WORKSPACE_ID, "研发空间", "subject-2", "subject-1", WorkspaceRole.EDITOR);
     }
 
     @Test
@@ -195,6 +201,8 @@ class WorkspaceServiceTests {
                 .thenReturn(
                         member("subject-2", WorkspaceRole.EDITOR),
                         member("subject-2", WorkspaceRole.ADMIN));
+        when(principalResolver.require()).thenReturn(
+                new CurrentPrincipal("subject-1", PrincipalType.USER, "owner", null, Set.of()));
 
         var updated =
                 workspaceService.updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
@@ -202,6 +210,20 @@ class WorkspaceServiceTests {
         assertThat(updated.role()).isEqualTo(WorkspaceRole.ADMIN);
         verify(workspaceMapper).updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.ADMIN);
         verify(auditService).success(WORKSPACE_ID, "MEMBER_ROLE_UPDATE", "WORKSPACE_MEMBER", null);
+        verify(notifications).memberRoleChanged(WORKSPACE_ID, "研发空间", "subject-2", "subject-1",
+                WorkspaceRole.EDITOR, WorkspaceRole.ADMIN);
+    }
+
+    @Test
+    void submittingTheCurrentRoleDoesNotNotifyTheMember() {
+        when(authorization.require(WORKSPACE_ID, WorkspacePermission.MEMBER_MANAGE))
+                .thenReturn(workspace(WorkspaceRole.OWNER));
+        when(workspaceMapper.findMember(WORKSPACE_ID, "subject-2"))
+                .thenReturn(member("subject-2", WorkspaceRole.EDITOR));
+
+        workspaceService.updateMemberRole(WORKSPACE_ID, "subject-2", WorkspaceRole.EDITOR);
+
+        verifyNoInteractions(notifications);
     }
 
     @Test
@@ -254,6 +276,7 @@ class WorkspaceServiceTests {
     private Workspace workspace(WorkspaceRole role) {
         Workspace workspace = new Workspace();
         workspace.setId(WORKSPACE_ID);
+        workspace.setName("研发空间");
         workspace.setRole(role);
         return workspace;
     }
@@ -262,6 +285,7 @@ class WorkspaceServiceTests {
         WorkspaceMember member = new WorkspaceMember();
         member.setWorkspaceId(WORKSPACE_ID);
         member.setSubjectId(subjectId);
+        member.setPrincipalType(PrincipalType.USER);
         member.setRole(role);
         return member;
     }

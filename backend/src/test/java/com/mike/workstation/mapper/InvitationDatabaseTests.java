@@ -5,18 +5,24 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.mike.workstation.config.InvitationProperties;
+import com.mike.workstation.config.NotificationProperties;
 import com.mike.workstation.domain.PrincipalType;
 import com.mike.workstation.domain.WorkspaceRole;
 import com.mike.workstation.dto.InvitationRequest;
 import com.mike.workstation.dto.InvitationResponse;
 import com.mike.workstation.dto.InvitationTokenRequest;
+import com.mike.workstation.dto.WorkspaceMemberRequest;
 import com.mike.workstation.exception.BusinessException;
 import com.mike.workstation.security.CurrentPrincipal;
 import com.mike.workstation.security.CurrentPrincipalResolver;
 import com.mike.workstation.service.AuditService;
 import com.mike.workstation.service.InvitationService;
 import com.mike.workstation.service.InvitationTokenService;
+import com.mike.workstation.service.NotificationCodec;
+import com.mike.workstation.service.NotificationWriter;
 import com.mike.workstation.service.WorkspaceAuthorizationService;
+import com.mike.workstation.service.WorkspaceNotifications;
+import com.mike.workstation.service.WorkspaceService;
 import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
 import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.Configuration;
@@ -34,9 +40,11 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
+import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -49,6 +57,7 @@ class InvitationDatabaseTests {
     private JdbcTemplate jdbc;
     private InvitationMapper mapper;
     private InvitationService service;
+    private WorkspaceService members;
     private InvitationTokenService tokens;
     private final AuditService audit = mock(AuditService.class);
     private final CurrentPrincipalResolver principals = mock(CurrentPrincipalResolver.class);
@@ -71,6 +80,8 @@ class InvitationDatabaseTests {
         cfg.setMapUnderscoreToCamelCase(true);
         cfg.addMapper(InvitationMapper.class);
         cfg.addMapper(WorkspaceMapper.class);
+        cfg.addMapper(NotificationMapper.class);
+        cfg.addMapper(NotificationEventMapper.class);
         var session = new SqlSessionTemplate(new SqlSessionFactoryBuilder().build(cfg));
         mapper = session.getMapper(InvitationMapper.class);
         var workspaces = session.getMapper(WorkspaceMapper.class);
@@ -86,11 +97,23 @@ class InvitationDatabaseTests {
         var properties = new InvitationProperties(true, "https://work.example",
                 Base64.getEncoder().encodeToString(new byte[32]), "http://mail:8082", "x".repeat(32));
         tokens = new InvitationTokenService(properties);
-        var target = new InvitationService(mapper, workspaces,
-                new WorkspaceAuthorizationService(workspaces, principals, audit), principals, tokens, properties, audit);
+        var transactions = new TransactionInterceptor(new DataSourceTransactionManager(ds),
+                new AnnotationTransactionAttributeSource());
+        var writer = new NotificationWriter(session.getMapper(NotificationEventMapper.class),
+                session.getMapper(NotificationMapper.class), workspaces, new NotificationCodec(new ObjectMapper()),
+                new NotificationProperties(true, 10, 2, 90));
+        var notifications = new WorkspaceNotifications(NotificationWriter.class.cast(proxy(writer, transactions)));
+        var authorization = new WorkspaceAuthorizationService(workspaces, principals, audit);
+        service = InvitationService.class.cast(proxy(new InvitationService(mapper, workspaces,
+                authorization, principals, tokens, properties, audit, notifications), transactions));
+        members = WorkspaceService.class.cast(proxy(new WorkspaceService(workspaces, principals,
+                authorization, audit, notifications), transactions));
+    }
+
+    private Object proxy(Object target, TransactionInterceptor transactions) {
         var proxy = new ProxyFactory(target);
-        proxy.addAdvice(new TransactionInterceptor(new DataSourceTransactionManager(ds), new AnnotationTransactionAttributeSource()));
-        service = (InvitationService) proxy.getProxy();
+        proxy.addAdvice(transactions);
+        return proxy.getProxy();
     }
 
     @AfterEach
@@ -150,6 +173,10 @@ class InvitationDatabaseTests {
             pool.shutdownNow();
         }
         assertThat(mapper.find(invitation.id()).getStatus()).isEqualTo("ACCEPTED");
+        assertThat(notificationTypes(owner)).containsExactly("WORKSPACE_INVITATION_ACCEPTED");
+        assertThat(notificationTypes(guest)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT signal_pending FROM notification_inboxes WHERE recipient=?",
+                Boolean.class, owner)).isTrue();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspace_members WHERE workspace_id=? AND principal_subject=?", Integer.class, workspaceId, guest)).isEqualTo(1);
         jdbc.update("DELETE FROM workspace_members WHERE workspace_id=? AND principal_subject=?", workspaceId, guest);
         actor.set(guest);
@@ -168,7 +195,27 @@ class InvitationDatabaseTests {
         actor.set(guest);
         assertThatThrownBy(() -> service.accept(new InvitationTokenRequest(tokens.token(invitation.id())))).isInstanceOf(IllegalStateException.class);
         assertThat(mapper.find(invitation.id()).getStatus()).isEqualTo("PENDING");
+        assertThat(notificationTypes(owner)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification_events WHERE workspace_id=?",
+                Integer.class, workspaceId)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM workspace_members WHERE workspace_id=? AND principal_subject=?", Integer.class, workspaceId, guest)).isZero();
+    }
+
+    @Test
+    void directMembershipAndEffectiveRoleChangeNotifyOnlyTheAffectedMember() {
+        jdbc.update("INSERT INTO security_principals VALUES (?, 'USER', '成员', NULL, NOW(), NOW())", guest);
+        members.addMember(workspaceId, new WorkspaceMemberRequest(guest, WorkspaceRole.VIEWER));
+        members.updateMemberRole(workspaceId, guest, WorkspaceRole.EDITOR);
+        members.updateMemberRole(workspaceId, guest, WorkspaceRole.EDITOR);
+
+        assertThat(notificationTypes(guest))
+                .containsExactly("WORKSPACE_MEMBER_ADDED", "WORKSPACE_MEMBER_ROLE_CHANGED");
+        assertThat(notificationTypes(owner)).isEmpty();
+    }
+
+    private List<String> notificationTypes(String recipient) {
+        return jdbc.queryForList("SELECT type FROM notifications WHERE workspace_id=? AND recipient=? ORDER BY sequence",
+                String.class, workspaceId, recipient);
     }
 
     @Test

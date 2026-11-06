@@ -20,6 +20,10 @@ public interface InvitationMapper {
     @Select(PROJECTION + " WHERE i.id = #{id}")
     WorkspaceInvitation find(String id);
 
+    /** 接受邀请时在空间锁内读取当前状态，避开同一会话里的预览缓存。 */
+    @Select(PROJECTION + " WHERE i.id = #{id} FOR UPDATE OF i")
+    WorkspaceInvitation lock(String id);
+
     @Select(PROJECTION + " WHERE i.workspace_id = #{workspaceId} AND i.created_by = #{actor} AND i.request_id = #{requestId}")
     WorkspaceInvitation findRequest(@Param("workspaceId") Long workspaceId,
             @Param("actor") String actor, @Param("requestId") String requestId);

@@ -36,16 +36,19 @@ public class WorkspaceService {
     private final CurrentPrincipalResolver principalResolver;
     private final WorkspaceAuthorizationService authorization;
     private final AuditService auditService;
+    private final WorkspaceNotifications notifications;
 
     public WorkspaceService(
             WorkspaceMapper workspaceMapper,
             CurrentPrincipalResolver principalResolver,
             WorkspaceAuthorizationService authorization,
-            AuditService auditService) {
+            AuditService auditService,
+            WorkspaceNotifications notifications) {
         this.workspaceMapper = workspaceMapper;
         this.principalResolver = principalResolver;
         this.authorization = authorization;
         this.auditService = auditService;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -162,7 +165,13 @@ public class WorkspaceService {
         member.setSubjectId(request.subjectId());
         member.setRole(request.role());
         member.setJoinedAt(LocalDateTime.now(ZoneId.systemDefault()));
-        workspaceMapper.insertMember(member);
+        if (workspaceMapper.insertMember(member) != 1) {
+            throw new BusinessException("未能添加工作空间成员，请重试");
+        }
+        if (candidate.getPrincipalType() == PrincipalType.USER) {
+            notifications.memberAdded(workspaceId, actorWorkspace.getName(), request.subjectId(),
+                    principalResolver.require().subjectId(), request.role());
+        }
         auditService.success(workspaceId, "MEMBER_ADD", WORKSPACE_MEMBER_RESOURCE, null);
         return WorkspaceResponseAssembler.toMemberResponse(
                 workspaceMapper.findMember(workspaceId, request.subjectId()));
@@ -185,6 +194,10 @@ public class WorkspaceService {
             throw new BusinessException("不能降级工作空间的最后一个 Owner");
         }
         workspaceMapper.updateMemberRole(workspaceId, subjectId, role);
+        if (target.getRole() != role && target.getPrincipalType() == PrincipalType.USER) {
+            notifications.memberRoleChanged(workspaceId, actorWorkspace.getName(), subjectId,
+                    principalResolver.require().subjectId(), target.getRole(), role);
+        }
         auditService.success(workspaceId, "MEMBER_ROLE_UPDATE", WORKSPACE_MEMBER_RESOURCE, null);
         return WorkspaceResponseAssembler.toMemberResponse(
                 workspaceMapper.findMember(workspaceId, subjectId));
