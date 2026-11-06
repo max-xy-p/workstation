@@ -10,6 +10,7 @@
 | [`task-concurrency.md`](task-concurrency.md) | 任务版本校验、冲突处理及客户端升级边界 |
 | [`integrations.md`](integrations.md) | GitHub/GitLab 连接、仓库导入、开发快照和同步故障恢复 |
 | [`note-history.md`](note-history.md) | 笔记内容历史、差异查看、草稿保护、共享保留边界及升级回退 |
+| [`note-presence.md`](note-presence.md) | 笔记在线成员、编辑状态、短租约、MQ/SSE 和故障恢复 |
 | [`registration.md`](registration.md) | 公开注册、个人空间、默认角色与已有 Realm 升级 |
 | [`mail.md`](mail.md) | 邮箱验证、Resend、独立邮件服务、投递状态及已有部署升级 |
 | [`workspace-invitations.md`](workspace-invitations.md) | 邮箱邀请、明确接受、成员授权、异步投递及升级边界 |

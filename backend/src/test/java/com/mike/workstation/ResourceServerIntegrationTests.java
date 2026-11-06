@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.mike.workstation.domain.TaskStatus;
+import com.mike.workstation.mapper.NoteMapper;
 import com.mike.workstation.dto.PageResponse;
 import com.mike.workstation.dto.WorkspaceMemberCandidate;
 import com.mike.workstation.exception.NoteVersionConflictException;
@@ -37,6 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
+import java.util.UUID;
 
 @SpringBootTest(
         properties = {
@@ -53,6 +55,7 @@ class ResourceServerIntegrationTests {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private WorkspaceAuthorizationService authorizationService;
     @MockitoBean private NoteService noteService;
+    @MockitoBean private NoteMapper noteMapper;
     @MockitoBean private NoteRevisionService noteRevisions;
 
     @MockitoBean private WorkspaceService workspaceService;
@@ -82,6 +85,26 @@ class ResourceServerIntegrationTests {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/notifications/stream")
                 .accept(MediaType.TEXT_EVENT_STREAM)
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void notePresenceRequiresHumanIdentityAndNeverOpensAnonymousStreams() throws Exception {
+        String path = "/api/workspaces/1/notes/2/presence";
+        mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mockMvc.perform(put(path + "/sessions/" + UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"state\":\"VIEWING\",\"sequence\":1}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(path).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_SERVICE"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(path + "/stream").accept(MediaType.TEXT_EVENT_STREAM)
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_SERVICE"))))
+                .andExpect(status().isForbidden());
+        when(noteMapper.findVersionById(1L, 2L)).thenReturn(1L);
+        mockMvc.perform(get(path).with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        mockMvc.perform(get(path + "/stream").accept(MediaType.TEXT_EVENT_STREAM)
                 .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_WORKSTATION_USER"))))
                 .andExpect(status().isNotFound());
     }

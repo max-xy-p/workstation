@@ -103,6 +103,7 @@ export const authApi = {
 const workstationApi = createWorkstationApi(api);
 
 export const {
+  notePresenceApi,
   notificationApi,
   invitationApi,
   issueApi,
@@ -117,6 +118,10 @@ export const {
   noteFolderApi,
   tagApi
 } = workstationApi;
+
+export function subscribeNotePresence(workspaceId: number, noteId: number, refresh: () => void, disconnected: () => void) {
+  return openEventStream(`/workspaces/${workspaceId}/notes/${noteId}/presence/stream`, refresh, disconnected);
+}
 
 export function subscribeNotifications(refresh: () => void, disconnected: () => void) {
   return openEventStream('/notifications/stream', refresh, disconnected);

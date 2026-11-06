@@ -13,6 +13,10 @@ async function listAllPages(transport, path, params) {
 export function createWorkstationApi(transport) {
     const workspacePath = (workspaceId) => `/workspaces/${workspaceId}`;
     return {
+        notePresenceApi: {
+            get: (w, id) => transport.get(`${workspacePath(w)}/notes/${id}/presence`),
+            update: (w, id, sessionId, body) => transport.put(`${workspacePath(w)}/notes/${id}/presence/sessions/${encodeURIComponent(sessionId)}`, body)
+        },
         notificationApi: {
             state: () => transport.get('/notifications/state'),
             list: (params) => transport.get('/notifications', params),

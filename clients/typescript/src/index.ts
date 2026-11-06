@@ -4,6 +4,10 @@ type Schemas = components['schemas'];
 
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type NotePresenceState = Schemas['NotePresenceState'];
+export type NotePresenceRequest = Schemas['NotePresenceRequest'];
+export type NotePresenceResponse = Schemas['NotePresenceResponse'];
+export type NotePresenceParticipant = Schemas['NotePresenceParticipant'];
 export type NotificationState = Schemas['NotificationState'];
 export type NotificationResponse = Schemas['NotificationResponse'];
 export type NotificationPageResponse = Schemas['NotificationPageResponse'];
@@ -125,6 +129,10 @@ async function listAllPages<T, P extends QueryParams>(
 export function createWorkstationApi(transport: WorkstationTransport) {
   const workspacePath = (workspaceId: number) => `/workspaces/${workspaceId}`;
   return {
+    notePresenceApi: {
+      get: (w: number, id: number) => transport.get<NotePresenceResponse>(`${workspacePath(w)}/notes/${id}/presence`),
+      update: (w: number, id: number, sessionId: string, body: NotePresenceRequest) => transport.put<null, NotePresenceRequest>(`${workspacePath(w)}/notes/${id}/presence/sessions/${encodeURIComponent(sessionId)}`, body)
+    },
     notificationApi: {
       state: () => transport.get<NotificationState>('/notifications/state'),
       list: (params?: NotificationListParams) => transport.get<NotificationPageResponse>('/notifications', params),

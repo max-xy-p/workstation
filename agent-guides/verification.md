@@ -30,6 +30,12 @@ Backend 的邀请数据库测试复用 `workstation.test.db`，只允许指向�
 
 通知迁移测试通过 `NOTIFICATION_MIGRATION_TEST_CONTAINER` 显式指定隔离 MySQL 容器，运行 `scripts/tests/test_notification_migration.py`。它仅创建和清理随机前缀测试库，覆盖未完成旧任务拒绝升级、历史及去重保留和重复升级；CI Backend 作业执行此用例，没有环境变量时明确跳过。
 
+### 笔记在线状态验证
+
+在线状态测试复用隔离 workstation.test.db 与 workstation.test.redis；真实 MySQL 验证批量成员过滤，两个 Redis 客户端验证多页面合并、递增请求、离开标记、过期及容量。附加 workstation.notification.test.rabbit=true 时，同一隔离 Broker 同时验证在线状态独立广播副本、临时队列删除与无效消息处理，端口和账号沿用通知测试约定。CI 的现有数据库、Redis 与通知 MQ 开关会执行这些测试。
+
+Frontend 状态运行时通过 Node 用例验证近期输入、空闲、权限降低、隐藏恢复、旧响应隔离及故障恢复；浏览器仍需检查编辑器集成、多用户页面、SSE/HTTP 补查与代理流路径。在线状态不依赖通知开关，不应为测试放开机器主体或跳过 Workspace 授权。
+
 ## Gateway
 
 ```powershell

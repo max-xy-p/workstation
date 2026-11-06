@@ -2,6 +2,10 @@ import type { components, operations } from './generated/schema.js';
 type Schemas = components['schemas'];
 export type { components, operations, paths } from './generated/schema.js';
 export type ApiErrorResponse = Schemas['ApiError'];
+export type NotePresenceState = Schemas['NotePresenceState'];
+export type NotePresenceRequest = Schemas['NotePresenceRequest'];
+export type NotePresenceResponse = Schemas['NotePresenceResponse'];
+export type NotePresenceParticipant = Schemas['NotePresenceParticipant'];
 export type NotificationState = Schemas['NotificationState'];
 export type NotificationResponse = Schemas['NotificationResponse'];
 export type NotificationPageResponse = Schemas['NotificationPageResponse'];
@@ -97,6 +101,14 @@ export interface WorkstationTransport {
     delete<T = null>(path: string): Promise<T>;
 }
 export declare function createWorkstationApi(transport: WorkstationTransport): {
+    notePresenceApi: {
+        get: (w: number, id: number) => Promise<{
+            enabled: boolean;
+            available: boolean;
+            participants: components["schemas"]["NotePresenceParticipant"][];
+        }>;
+        update: (w: number, id: number, sessionId: string, body: NotePresenceRequest) => Promise<null>;
+    };
     notificationApi: {
         state: () => Promise<{
             enabled: boolean;

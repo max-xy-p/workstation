@@ -19,6 +19,8 @@ gateway/                                  Gateway/BFF、认证配置和测试
 mail-service/                             邮件记录、Outbox、RabbitMQ 投递与 Resend 回调
 backend/src/main/java/com/mike/workstation/service/Invitation*  空间邀请、专用邮件 Outbox 和内部邮件调用
 backend/src/main/java/com/mike/workstation/service/Notification*  通知事务直写、收件箱状态及 MQ/SSE 刷新
+backend/src/main/java/com/mike/workstation/service/NotePresence*  在线短租约、状态授权及临时 MQ 广播
+backend/src/main/java/com/mike/workstation/service/RefreshStreamHub.java  通知与在线状态共用的有界 SSE 传输
 keycloak/mail-provider/                   Keycloak 邮件发送扩展（Java 21）
 
 frontend/                                 Vue 应用、浏览器 API 适配和 Web 容器

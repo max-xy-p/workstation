@@ -342,6 +342,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/notes/{id}/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /** 查询当前笔记的在线成员，按用户合并多标签页 */
+        get: operations["getNotePresence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/presence/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 续租当前用户的页面状态；LEFT 表示离开
+         * @description 仅人类用户可调用。身份来自令牌；同一页面使用递增 sequence，旧请求不覆盖新状态。EDITING 需要 NOTE_WRITE，其余需要 NOTE_READ。租约最多四十五秒，不锁定正文。
+         */
+        put: operations["updateNotePresence"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/notes/{id}/presence/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * 订阅笔记在线状态刷新提醒
+         * @description 只发送 refresh 事件，不含用户资料或正文；收到后查询快照。十五秒心跳，连接最多五十五秒且不超过令牌有效期。此接口不创建租约，断线期间通过 HTTP 补查。
+         */
+        get: operations["streamNotePresence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workspaces/{workspaceId}/notes/{id}": {
         parameters: {
             query?: never;
@@ -1158,6 +1225,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        NotePresenceState: "VIEWING" | "EDITING" | "LEFT";
+        NotePresenceRequest: {
+            state: components["schemas"]["NotePresenceState"];
+            /** Format: int32 */
+            sequence: number;
+        };
+        NotePresenceParticipant: {
+            subjectId: string;
+            username: string | null;
+            displayName: string | null;
+            state: components["schemas"]["NotePresenceState"];
+        };
+        NotePresenceResponse: {
+            enabled: boolean;
+            available: boolean;
+            participants: components["schemas"]["NotePresenceParticipant"][];
+        };
         NotificationState: {
             enabled: boolean;
             /** Format: int64 */
@@ -2668,6 +2753,116 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getNotePresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前快照；不可用时不应显示为无人在线 */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotePresenceResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateNotePresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotePresenceRequest"];
+            };
+        };
+        responses: {
+            /** @description 已接受，包括已被更新序号覆盖的请求 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 笔记或用户会话数量超过上限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 在线状态存储暂不可用；正文保存不受影响 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    streamNotePresence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: components["parameters"]["WorkspaceId"];
+                id: components["parameters"]["ResourceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE 刷新流 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description 节点或用户 SSE 连接数超过上限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     getNote: {

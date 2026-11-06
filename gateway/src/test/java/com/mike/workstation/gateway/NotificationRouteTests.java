@@ -23,7 +23,8 @@ class NotificationRouteTests {
         assertThat(streams).hasSize(2);
         assertThat(streams).allSatisfy(route -> {
             assertThat(route.getMetadata().get("response-timeout").toString()).isEqualTo("-1");
-            assertThat(route.getPredicates().get(0).getArgs().values()).contains("/api/notifications/stream");
+            assertThat(route.getPredicates().get(0).getArgs().values())
+                    .contains("/api/notifications/stream", "/api/workspaces/*/notes/*/presence/stream");
         });
         var browser = streams.stream().filter(route -> route.getId().endsWith("browser")).findFirst().orElseThrow();
         assertThat(browser.getFilters()).extracting(filter -> filter.getName()).containsExactly("SaveSession", "TokenRelay");

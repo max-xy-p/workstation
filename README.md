@@ -5,6 +5,7 @@ Workstation 是一个面向开发者、以 Workspace 为资源边界的多人 We
 ## 主要功能
 
 - 使用 Tiptap 所见即所得编辑 Markdown 笔记
+- 笔记在线成员与正在编辑提示，多标签页合并、短租约过期及跨实例刷新，见[实时编辑状态](docs/note-presence.md)
 - 手动保存、自动保存、按版本检测并发冲突、三方合并与冲突处理、IndexedDB 草稿恢复、笔记回收站及[内容历史、差异与恢复](docs/note-history.md)
 - 多级文件夹、跨项目/任务/笔记搜索、标签、项目关联和 Markdown 导入
 - 项目资料、项目详情、任务看板、版本冲突保护、依据笔记关联，以及 GitHub Issue 创建任务、来源关联、持续跟踪、Webhook 指定刷新及来源变化确认

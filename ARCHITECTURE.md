@@ -11,7 +11,7 @@ Browser
       -> /auth/**                         -> Keycloak -> MySQL(keycloak)
       -> /oauth2/**、/login/oauth2/**     -> Gateway
       -> /api/**                          -> Gateway -> Backend -> MySQL
-                                                   -> Redis（Gateway Session / Backend 出站限流）
+                                                   -> Redis（Gateway Session / Backend 出站限流 / 笔记在线短租约）
                                                    -> audit_outbox
                                                         -> XXL-JOB -> RabbitMQ
                                                         -> Audit Consumer -> audit_events
@@ -51,6 +51,8 @@ Gateway 中的认证状态用于浏览器会话和系统级准入，Backend 中�
 认证设计、两类调用方的区别及完整流程见 [`docs/authentication.md`](docs/authentication.md)。
 
 ## 业务模块
+
+笔记在线状态由 Redis 短租约保存，HTTP 心跳续租，RabbitMQ 临时队列跨实例广播主题，经 SSE 提醒浏览器读取受权快照。通知和在线状态复用有界 SSE 传输实现，队列与主题隔离。在线状态不写入正文或草稿，不提供编辑锁，保存仍使用版本条件更新，边界见 [笔记实时编辑状态](docs/note-presence.md)。
 
 通知中心在 Backend 业务事务内直接保存每位接收者的通知、去重元数据和收件箱序号。收件箱待发布版本通过 RabbitMQ 广播到各实例的独立持久化队列，再经 SSE 提醒浏览器刷新；通知功能不使用 Redis Pub/Sub。HTTP API 按当前用户及空间成员关系查询内容与已读状态，断线通过补查恢复。当前未接入生产业务事件，边界见 [站内通知](docs/notifications.md)。
 

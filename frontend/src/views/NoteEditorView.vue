@@ -28,7 +28,7 @@
       <h2>合并结果已保留为草稿</h2><output class="merge-draft-notice">请核对标题、正文和关联属性，再点击“确认保存合并结果”。自动保存已暂停，原本地草稿仍保留。</output>
     </section>
 
-    <form class="editor-document" @submit.prevent="save">
+    <form class="editor-document" @submit.prevent="save" @input.capture="presence?.activity()" @change.capture="presence?.activity()">
       <div class="editor-toolbar">
         <RouterLink class="back-link" :to="{ name: 'notes', params: workspaceParams }">← 返回笔记</RouterLink>
         <div class="editor-status">
@@ -41,6 +41,7 @@
         </div>
       </div>
 
+      <NotePresenceBar v-if="isEdit && contentReady" ref="presence" :workspace-id="workspaceId" :note-id="noteId" :can-write="canWrite" />
       <input v-model="form.title" :readonly="!canWrite || !contentReady || restoringHistory" class="note-title-input" aria-label="笔记标题" placeholder="无标题笔记" required />
 
       <details class="note-properties">
@@ -104,6 +105,7 @@ import { noteApi, noteFolderApi, projectApi, tagApi, taskApi } from '../api/work
 import { auth } from '../auth';
 import { workspace } from '../workspace';
 import MarkdownEditor from '../components/MarkdownEditor.vue';
+import NotePresenceBar from '../components/NotePresenceBar.vue';
 const NoteHistoryDrawer = defineAsyncComponent(() => import('../components/NoteHistoryDrawer.vue'));
 const NoteMergeDrawer = defineAsyncComponent(() => import('../components/NoteMergeDrawer.vue'));
 import { flattenFolderOptions } from '../utils/noteFolders';
@@ -141,6 +143,7 @@ const saveState = ref('');
 const syncStatus = ref('SYNCED');
 const contentReady = ref(false);
 const editorReady = ref(false);
+const presence = ref(null);
 const form = reactive({ title: '', content: '', folderId: route.query.folderId || '', projectId: route.query.projectId || '', tagIds: [] });
 const isEdit = Boolean(noteId);
 const canWrite = computed(() => workspace.hasPermission('NOTE_WRITE'));

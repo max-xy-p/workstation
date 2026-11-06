@@ -45,6 +45,8 @@ mybatis:
     map-underscore-to-camel-case: true
 
 workstation:
+  note-presence:
+    enabled: ${NOTE_PRESENCE_ENABLED:false}
   notifications:
     enabled: ${NOTIFICATIONS_ENABLED:false}
     instance-id: ${NOTIFICATIONS_INSTANCE_ID:backend}

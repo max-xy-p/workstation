@@ -17,6 +17,13 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(NotePresenceException.class)
+    public ResponseEntity<ApiError> handleNotePresence(NotePresenceException ex) {
+        return ResponseEntity.status(ex.limited() ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiError.of(ex.limited() ? "PRESENCE_LIMIT" : "PRESENCE_UNAVAILABLE", ex.getMessage()));
+    }
+
     @ExceptionHandler(NotificationStreamLimitException.class)
     public ResponseEntity<ApiError> handleNotificationStreamLimit(NotificationStreamLimitException ex) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)

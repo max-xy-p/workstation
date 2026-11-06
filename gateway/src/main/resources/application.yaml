@@ -34,7 +34,7 @@ spring:
               order: -4
               uri: ${BACKEND_BASE_URL:http://localhost:8080}
               predicates:
-                - Path=/api/notifications/stream
+                - Path=/api/notifications/stream,/api/workspaces/*/notes/*/presence/stream
                 - Header=Authorization, '(?i)Bearer\s+.+'
               metadata:
                 response-timeout: -1
@@ -42,7 +42,7 @@ spring:
               order: -3
               uri: ${BACKEND_BASE_URL:http://localhost:8080}
               predicates:
-                - Path=/api/notifications/stream
+                - Path=/api/notifications/stream,/api/workspaces/*/notes/*/presence/stream
               metadata:
                 response-timeout: -1
               filters:

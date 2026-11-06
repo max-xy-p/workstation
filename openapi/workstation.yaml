@@ -1,7 +1,7 @@
 openapi: 3.1.2
 info:
   title: Workstation API
-  version: 5.2.0
+  version: 5.3.0
   description: |
     Workstation 业务 HTTP API。Python 客户端使用 OAuth2 Client Credentials 获取
     Access Token，并携带 Bearer Token 通过 Gateway 访问这些接口。除系统角色准入外，
@@ -492,6 +492,82 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/presence:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      tags: [notes]
+      operationId: getNotePresence
+      summary: 查询当前笔记的在线成员，按用户合并多标签页
+      responses:
+        "200":
+          description: 当前快照；不可用时不应显示为无人在线
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotePresenceResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/presence/sessions/{sessionId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+      - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [notes]
+      operationId: updateNotePresence
+      summary: 续租当前用户的页面状态；LEFT 表示离开
+      description: 仅人类用户可调用。身份来自令牌；同一页面使用递增 sequence，旧请求不覆盖新状态。EDITING 需要 NOTE_WRITE，其余需要 NOTE_READ。租约最多四十五秒，不锁定正文。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotePresenceRequest" }
+      responses:
+        "204": { description: 已接受，包括已被更新序号覆盖的请求 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 笔记或用户会话数量超过上限
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "503":
+          description: 在线状态存储暂不可用；正文保存不受影响
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+
+  /api/workspaces/{workspaceId}/notes/{id}/presence/stream:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      tags: [notes]
+      operationId: streamNotePresence
+      summary: 订阅笔记在线状态刷新提醒
+      description: 只发送 refresh 事件，不含用户资料或正文；收到后查询快照。十五秒心跳，连接最多五十五秒且不超过令牌有效期。此接口不创建租约，断线期间通过 HTTP 补查。
+      responses:
+        "200":
+          description: SSE 刷新流
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 节点或用户 SSE 连接数超过上限
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
 
   /api/workspaces/{workspaceId}/notes/{id}:
     parameters:
@@ -1884,6 +1960,34 @@ components:
           schema: { $ref: "#/components/schemas/ApiError" }
 
   schemas:
+    NotePresenceState:
+      type: string
+      enum: [VIEWING, EDITING, LEFT]
+    NotePresenceRequest:
+      type: object
+      additionalProperties: false
+      required: [state, sequence]
+      properties:
+        state: { $ref: "#/components/schemas/NotePresenceState" }
+        sequence: { type: integer, format: int32, minimum: 1, maximum: 2147483647 }
+    NotePresenceParticipant:
+      type: object
+      required: [subjectId, username, displayName, state]
+      properties:
+        subjectId: { type: string }
+        username: { type: [string, "null"] }
+        displayName: { type: [string, "null"] }
+        state: { $ref: "#/components/schemas/NotePresenceState" }
+    NotePresenceResponse:
+      type: object
+      required: [enabled, available, participants]
+      properties:
+        enabled: { type: boolean }
+        available: { type: boolean }
+        participants:
+          type: array
+          maxItems: 256
+          items: { $ref: "#/components/schemas/NotePresenceParticipant" }
     NotificationState:
       type: object
       additionalProperties: false

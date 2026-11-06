@@ -52,6 +52,10 @@ from .note_import_request import NoteImportRequest
 from .note_import_response import NoteImportResponse
 from .note_import_status import NoteImportStatus
 from .note_page_response import NotePageResponse
+from .note_presence_participant import NotePresenceParticipant
+from .note_presence_request import NotePresenceRequest
+from .note_presence_response import NotePresenceResponse
+from .note_presence_state import NotePresenceState
 from .note_request import NoteRequest
 from .note_revision_page_response import NoteRevisionPageResponse
 from .note_revision_response import NoteRevisionResponse
@@ -153,6 +157,10 @@ __all__ = (
     "NoteImportResponse",
     "NoteImportStatus",
     "NotePageResponse",
+    "NotePresenceParticipant",
+    "NotePresenceRequest",
+    "NotePresenceResponse",
+    "NotePresenceState",
     "NoteRequest",
     "NoteRevisionPageResponse",
     "NoteRevisionResponse",
