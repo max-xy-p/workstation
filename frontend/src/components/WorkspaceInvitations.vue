@@ -53,7 +53,7 @@ async function create() {
   notice.value = '';
   const normalizedEmail = email.value.trim().toLowerCase();
   // 未知结果重试保留标识；用户修改内容则视为新请求。
-  if (!pendingRequest || pendingRequest.email !== normalizedEmail || pendingRequest.role !== role.value) {
+  if (pendingRequest?.email !== normalizedEmail || pendingRequest.role !== role.value) {
     pendingRequest = { requestId: crypto.randomUUID(), email: normalizedEmail, role: role.value };
   }
   try {

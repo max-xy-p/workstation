@@ -92,19 +92,19 @@ class EmailCodeServiceTests {
             when(store.putIfAbsent(anyString(), anyLong()))
                     .thenAnswer(
                             call -> {
-                                String key = call.getArgument(0);
+                                String entryKey = call.getArgument(0);
                                 Entry fresh =
                                         new Entry(
                                                 Map.of(),
                                                 clock.instant().getEpochSecond()
                                                         + (long) call.getArgument(1));
                                 data.computeIfPresent(
-                                        key,
+                                        entryKey,
                                         (ignored, entry) ->
                                                 entry.expires() <= clock.instant().getEpochSecond()
                                                         ? null
                                                         : entry);
-                                return data.putIfAbsent(key, fresh) == null;
+                                return data.putIfAbsent(entryKey, fresh) == null;
                             });
             service = new EmailCodeService(store, clock, new SecureRandom(), key);
         }

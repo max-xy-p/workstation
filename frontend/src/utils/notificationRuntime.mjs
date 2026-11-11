@@ -34,6 +34,24 @@ export function createNotificationRuntime({ state, api, openStream, setIntervalF
     scheduledRefresh = null;
     reset();
   }
+  function updateStream(enabled, current) {
+    if (!enabled) {
+      closeStream();
+      state.connection = 'stopped';
+      return;
+    }
+    if (stream) return;
+    state.connection = 'polling';
+    try {
+      stream = openStream(() => {
+        if (current === generation) { state.connection = 'live'; scheduleRefresh(); }
+      }, () => {
+        if (current === generation) { state.connection = 'polling'; scheduleRefresh(); }
+      });
+    } catch {
+      state.connection = 'polling';
+    }
+  }
   async function refresh() {
     if (!subject) return;
     if (running) { pending = true; return running; }
@@ -46,21 +64,7 @@ export function createNotificationRuntime({ state, api, openStream, setIntervalF
           const result = await api.state();
           if (current !== generation) return;
           Object.assign(state, result, { error: '', refreshVersion: state.refreshVersion + 1 });
-          if (!result.enabled) {
-            closeStream();
-            state.connection = 'stopped';
-          } else if (!stream) {
-            state.connection = 'polling';
-            try {
-              stream = openStream(() => {
-                if (current === generation) { state.connection = 'live'; scheduleRefresh(); }
-              }, () => {
-                if (current === generation) { state.connection = 'polling'; scheduleRefresh(); }
-              });
-            } catch {
-              state.connection = 'polling';
-            }
-          }
+          updateStream(result.enabled, current);
         } catch (error) {
           if (current === generation) {
             state.error = error.message || '通知暂不可用，请稍后刷新。';

@@ -68,6 +68,15 @@ async function resolveSignedInRoute(to) {
   if (!Number.isSafeInteger(workspaceId) || workspaceId <= 0) {
     return { name: 'dashboard', params: { workspaceId: defaultWorkspace.id } };
   }
+  const activated = await activateWorkspace(workspaceId);
+  if (activated !== true) return activated;
+  if (to.name === 'note-new' && !to.query.draftId) {
+    return { name: to.name, params: to.params, query: { ...to.query, draftId: window.crypto.randomUUID() } };
+  }
+  return true;
+}
+
+async function activateWorkspace(workspaceId) {
   try {
     await workspace.activateWorkspace(workspaceId);
   } catch (err) {
@@ -76,9 +85,6 @@ async function resolveSignedInRoute(to) {
     return workspace.currentId.value
       ? { name: 'dashboard', params: { workspaceId: workspace.currentId.value } }
       : { name: 'workspace-unavailable' };
-  }
-  if (to.name === 'note-new' && !to.query.draftId) {
-    return { name: to.name, params: to.params, query: { ...to.query, draftId: window.crypto.randomUUID() } };
   }
   return true;
 }

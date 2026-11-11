@@ -35,6 +35,7 @@ SELECT UUID(), m.id, m.dispatch_version,
        GREATEST(0, TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP(6), m.next_attempt_at)),
        CURRENT_TIMESTAMP(6), m.expires_at, CURRENT_TIMESTAMP(6)
 FROM mail_messages m
+LEFT JOIN mail_outbox o ON o.task_id = m.id AND o.dispatch_version = m.dispatch_version
 WHERE m.status = 'QUEUED' AND m.payload IS NOT NULL AND m.expires_at > CURRENT_TIMESTAMP(6)
-  AND NOT EXISTS (SELECT 1 FROM mail_outbox o WHERE o.task_id = m.id AND o.dispatch_version = m.dispatch_version);
+  AND o.id IS NULL;
 COMMIT;

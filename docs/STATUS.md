@@ -1,6 +1,6 @@
 # 项目状态
 
-> 核对日期：2026-11-06。
+> 核对日期：2026-11-11。
 
 ## 当前状态
 
@@ -117,10 +117,10 @@
 
 - 邮箱邀请首期不自动清理历史，也没有独立的重发接口；需要再次邀请时先撤销旧邀请再创建。Frontend 生产构建仍有约 754 kB 主包的体积提示，未通过放宽构建阈值处理。
 
-- 2026-10-31 Sonar 最新分析（提交 `24eb6f9`，北京时间 15:19）中的 7 条建议经源码与规则定义核对后保留待复核，未修改云端 Issue 状态：
-  - `java:S6885` 共 3 条，位于 `AuditOutboxStateService.retryDelay`、`MailWorker.dispatchOne` 和 `ResendClient.interpret`：建议使用 Java 21 才有的 `Math.clamp`，但三个业务模块均生成 Java 17 字节码；扫描配置统一使用 Java 21，与混合版本工程不完全匹配。不能直接替换，否则 Java 17 编译失败；本轮保持兼容性与退避规则。
-  - `java:S9438` 共 2 条，位于 `Note.tags`、`IntegrationProgress.discoveryPage`：`@Data` 生成的 setter 被其他服务或 Jackson 使用，字段并非不可变；规则文档也明确排除 Lombok `@Data` 字段。将其改成 `final` 会移除 setter 或破坏恢复检查点的反序列化。
-  - `java:S1450` 共 2 条，位于 `IntegrationProgress.repositoryCursor`、`IntegrationProgress.repository`：两个字段通过 Lombok getter/setter 参与 `IntegrationWorker` 的跨分页执行，并随 JSON 检查点持久化，不能改成局部变量。后续需复核分析器对 Lombok 的识别及分析依赖配置。
+- 2026-11-11 读取 SonarCloud 当前 40 条未解决问题，已对其中 34 条实施源码修复，待重新分析确认；其余 6 条经代码、规则和实际字节码核对后保留，未修改云端 Issue 状态：
+  - `java:S6885` 共 2 条，位于 `AuditOutboxStateService.retryDelay`（第 64 行）与 `ResendClient.interpret`（第 85 行）：当前使用 `Math.min`/`Math.max` 限制范围；规则建议的 `Math.clamp` 需要 Java 21，但两个模块均以 `release 17` 编译，字节码主版本为 61。不能直接替换；统一按 Java 21 扫描的配置仍需结合混合版本工程复核。
+  - `java:S9438` 共 2 条，位于 `Note.tags`（第 27 行）与 `IntegrationProgress.syncDone`（第 18 行）：当前使用 Lombok `@Data`；字节码中存在 `setTags` 和 `setSyncDone`，分别被笔记标签加载与采集工作进程使用，不能改成 `final`。
+  - `java:S1450` 共 2 条，位于 `IntegrationProgress.repositoryCursor`（第 20 行）与 `IntegrationProgress.repository`（第 21 行）：当前作为 Lombok 可读写字段，通过 `IntegrationWorker` 跨分页执行并随 JSON 检查点持久化，不能改成局部变量；字节码确认对应 getter/setter 均存在。
 
 - 邮件服务尚未连接真实 Resend 账号验收；上线前需验证发件域名、配置密钥、创建或迁移独立邮件库，并显式升级已有 Realm。RabbitMQ 版本邮件镜像构建及隔离容器启动已通过，本轮源码的 SonarQube 云端复扫未完成。
 
@@ -148,6 +148,8 @@
 - `WorkspaceDatabaseTests` 会在隔离库中遗留成员搜索样例，复用同一个库重跑可能发生主键重复；当前验证需为每轮测试准备全新隔离库，测试数据清理仍待完善。
 
 ## 验证与说明
+
+- 2026-11-11 按 SonarCloud 40 条未解决问题修复其中 34 条对应源码：处理 Promise、状态提示语义、嵌套条件、复杂度、正则匹配、常量复用、SQL 反连接及测试条件等待；6 条版本或 Lombok 识别建议保留，依据见已知问题。新增 8 个邀请 URL 路径回归场景及 2 个 SSE 恢复、账号隔离场景。最后一次 Java 修改后四模块 `clean verify` 均通过：Backend 296 项通过、55 项跳过，Gateway 21 项通过，邮件服务 31 项通过、6 项跳过，Keycloak 扩展 16 项通过，均无失败或错误。亲自执行 `python scripts/check_java_coverage.py`，Backend 85.60%、Gateway 84.16%、综合 85.53%，80% 检查通过。Frontend 类型检查、52 项测试和生产构建通过；邮件配置脚本 5 项测试通过，Git 差异空白检查通过。Docker 引擎未运行，真实 MySQL、Redis、RabbitMQ 集成及迁移验证未执行，通知迁移脚本测试明确跳过；浏览器交互与布局未验收。构建保留已有主包体积提示。SonarQube MCP 查询确认云端仍有 40 条历史 Issue，历史门禁因新代码可靠性评级为 C 未通过，新代码覆盖率为 85.8%；这些结果未包含本地修改。本地 Sonar 分析因上传源码至 SonarCloud 被自动审批拒绝，待用户授权后复扫，不能据此宣称当前修改已通过 Sonar 或门禁。
 
 - 2026-11-06 接入邀请首次被接受、直接添加成员、角色实际变更三类站内通知。修复并发接受时加锁后读取旧邀请缓存的问题。真实 MySQL 验证并发重试只生成一条通知、角色无变化时不生成通知、业务事务回滚时撤销通知及事件记录。最后一次 Java 修改后 Backend 与 Gateway 的 `clean verify` 分别通过 343 项和 21 项测试，均无失败、错误或跳过。亲自执行 `python scripts/check_java_coverage.py`，Backend 89.00%、Gateway 84.16%、综合 88.76%，通过 80% 检查。前端通知专项 5 项测试通过，包含 SSE 恢复及站内目标校验。SonarQube MCP 查询了既有问题与最近云端门禁，本次源码待复扫。目标环境部署和真实账号全链路验收待执行。
 

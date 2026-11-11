@@ -21,7 +21,6 @@ class NotificationStreamTests {
             assertThatThrownBy(() -> hub.open("expired", Instant.now().minusSeconds(1))).isInstanceOf(WorkspaceAccessDeniedException.class);
             hub.changed("one");
             hub.changed("unknown");
-            Thread.sleep(100);
         } finally {
             hub.shutdown();
         }

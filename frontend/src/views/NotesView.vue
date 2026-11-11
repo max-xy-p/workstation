@@ -184,7 +184,7 @@ function scheduleKeywordSearch() {
 
 function clearSearch() {
   filters.keyword = '';
-  loadNotes();
+  void loadNotes();
 }
 
 function toggleFolder(id) {
@@ -194,7 +194,7 @@ function toggleFolder(id) {
 
 function newNoteInFolder(folderId) {
   expandedIds.add(folderId);
-  router.push({ name: 'note-new', params: workspaceParams, query: { folderId } });
+  return router.push({ name: 'note-new', params: workspaceParams, query: { folderId } });
 }
 
 async function openFolderForm(folder = null, parentId = null) {
@@ -217,7 +217,7 @@ function closeFolderForm() {
 
 function openFolderFromMenu(event) {
   event.currentTarget.closest('details')?.removeAttribute('open');
-  openFolderForm();
+  return openFolderForm();
 }
 
 function closeExplorerMenu(event) {

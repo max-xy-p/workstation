@@ -42,7 +42,7 @@ public class InvitationDeliveryService {
             mapper.completed(id, "CANCELLED");
             return;
         }
-        String link = properties.publicUrl().replaceAll("/+$", "") + "/invitations#" + token;
+        String link = properties.publicUrl().replaceAll("(?<!/)/++$", "") + "/invitations#" + token;
         String text = "你受邀加入 Workstation 工作空间「" + invitation.getWorkspaceName()
                 + "」。\n\n请使用收件邮箱注册或登录，再打开以下链接并确认接受：\n" + link
                 + "\n\n邀请有效期为创建后 23 小时；如非本人预期，请忽略此邮件。";

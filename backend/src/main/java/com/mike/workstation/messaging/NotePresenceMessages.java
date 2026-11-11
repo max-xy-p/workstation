@@ -41,7 +41,7 @@ public class NotePresenceMessages {
             return;
         }
         String topic = new String(message.getBody(), StandardCharsets.US_ASCII);
-        if (topic.matches("[1-9][0-9]{0,18}:[1-9][0-9]{0,18}")) {
+        if (topic.matches("[1-9]\\d{0,18}:[1-9]\\d{0,18}")) {
             streams.changed(topic);
         }
     }

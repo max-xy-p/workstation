@@ -92,13 +92,13 @@ final class EmailCodeService {
                 PREFIX + id,
                 LIFETIME_SECONDS,
                 Map.of(
-                        "binding",
+                        BINDING,
                         binding.fingerprint(),
                         "salt",
                         salt,
                         "digest",
                         codeDigest(salt, code, binding.fingerprint()),
-                        "expires",
+                        EXPIRES,
                         Long.toString(expires.getEpochSecond())));
         store.put(owner + ACTIVE_SUFFIX, LIFETIME_SECONDS, Map.of("id", id));
         return new Issued(id, code, expires);
@@ -118,7 +118,7 @@ final class EmailCodeService {
         if (remaining <= 0 || !reserve(key + ":attempt", MAX_ATTEMPTS, remaining)) {
             return false;
         }
-        if (code == null || code.length() != 6 || !code.matches("[0-9]{6}")) {
+        if (code == null || code.length() != 6 || !code.matches("\\d{6}")) {
             return false;
         }
         byte[] supplied =

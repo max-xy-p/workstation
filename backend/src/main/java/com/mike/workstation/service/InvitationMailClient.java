@@ -28,7 +28,7 @@ public class InvitationMailClient {
 
     public void enqueue(MailRequest request) throws Exception {
         HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(properties.mailUrl()
-                .replaceAll("/+$", "") + "/internal/mail/messages"))
+                .replaceAll("(?<!/)/++$", "") + "/internal/mail/messages"))
                 .timeout(Duration.ofSeconds(10))
                 .header("Authorization", "Bearer " + properties.mailToken())
                 .header("Content-Type", "application/json")

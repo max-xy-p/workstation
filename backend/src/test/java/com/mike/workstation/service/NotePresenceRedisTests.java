@@ -1,6 +1,7 @@
 package com.mike.workstation.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.awaitility.Awaitility.await;
 import com.mike.workstation.domain.NotePresenceState;
 import com.mike.workstation.exception.NotePresenceException;
 import org.junit.jupiter.api.Test;
@@ -63,8 +64,8 @@ class NotePresenceRedisTests {
                     .isInstanceOf(NotePresenceException.class);
             redis.expire(keys.get(0), Duration.ofMillis(1));
             redis.expire(keys.get(1), Duration.ofMillis(1));
-            Thread.sleep(20);
-            assertThat(a.snapshot(workspace, 2)).isEmpty();
+            await().atMost(5, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(a.snapshot(workspace, 2)).isEmpty());
         } finally {
             pool.shutdownNow();
             redis.delete(keys);

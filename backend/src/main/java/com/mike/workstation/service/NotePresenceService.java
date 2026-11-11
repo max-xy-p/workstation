@@ -71,8 +71,10 @@ public class NotePresenceService {
         }
         try {
             var snapshot = store.snapshot(workspaceId, noteId);
-            var participants = snapshot.isEmpty() ? List.<NotePresenceParticipant>of()
-                    : members.currentMembers(workspaceId, snapshot.keySet().stream().sorted().toList()).stream()
+            if (snapshot.isEmpty()) {
+                return new NotePresenceResponse(true, true, List.of());
+            }
+            var participants = members.currentMembers(workspaceId, snapshot.keySet().stream().sorted().toList()).stream()
                     .map(member -> new NotePresenceParticipant(member.getSubjectId(), member.getUsername(),
                             member.getDisplayName(), WorkspacePermission.forRole(member.getRole()).contains(WorkspacePermission.NOTE_WRITE)
                             ? snapshot.get(member.getSubjectId()) : NotePresenceState.VIEWING)).toList();

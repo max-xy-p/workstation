@@ -132,7 +132,7 @@ function formatDate(value) {
 
 // 根据入口按钮跳转到对应模块，并把关键字带到目标列表页。
 function search(target) {
-  router.push({ name: target, params: workspaceParams, query: { keyword: keyword.value } });
+  return router.push({ name: target, params: workspaceParams, query: { keyword: keyword.value } });
 }
 
 // 加载首页统计数字和最近更新列表。
@@ -145,5 +145,5 @@ async function load() {
   }
 }
 
-onMounted(() => { load(); loadDevelopment(); });
+onMounted(async () => { await Promise.all([load(), loadDevelopment()]); });
 </script>

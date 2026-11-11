@@ -111,7 +111,7 @@ function resetForm() {
 function resetFilters() {
   filters.keyword = '';
   filters.status = '';
-  load();
+  void load();
 }
 
 // 把项目卡片数据填入表单，进入编辑状态。

@@ -10,8 +10,10 @@
 import { computed } from 'vue';
 import { Bell } from '@lucide/vue';
 import { notifications } from '../notifications';
-const label = computed(() => notifications.state.error ? '通知暂不可用，打开通知中心重试'
-  : notifications.state.unreadCount ? '通知，' + notifications.state.unreadCount + ' 条未读' : '通知，没有未读消息');
+const label = computed(() => {
+  if (notifications.state.error) return '通知暂不可用，打开通知中心重试';
+  return notifications.state.unreadCount ? '通知，' + notifications.state.unreadCount + ' 条未读' : '通知，没有未读消息';
+});
 </script>
 
 <style scoped>

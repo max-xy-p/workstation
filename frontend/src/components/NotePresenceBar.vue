@@ -1,7 +1,7 @@
 <template>
   <aside v-if="state.enabled" class="note-presence" aria-label="笔记在线成员">
     <span class="presence-label">协作状态</span>
-    <span v-if="!state.available" class="presence-unavailable" role="status">在线状态暂不可用，仍可正常保存</span>
+    <output v-if="!state.available" class="presence-unavailable">在线状态暂不可用，仍可正常保存</output>
     <template v-else>
       <span v-if="!others.length" class="presence-empty">当前没有其他在线成员</span>
       <span v-for="person in shown" :key="person.subjectId" class="presence-person" :data-state="person.state">
@@ -9,7 +9,7 @@
         {{ person.displayName || person.username || '未命名成员' }} · {{ person.state === 'EDITING' ? '正在编辑' : '正在查看' }}
       </span>
       <span v-if="others.length > shown.length">另有 {{ others.length - shown.length }} 人在线</span>
-      <span v-if="editing" class="presence-warning" role="status">其他成员也在编辑，保存时仍会检查版本冲突</span>
+      <output v-if="editing" class="presence-warning">其他成员也在编辑，保存时仍会检查版本冲突</output>
     </template>
   </aside>
 </template>

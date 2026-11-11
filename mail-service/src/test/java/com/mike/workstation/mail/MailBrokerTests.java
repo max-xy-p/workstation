@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.time.Duration;
+import org.awaitility.Awaitility;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.AfterEach;
@@ -154,13 +156,7 @@ class MailBrokerTests {
     }
 
     private void await(BooleanSupplier condition, long seconds) throws Exception {
-        long deadline = System.nanoTime() + seconds * 1_000_000_000L;
-        while (System.nanoTime() < deadline) {
-            if (condition.getAsBoolean()) {
-                return;
-            }
-            Thread.sleep(50);
-        }
-        fail("隔离 RabbitMQ 邮件处理未在期限内完成");
+        Awaitility.await().atMost(Duration.ofSeconds(seconds))
+                .until(condition::getAsBoolean);
     }
 }

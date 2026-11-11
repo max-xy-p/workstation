@@ -1,6 +1,7 @@
 package com.mike.workstation.messaging;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.*;
 import com.mike.workstation.config.NotePresenceMessagingConfig;
 import com.mike.workstation.service.NotePresenceStreamHub;
@@ -13,7 +14,6 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import java.nio.charset.StandardCharsets;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 /** 临时广播队列只服务当前连接，断线删除而不积压旧在线提醒。 */
@@ -61,15 +61,8 @@ class NotePresenceBrokerTests {
             second.stop();
             b.destroy();
             // 被动查询确认队列不存在；不能从另一个连接读取仍存活的 exclusive 队列。
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            Properties found;
-            do {
-                found = adminA.getQueueProperties(qb.getName());
-                if (found != null) {
-                    Thread.sleep(50);
-                }
-            } while (found != null && System.nanoTime() < deadline);
-            assertThat(found).isNull();
+            await().atMost(5, TimeUnit.SECONDS)
+                    .until(() -> adminA.getQueueProperties(qb.getName()) == null);
         } finally {
             first.stop();
             second.stop();

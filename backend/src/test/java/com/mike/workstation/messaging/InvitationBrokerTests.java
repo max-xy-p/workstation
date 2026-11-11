@@ -1,6 +1,7 @@
 package com.mike.workstation.messaging;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -30,6 +31,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeUnit;
 
 /** 仅连接显式启用的隔离 Broker，真实验证确认、延迟恢复及重复消息吸收。 */
 @EnabledIfSystemProperty(named = "workstation.invitation.test.rabbit", matches = "true")
@@ -90,12 +92,12 @@ class InvitationBrokerTests {
             listener.setMessageListener((MessageListener) consumer::receive);
             listener.start();
             publisher.publish(id);
-            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(25);
-            while (attempts.get() < 2 && System.nanoTime() < deadline) Thread.sleep(100);
+            await().atMost(25, TimeUnit.SECONDS)
+                    .untilAsserted(() -> verify(mapper).completed(id, "ACCEPTED"));
             assertThat(attempts.get()).isEqualTo(2);
             publisher.publish(id);
-            Thread.sleep(500);
-            assertThat(attempts.get()).isEqualTo(2);
+            await().during(500, TimeUnit.MILLISECONDS).atMost(5, TimeUnit.SECONDS)
+                    .untilAsserted(() -> assertThat(attempts.get()).isEqualTo(2));
             verify(mail, times(2)).enqueue(any());
             verify(mapper).completed(id, "ACCEPTED");
 

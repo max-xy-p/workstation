@@ -1,6 +1,6 @@
 <template>
   <RouterView v-if="isBarePage" />
-  <main v-else-if="!auth.state.user" class="page" role="status">正在确认登录状态…</main>
+  <main v-else-if="!auth.state.user" class="page"><output>正在确认登录状态…</output></main>
   <div v-else class="app-shell" :class="{ 'app-notes': notesPage, 'app-focused': notesPage && focused }">
     <a class="skip-link" href="#workspace-main">跳到主要内容</a>
     <aside class="sidebar">

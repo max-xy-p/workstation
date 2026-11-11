@@ -10,6 +10,13 @@ import com.mike.workstation.mapper.InvitationMapper;
 import com.mike.workstation.messaging.InvitationPublisher;
 import com.mike.workstation.messaging.InvitationConsumer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import com.sun.net.httpserver.HttpServer;
+import tools.jackson.databind.ObjectMapper;
+import java.net.InetSocketAddress;
+import java.time.OffsetDateTime;
+import java.util.concurrent.atomic.AtomicReference;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
@@ -43,6 +50,44 @@ class InvitationDeliveryTests {
         assertThat(requests.getValue().requestKey()).isEqualTo("workspace-invitation/" + invitation.getId());
         assertThat(requests.getValue().text()).contains("/invitations#").doesNotContain("?token=");
         verify(mapper).completed(id, "ACCEPTED");
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 10, 10000})
+    void invitationLinkRemovesOnlyTrailingSlashes(int slashes) throws Exception {
+        var configured = new InvitationProperties(true, "https://work.example/base" + "/".repeat(slashes),
+                properties.signingKey(), properties.mailUrl(), properties.mailToken());
+        var invitation = invitation();
+        when(mapper.findDelivery(id)).thenReturn(invitation);
+        new InvitationDeliveryService(mapper, tokens, mail, configured).deliver(id);
+        var request = ArgumentCaptor.forClass(InvitationMailClient.MailRequest.class);
+        verify(mail).enqueue(request.capture());
+        assertThat(request.getValue().text()).contains("https://work.example/base/invitations#"
+                + tokens.token(invitation.getId()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 10, 10000})
+    void mailEndpointPreservesBasePathAndRemovesTrailingSlashes(int slashes) throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        var path = new AtomicReference<String>();
+        server.createContext("/", exchange -> {
+            path.set(exchange.getRequestURI().getPath());
+            exchange.getRequestBody().readAllBytes();
+            exchange.sendResponseHeaders(202, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var configured = new InvitationProperties(true, properties.publicUrl(), properties.signingKey(),
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/base" + "/".repeat(slashes),
+                    properties.mailToken());
+            new InvitationMailClient(configured, new ObjectMapper()).enqueue(new InvitationMailClient.MailRequest(
+                    "test-request", "guest@example.com", "邀请", "测试正文", OffsetDateTime.now().plusHours(1)));
+            assertThat(path.get()).isEqualTo("/base/internal/mail/messages");
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test

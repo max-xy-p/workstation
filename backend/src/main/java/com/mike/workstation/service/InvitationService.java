@@ -38,6 +38,9 @@ import java.util.regex.Pattern;
 @Service
 public class InvitationService {
     private static final Pattern EMAIL = Pattern.compile("^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\\.[A-Za-z]{2,63}$");
+    private static final String PENDING = "PENDING";
+    private static final String ACCEPTED = "ACCEPTED";
+    private static final String WORKSPACE_INVITATION = "WORKSPACE_INVITATION";
     private static final String INVALID = "邀请不存在或凭据无效";
     private final InvitationMapper mapper;
     private final WorkspaceMapper workspaces;
@@ -105,13 +108,13 @@ public class InvitationService {
         invitation.setCreatedBy(actor.subjectId());
         invitation.setRequestId(requestId);
         invitation.setTokenHash(tokens.hash(tokens.token(invitation.getId())));
-        invitation.setStatus("PENDING");
-        invitation.setMailStatus("PENDING");
+        invitation.setStatus(PENDING);
+        invitation.setMailStatus(PENDING);
         invitation.setCreatedAt(now);
         invitation.setExpiresAt(now.plusHours(23));
         mapper.insert(invitation);
         mapper.insertOutbox(invitation);
-        audit.success(workspaceId, "INVITATION_CREATE", "WORKSPACE_INVITATION", null);
+        audit.success(workspaceId, "INVITATION_CREATE", WORKSPACE_INVITATION, null);
         return InvitationResponseAssembler.toResponse(invitation);
     }
 
@@ -132,13 +135,13 @@ public class InvitationService {
         }
         String subject = principals.require().subjectId();
         WorkspaceMember member = workspaces.findMember(invitation.getWorkspaceId(), subject);
-        if ("ACCEPTED".equals(invitation.getStatus())) {
+        if (ACCEPTED.equals(invitation.getStatus())) {
             if (!subject.equals(invitation.getAcceptedBy()) || member == null) {
                 throw new BusinessException("邀请已使用，不能重新授予成员权限");
             }
             return memberWorkspace(invitation.getWorkspaceId(), subject);
         }
-        if (!"PENDING".equals(invitation.getStatus()) || !invitation.getExpiresAt().isAfter(now())) {
+        if (!PENDING.equals(invitation.getStatus()) || !invitation.getExpiresAt().isAfter(now())) {
             throw new BusinessException("邀请已过期或已撤销");
         }
         // 邀请人失去管理权限时，不允许旧邀请继续授予权限。
@@ -163,13 +166,13 @@ public class InvitationService {
             member.setJoinedAt(now());
             workspaces.insertMember(member);
         }
-        if (mapper.transition(invitation.getId(), "ACCEPTED", subject) != 1) {
+        if (mapper.transition(invitation.getId(), ACCEPTED, subject) != 1) {
             throw new InvitationConflictException("邀请状态已变化，请重新打开邀请");
         }
         mapper.cancel(invitation.getId());
         notifications.invitationAccepted(invitation.getWorkspaceId(), inviter.getName(), invitation.getId(),
                 invitation.getCreatedBy(), subject);
-        audit.success(invitation.getWorkspaceId(), "INVITATION_ACCEPT", "WORKSPACE_INVITATION", null);
+        audit.success(invitation.getWorkspaceId(), "INVITATION_ACCEPT", WORKSPACE_INVITATION, null);
         return memberWorkspace(invitation.getWorkspaceId(), subject);
     }
 
@@ -181,12 +184,12 @@ public class InvitationService {
         if (invitation == null || !workspaceId.equals(invitation.getWorkspaceId())) {
             throw new NotFoundException(INVALID);
         }
-        if ("ACCEPTED".equals(invitation.getStatus())) {
+        if (ACCEPTED.equals(invitation.getStatus())) {
             throw new BusinessException("邀请已接受，请通过成员管理移除成员");
         }
         mapper.transition(id, "REVOKED", null);
         mapper.cancel(id);
-        audit.success(workspaceId, "INVITATION_REVOKE", "WORKSPACE_INVITATION", null);
+        audit.success(workspaceId, "INVITATION_REVOKE", WORKSPACE_INVITATION, null);
         return InvitationResponseAssembler.toResponse(mapper.find(id));
     }
 
